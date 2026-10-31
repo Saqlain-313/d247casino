@@ -1,0 +1,97 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;700&display=swap");
+@import "tailwindcss";
+body {
+  font-family: "Roboto Condensed", sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+}
+/* Custom scrollbar hide utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.bg-body{
+  background-color: #ffffff !important;
+}
+.text-body{
+  color: #000000 !important;
+}
+.bg-primary{
+  background-color: #0088CC;
+}
+.text-primary{
+  color: #FFFFFF;
+}
+.bg-secondary{
+  background-color: #2C3E50 !important;
+}
+.text-secondary{
+  color: #FFFFFF !important;
+}
+.sidebar-menu-bg{
+  background-color: #bbbbbb !important;
+}
+.sidebar-menu-text{
+  color: #000000 !important;
+}
+
+/* Blink animation */
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-blink {
+  animation: blink 1.5s ease-in-out infinite;
+}
+
+@keyframes horse-odds-flash {
+  0%, 100% {
+    background-color: #dc2626;
+    color: #ffffff;
+  }
+  50% {
+    background-color: #fecaca;
+    color: #7f1d1d;
+  }
+}
+
+.horse-odds-changed {
+  animation: horse-odds-flash 0.4s ease-in-out 2;
+}
+
+@keyframes horse-no-data-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.horse-no-data-popup {
+  animation: horse-no-data-slide-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Desktop background override for casino categories */
+@media (min-width: 768px) {
+  .md-desktop-bg {
+    background-color: #2C3E50 !important;
+    color: #FFFFFF !important;
+  }
+}

@@ -1,0 +1,15 @@
+
+# Ignore all node_modules folder
+**/node_modules
+
+
+# Ignore all package-lock.json files anywhere
+**/package-lock.json
+
+\.claude
+
+# Ignore all null files
+**/*.null
+
+#Ignore all coverage folder
+**/coverage
