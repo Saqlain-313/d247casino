@@ -1,28 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 
 // Redux actions
+import { getUser } from '../../redux/reducer/authReducer';
 import {
-  fetchCasinoBatingData,
-  clearCasinoBettingData,
-  clearCasinoResultData,
-} from '../../redux/reducer/casinoSlice';
-import {
+  clearPendingBetAmounts,
   getBetHistory,
   getPendingBet,
   getPendingBetAmo,
-  clearPendingBetAmounts,
 } from '../../redux/reducer/betReducer';
-import { getUser } from '../../redux/reducer/authReducer';
+import {
+  clearCasinoBettingData,
+  clearCasinoResultData,
+  fetchCasinoBatingData,
+} from '../../redux/reducer/casinoSlice';
 
 // Components
-import VideoStream from './components/VideoStream';
-import RecentResults from './components/RecentResults';
-import ResultPopup from './components/CasinoResult1';
-import Spinner2 from './components/Spinner2';
-import CasinoPlaceBet from './components/CasinoPlaceBet';
 import MatchedBet from '../gamedetails/MatchedBet';
+import CasinoPlaceBet from './components/CasinoPlaceBet';
+import ResultPopup from './components/CasinoResult1';
+import RecentResults from './components/RecentResults';
+import Spinner2 from './components/Spinner2';
+import VideoStream from './components/VideoStream';
 
 // Hooks
 import useBetting from './hooks/useBetting';
@@ -30,12 +30,12 @@ import useCasinoResults from './hooks/useCasinoResults';
 import useCasinoWebSocket from './hooks/useCasinoWebSocket';
 
 // Utils & Constants
-import { renderGameUI } from './utils/gameRendererFactory';
-import {
-  groupBettingData,
-  filterPlayersForTwoPlayerGames,
-} from './utils/bettingUtils';
 import { TWO_PLAYER_GAMES, getWinnerMap } from './constants';
+import {
+  filterPlayersForTwoPlayerGames,
+  groupBettingData,
+} from './utils/bettingUtils';
+import { renderGameUI } from './utils/gameRendererFactory';
 
 export default function CasinoBet() {
   const dispatch = useDispatch();

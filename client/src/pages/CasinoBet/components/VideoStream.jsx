@@ -1,6 +1,6 @@
-import React, { memo, useState, useEffect } from 'react';
-import { getVideoStreamUrl } from '../utils/gameUtils';
+import { memo, useEffect, useState } from 'react';
 import { VIDEO_LOAD_TIMEOUT } from '../constants';
+import { getVideoStreamUrl } from '../utils/gameUtils';
 import CardsDisplay from './CardsDisplay';
 import RulesPopup from './RulesPopup';
 
