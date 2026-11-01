@@ -1,12 +1,12 @@
 import dotenv from 'dotenv';
 
-import adminModel from '../models/adminModel.js';
 import {
   fetchCasinoTables,
   fetchCasinoResult as fetchCasinoResultApi,
   fetchCasinoDetailResult as fetchCasinoDetailResultApi,
 } from '../services/matchApi/index.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
+import redis, { connectRedis } from '../config/redis.js';
 
 dotenv.config();
 
@@ -17,20 +17,105 @@ export const isCasinoGame = (gameId, cid, gid, tabno) => {
     if (tabno != null && Number(tabno) === 6) return true;
     if (typeof gameId === 'string' && !/^\d+$/.test(gameId)) return true;
     return false;
-  } catch (e) {
+  } catch {
     return false;
   }
 };
 
-// The game list changes rarely, so one provider call is shared by all users.
-const CASINO_LIST_TTL_MS = 60 * 1000;
-let casinoListCache = { at: 0, data: null };
-let casinoListInflight = null;
+const EVENT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
+
+// Fallback TTL in SECONDS (60 = 1 min).
+const DEFAULT_TTL_SECONDS = Number(process.env.CASINO_CACHE_TTL) || 60;
+
+// Har route ka apna alag Redis key prefix aur apna alag TTL.
+// Saare TTL seconds me hain (list ko chhodkar, wo hours me hai).
+// .env se bhi change kar sakte ho.
+const CACHE = {
+  list: {
+    prefix: 'casino:list',
+    // 6 ghante
+    ttl: (Number(process.env.CASINO_LIST_TTL_HOURS) || 6) * 60 * 60,
+  },
+  betting: {
+    prefix: 'casino:betting',
+    // 1 min
+    ttl: Number(process.env.CASINO_BETTING_TTL) || 60,
+  },
+  result: {
+    prefix: 'casino:result',
+    // 1 min
+    ttl: Number(process.env.CASINO_RESULT_TTL) || 60,
+  },
+  resultDetail: {
+    prefix: 'casino:result-detail',
+    // 1 min
+    ttl: Number(process.env.CASINO_RESULT_DETAIL_TTL) || 60,
+  },
+};
+
+// Collapse Redis reads for requests arriving during the same refresh window.
+const CASINO_LIST_LOCAL_CACHE_TTL_MS = 500;
+let casinoListLocalCache = null;
+let casinoListRequest = null;
+
+/* -------------------------------------------------------------------------- */
+/*  Redis helpers: pehle redis check, miss hone par API, phir redis me save    */
+/* -------------------------------------------------------------------------- */
+
+const getFromRedis = async (key) => {
+  try {
+    await connectRedis();
+    const cached = await redis.get(key);
+
+    if (cached !== null) {
+      console.log('[REDIS] HIT ', key);
+      return JSON.parse(cached);
+    }
+
+    console.log('[REDIS] MISS', key);
+    return null;
+  } catch (err) {
+    console.error('[REDIS] GET failed:', key, err.message);
+    return null; // redis down ho to API se data lenge
+  }
+};
+
+const saveToRedis = async (key, data, ttl = DEFAULT_TTL_SECONDS) => {
+  try {
+    if (data === undefined) return;
+    await connectRedis();
+    // EX = seconds
+    const res = await redis.set(key, JSON.stringify(data), { EX: ttl });
+    console.log('[REDIS] SET', res, `ttl=${ttl}s`, key);
+  } catch (err) {
+    console.error('[REDIS] SET failed:', key, err.message);
+  }
+};
+
+/**
+ * 1. Redis check
+ * 2. Nahi mila to API call (loader)
+ * 3. API ka data Redis me save
+ */
+const getWithCache = async (key, loader, ttl = DEFAULT_TTL_SECONDS) => {
+  const cached = await getFromRedis(key);
+  if (cached !== null) return cached;
+
+  const fresh = await loader();
+
+  await saveToRedis(key, fresh, ttl);
+
+  return fresh;
+};
+
+/* -------------------------------------------------------------------------- */
+/*  Controllers                                                               */
+/* -------------------------------------------------------------------------- */
 
 const loadCasinoList = async () => {
   const payload = await fetchCasinoTables();
 
-  // Provider A returns the game list as a bare array, others wrap it in { success, data }
+  // Provider A returns a bare array; other providers may wrap it in { success, data }.
   if (Array.isArray(payload)) return payload;
   if (payload?.success) return payload.data || [];
 
@@ -39,31 +124,42 @@ const loadCasinoList = async () => {
   throw error;
 };
 
-export const getCasinoData = async (req, res) => {
+const getCasinoList = () => {
   if (
-    casinoListCache.data &&
-    Date.now() - casinoListCache.at < CASINO_LIST_TTL_MS
+    casinoListLocalCache &&
+    Date.now() - casinoListLocalCache.cachedAt < CASINO_LIST_LOCAL_CACHE_TTL_MS
   ) {
-    return res.status(200).json({ success: true, data: casinoListCache.data });
+    return Promise.resolve(casinoListLocalCache);
   }
 
-  try {
-    casinoListInflight ??= loadCasinoList().finally(() => {
-      casinoListInflight = null;
-    });
-    const data = await casinoListInflight;
+  if (!casinoListRequest) {
+    casinoListRequest = getWithCache(
+      CACHE.list.prefix,
+      loadCasinoList,
+      CACHE.list.ttl
+    )
+      .then((data) => {
+        casinoListLocalCache = {
+          json: JSON.stringify({ success: true, data }),
+          cachedAt: Date.now(),
+        };
+        return casinoListLocalCache;
+      })
+      .finally(() => {
+        casinoListRequest = null;
+      });
+  }
 
-    casinoListCache = { at: Date.now(), data };
-    return res.status(200).json({ success: true, data });
+  return casinoListRequest;
+};
+
+export const getCasinoData = async (req, res) => {
+  try {
+    const response = await getCasinoList();
+
+    return res.status(200).type('json').send(response.json);
   } catch (error) {
     console.error('getCasinoData error:', error?.message || error);
-
-    // A stale list is better than an empty casino section
-    if (casinoListCache.data) {
-      return res
-        .status(200)
-        .json({ success: true, data: casinoListCache.data });
-    }
 
     if (error.provider !== undefined) {
       return res.status(502).json({
@@ -72,36 +168,42 @@ export const getCasinoData = async (req, res) => {
         provider: error.provider,
       });
     }
-    return res
-      .status(500)
-      .json({ success: false, message: 'Server error', error: error?.message });
+
+    return res.status(503).json({
+      success: false,
+      message: 'Casino provider temporarily unavailable',
+    });
   }
 };
 
-// Event names go straight into the provider URL path, so only plain slugs are accepted
-const EVENT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
-
-// Shared with bet validation and the WebSocket poller, so opening a table never
-// costs more than one provider call per second no matter how many users do it.
-const BETTING_DATA_MAX_AGE_MS = 1000;
-
 export const getCasinoBettingData = async (req, res) => {
   const { eventName } = req.query;
+
   if (!eventName) {
-    return res
-      .status(400)
-      .json({ success: false, message: 'Event Name is required' });
+    return res.status(400).json({
+      success: false,
+      message: 'Event Name is required',
+    });
   }
-  if (!EVENT_NAME_PATTERN.test(eventName)) {
-    return res
-      .status(400)
-      .json({ success: false, message: 'Invalid event name' });
+
+  if (typeof eventName !== 'string' || !EVENT_NAME_PATTERN.test(eventName)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid event name',
+    });
   }
+
   try {
-    const data = await getCasinoTable(eventName, BETTING_DATA_MAX_AGE_MS);
+    const data = await getWithCache(
+      `${CACHE.betting.prefix}:${eventName}`,
+      // 0 pass kiya taaki getCasinoTable ka apna cache bypass ho, Redis hi cache control kare.
+      () => getCasinoTable(eventName, 0),
+      CACHE.betting.ttl
+    );
+
     return res.status(200).json({
       message: 'Casino Betting data fetched Successfully',
-      data: data,
+      data,
     });
   } catch (error) {
     if (error?.response?.status === 404) {
@@ -110,74 +212,101 @@ export const getCasinoBettingData = async (req, res) => {
         message: 'This game is not available right now',
       });
     }
-    return res.status(500).json({
+
+    console.error('getCasinoBettingData error:', error?.message || error);
+    return res.status(503).json({
       success: false,
-      message: 'Internal Server Error',
-      error: error?.message,
+      message: 'Casino provider temporarily unavailable',
     });
   }
 };
-
-//Fetch CasinoResult data
-// In-memory cache for casino results
-const resultCache = new Map();
-const RESULT_CACHE_TTL = 3000; // 3 seconds
 
 export const getCasinoResultData = async (req, res) => {
   const { eventName } = req.query;
+
   if (!eventName) {
-    return res
-      .status(400)
-      .json({ success: false, message: 'Game Id is required' });
+    return res.status(400).json({
+      success: false,
+      message: 'Game Id is required',
+    });
+  }
+
+  if (typeof eventName !== 'string' || !EVENT_NAME_PATTERN.test(eventName)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid event name',
+    });
   }
 
   try {
-    // Check cache first
-    const cached = resultCache.get(eventName);
-    if (cached && Date.now() - cached.timestamp < RESULT_CACHE_TTL) {
-      return res.status(200).json({ success: true, data: cached.data });
-    }
+    const data = await getWithCache(`${CACHE.result.prefix}:${eventName}`, async () => {
+      const response = await fetchCasinoResultApi(eventName);
 
-    const json = await fetchCasinoResultApi(eventName);
-    if (json.success) {
-      // Cache the successful result
-      resultCache.set(eventName, { data: json.data, timestamp: Date.now() });
-      return res.status(200).json({ success: true, data: json.data });
-    } else {
-      // Return cached data if provider returns bad response
-      if (cached) {
-        return res.status(200).json({ success: true, data: cached.data });
+      if (!response?.success) {
+        const error = new Error('Invalid Response from API');
+        error.provider = response;
+        throw error;
       }
-      return res
-        .status(502)
-        .json({ success: false, message: 'Invalid Response from API' });
-    }
+
+      return response.data;
+    }, CACHE.result.ttl);
+
+    return res.status(200).json({ success: true, data });
   } catch (error) {
-    console.error('Error in getCasinoResultData:', error?.message);
-    const cached = resultCache.get(eventName);
-    if (cached) {
-      return res.status(200).json({ success: true, data: cached.data });
-    }
-    res.status(500).json({
+    console.error('getCasinoResultData error:', error?.message || error);
+
+    return res.status(error.provider !== undefined ? 502 : 503).json({
       success: false,
-      message: 'Internal Server Error',
-      error: error?.message,
+      message: error.message || 'Casino provider temporarily unavailable',
+      ...(error.provider !== undefined ? { provider: error.provider } : {}),
     });
   }
 };
+
 export const getCasinoResultDetailData = async (req, res) => {
-  try {
-    const { gameId, mid } = req.query;
-    if (!gameId || !mid) {
-      return res.status(400).json({ message: 'GameId or mid is missing' });
-    }
-    const json = await fetchCasinoDetailResultApi(gameId, mid);
-    return res.status(200).json({ message: 'Success', data: json?.data?.t1 });
-  } catch (error) {
-    console.error('Error in fetchingCasinoResultBettingData', error?.message);
-    res.status(500).json({
+  const { gtype, mid } = req.query;
+
+  if (!gtype || !mid) {
+    return res.status(400).json({
       success: false,
-      message: 'Internal server Error,error?.message ',
+      message: 'gtype or mid is missing',
+    });
+  }
+
+  if (
+    typeof gtype !== 'string' ||
+    typeof mid !== 'string' ||
+    !/^[A-Za-z0-9_-]{1,40}$/.test(gtype) ||
+    !/^[A-Za-z0-9_-]{1,80}$/.test(mid)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid gtype or mid',
+    });
+  }
+
+  try {
+    const data = await getWithCache(
+      `${CACHE.resultDetail.prefix}:${gtype}:${mid}`,
+      async () => {
+        const response = await fetchCasinoDetailResultApi(gtype, mid);
+
+        if (!response) {
+          throw new Error('Invalid provider response');
+        }
+
+        return response?.data?.t1 ?? null;
+      },
+      CACHE.resultDetail.ttl
+    );
+
+    return res.status(200).json({ message: 'Success', data });
+  } catch (error) {
+    console.error('getCasinoResultDetailData error:', error?.message || error);
+
+    return res.status(503).json({
+      success: false,
+      message: 'Casino provider temporarily unavailable',
     });
   }
 };

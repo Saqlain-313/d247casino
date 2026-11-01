@@ -177,7 +177,7 @@ export function createProviderB() {
 
     async fetchCasinoData(eventName) {
       const response = await axios.get(
-        `${API_URL}/diamond/casino/data?key=${API_KEY}&type=${eventName}`
+        `${API_URL}/casino/data?key=${API_KEY}&type=${eventName}`
       );
 
       console.log(response,"malik")
@@ -192,10 +192,12 @@ export function createProviderB() {
       return response.data;
     },
 
-    async fetchCasinoDetailResult(gameId, mid) {
+    async fetchCasinoDetailResult(gtype, mid) {
       const response = await axios.get(
-        `${API_URL}/casino/detail_result?key=${API_KEY}&type=${gameId}&mid=${mid}`
+        `${API_URL}/diamond/casino/detail_result?key=${API_KEY}&type=${gtype}&mid=${mid}`
       );
+
+      console.log(response,"malik")
       return response.data;
     },
 

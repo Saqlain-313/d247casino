@@ -45,8 +45,8 @@ export const fetchCasinoData = (eventName) =>
   activeProvider.fetchCasinoData(eventName);
 export const fetchCasinoResult = (eventName) =>
   activeProvider.fetchCasinoResult(eventName);
-export const fetchCasinoDetailResult = (gameId, mid) =>
-  activeProvider.fetchCasinoDetailResult(gameId, mid);
+export const fetchCasinoDetailResult = (gtype, mid) =>
+  activeProvider.fetchCasinoDetailResult(gtype, mid);
 
 export const fetchCricketFancyResult = (eventId, fancyId) =>
   activeProvider.fetchCricketFancyResult(eventId, fancyId);

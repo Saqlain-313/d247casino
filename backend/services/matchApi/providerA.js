@@ -118,7 +118,7 @@ export function createProviderA() {
 
     async fetchCasinoTables() {
       const response = await axios.get(
-        `${API_URL}/diamond/direct-casino-table-list?key=${API_KEY}`,
+        `${API_URL}/diamond/casino-table-list?key=${API_KEY}`,
         { timeout: 10000 }
       );
 
@@ -141,14 +141,18 @@ export function createProviderA() {
         { timeout: 10000 }
       );
 
+      console.log(response,"malik2222")
+
       // The provider wraps the table as { fetchedAt, eventName, data: { success, data } }.
       // Everything downstream (socket polling, bet validation, the API) expects
       // { success, data }, so unwrap it once here.
       const table = response.data?.data;
-      return {
-        success: Boolean(table?.success && table?.data),
-        data: table?.data ?? null,
-      };
+
+      return table
+      // return {
+      //   success: Boolean(table?.success && table?.data),
+      //   data: table?.data ?? null,
+      // };
     },
     // async fetchCasinoData(gameId) {
     // //   const response = await axios.get(
@@ -165,10 +169,12 @@ export function createProviderA() {
       return response.data;
     },
 
-    async fetchCasinoDetailResult(gameId, mid) {
+    async fetchCasinoDetailResult(gtype, mid) {
       const response = await axios.get(
-        `${API_URL}/casino/detail_result?key=${API_KEY}&type=${gameId}&mid=${mid}`
+        `${API_URL}/diamond/casino/detail_result?key=${API_KEY}&type=${gtype}&mid=${mid}`
       );
+
+      console.log(response,"malik1234")
       return response.data;
     },
 
