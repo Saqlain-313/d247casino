@@ -7,15 +7,15 @@
  *  GET  /casino/:slug/book/:roundId  -> getNationBook
  *  GET  /casino/:slug/my-bets        -> myBets
  */
-import * as engine from '../services/casinoEngine.js';
 import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // apna existing User model (numeric `balance` field) - path adjust kar lena
+import * as engine from '../services/casinoEngine.js';
 
 // --------------------------------------------------------------- placeBet
 export const placeBet = async (req, res) => {
   const { slug } = req.params;
-  const userId = req.user._id;                 // from your auth middleware
+  const userId = req.id;                 // from your auth middleware
   const { roundId, side, selection } = req.body;
   const odds = Number(req.body.odds);
   const stake = Number(req.body.stake);

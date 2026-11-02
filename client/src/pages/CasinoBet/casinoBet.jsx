@@ -22,6 +22,8 @@ import ResultPopup from './components/CasinoResult1';
 import RecentResults from './components/RecentResults';
 import Spinner2 from './components/Spinner2';
 import VideoStream from './components/VideoStream';
+import DesktopBetSlip from '../../components/betting/DesktopBetSlip';
+import NewMobileBetDrawer from '../../components/betting/MobileBetDrawer';
 
 // Hooks
 import useBetting from './hooks/useBetting';
@@ -36,6 +38,8 @@ import {
 } from './utils/bettingUtils';
 import { renderGameUI } from './utils/gameRendererFactory';
 import { createMockCasinoMarkets } from './utils/mockCasinoMarkets';
+import GameMarketTable from '../../components/tables/GameMarketTable';
+import { CasinoUiProvider } from '../../context/CasinoContext';
 
 export default function CasinoBet() {
   const dispatch = useDispatch();
@@ -225,29 +229,15 @@ export default function CasinoBet() {
             </div>
           )}
 
-          {/* Game-Specific Betting UI */}
-          <div>
-            {renderGameUI({
-                gameid,
-                displayData,
-                bettingData: mockBettingData,
-                resultData: results.resultData,
-                betControl: betting.betControl,
-                setBetControl: betting.setBetControl,
-                setValue: betting.setValue,
-                setSelectedTeamSubtype: betting.setSelectedTeamSubtype,
-                betAmount: betting.betAmount,
-                betOdds: betting.betOdds,
-                setBetOdds: betting.setBetOdds,
-                updateAmount: betting.updateAmount,
-                placeBet: () => {}, // mock UI only; never submits a real wager
-                loading: betting.loading,
-                pendingBetAmounts: betting.pendingBetAmounts,
-                selectedTeamSubtype: betting.selectedTeamSubtype,
-                resetBettingState: betting.resetBettingState,
-                hasPendingBetForControl: betting.hasPendingBetForControl,
-              })}
-          </div>
+          {/* Game-specific betting UI: exact dedicated renderers from new-zip */}
+          <CasinoUiProvider
+            gameid={gameid}
+            bettingData={mockBettingData}
+            betting={betting}
+            isMobile={!isDesktop}
+          >
+            <GameMarketTable />
+          </CasinoUiProvider>
 
           {bettingData?.remark && (
             <div className='bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]'>
@@ -278,6 +268,9 @@ export default function CasinoBet() {
         {isDesktop && (
           <div className='sticky top-0 h-fit'>
             <div className='w-[350px]'>
+              <CasinoUiProvider gameid={gameid} bettingData={mockBettingData} betting={betting} isMobile={false}>
+                <DesktopBetSlip />
+              </CasinoUiProvider>
               <div className='bg-secondary text-secondary p-1'>
                 <span className='font-bold'>My Bet</span>
               </div>
@@ -286,6 +279,12 @@ export default function CasinoBet() {
           </div>
         )}
       </div>
+
+      {!isDesktop && (
+        <CasinoUiProvider gameid={gameid} bettingData={mockBettingData} betting={betting} isMobile={true}>
+          <NewMobileBetDrawer />
+        </CasinoUiProvider>
+      )}
 
       {/* Result Detail Popup */}
       {results.selectedItem && (
