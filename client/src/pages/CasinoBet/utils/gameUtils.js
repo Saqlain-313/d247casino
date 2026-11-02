@@ -80,5 +80,5 @@ const CASINO_TV_KEY =
  */
 export const getVideoStreamUrl = (gameid) => {
   if (!gameid) return '';
-  return `${CASINO_TV_BASE_URL}/casino-stream/${gameid}?key=${CASINO_TV_KEY}`;
+  return `${CASINO_TV_BASE_URL}/diamond/casino/${eventName}?key=${CASINO_TV_KEY}`;
 };
