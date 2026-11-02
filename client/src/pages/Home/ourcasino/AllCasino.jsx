@@ -1,10 +1,9 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchCasinoData } from '../../../redux/reducer/casinoSlice';
 import {
-  mapCasinoGames,
-  PLAYABLE_SLUGS,
+  mapCasinoGames
 } from '../../../utils/casinoCategories';
 const casinosprev = [
   {
@@ -418,6 +417,8 @@ function AllCasino() {
           </span>
         </div>
       ))}
+
+      <h1>helooooo</h1>
     </div>
   );
 }

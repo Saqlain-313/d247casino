@@ -18,7 +18,6 @@ import {
 
 // Components
 import MatchedBet from '../gamedetails/MatchedBet';
-import CasinoPlaceBet from './components/CasinoPlaceBet';
 import ResultPopup from './components/CasinoResult1';
 import RecentResults from './components/RecentResults';
 import Spinner2 from './components/Spinner2';
@@ -36,6 +35,7 @@ import {
   groupBettingData,
 } from './utils/bettingUtils';
 import { renderGameUI } from './utils/gameRendererFactory';
+import { createMockCasinoMarkets } from './utils/mockCasinoMarkets';
 
 export default function CasinoBet() {
   const dispatch = useDispatch();
@@ -164,17 +164,21 @@ export default function CasinoBet() {
   // ============== DATA PROCESSING ==============
 
   // Group and filter betting data
-  const groupedData = groupBettingData(bettingData?.sub, gameid);
+  // UI-only mock markets: the dedicated renderer for each game keeps its
+  // own layout (Baccarat, Poker, Dragon/Tiger, Card 32, etc.).
+  const mockBettingData = {
+    ...(bettingData || {}),
+    gtype: bettingData?.gtype || gameid,
+    mid: bettingData?.mid || 'MOCK-ROUND-001',
+    sub: createMockCasinoMarkets(gameid),
+  };
+  const groupedData = groupBettingData(mockBettingData.sub, gameid);
   const displayData = filterPlayersForTwoPlayerGames(
     groupedData,
     gameid,
-    bettingData?.sub,
+    mockBettingData.sub,
     TWO_PLAYER_GAMES
   );
-  const selectedSub = bettingData?.sub?.find(
-    (s) => s.sid === betting.betControl?.sid
-  );
-
   // ============== RENDER ==============
 
   return (
@@ -223,11 +227,10 @@ export default function CasinoBet() {
 
           {/* Game-Specific Betting UI */}
           <div>
-            {bettingData?.sub &&
-              renderGameUI({
+            {renderGameUI({
                 gameid,
                 displayData,
-                bettingData,
+                bettingData: mockBettingData,
                 resultData: results.resultData,
                 betControl: betting.betControl,
                 setBetControl: betting.setBetControl,
@@ -237,7 +240,7 @@ export default function CasinoBet() {
                 betOdds: betting.betOdds,
                 setBetOdds: betting.setBetOdds,
                 updateAmount: betting.updateAmount,
-                placeBet: betting.placeBet,
+                placeBet: () => {}, // mock UI only; never submits a real wager
                 loading: betting.loading,
                 pendingBetAmounts: betting.pendingBetAmounts,
                 selectedTeamSubtype: betting.selectedTeamSubtype,
@@ -275,16 +278,6 @@ export default function CasinoBet() {
         {isDesktop && (
           <div className='sticky top-0 h-fit'>
             <div className='w-[350px]'>
-              <CasinoPlaceBet
-                betControl={betting.betControl}
-                betOdds={betting.betOdds}
-                betAmount={betting.betAmount}
-                updateAmount={betting.updateAmount}
-                loading={betting.loading || betting.loader}
-                suspended={selectedSub?.gstatus === 'SUSPENDED'}
-                onClose={betting.resetBettingState}
-                onPlaceBet={betting.placeBet}
-              />
               <div className='bg-secondary text-secondary p-1'>
                 <span className='font-bold'>My Bet</span>
               </div>

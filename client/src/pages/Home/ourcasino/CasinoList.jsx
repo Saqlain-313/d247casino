@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import Casino from './Casino';
 import { useParams } from 'react-router-dom';
 import { fetchCasinoData } from '../../../redux/reducer/casinoSlice';
 import { mapCasinoGames } from '../../../utils/casinoCategories';
+import Casino from './Casino';
 const casinoCategories = [
   { id: 1, name: 'All Casino' },
   { id: 2, name: 'Roulette' },

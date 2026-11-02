@@ -58,11 +58,23 @@ export const PLAYABLE_SLUGS = new Set([
   'teen8',
 ]);
 
-// Normalises the API list ({ eventName, name, image }) into display objects
 export const mapCasinoGames = (data) =>
   (data || [])
     .filter((game) => game?.eventName && game?.name)
     .map((game) => {
-      const base = { slug: game.eventName, name: game.name, image: game.image };
-      return { ...base, category: getCasinoCategory(base) };
+      const base = {
+        id: game.eventName,
+        slug: game.eventName,
+        eventName: game.eventName,
+        name: game.name,
+        image: game.imageUrl || game.image || '',
+        imageUrl: game.imageUrl || game.image || '',
+        gameId: game.gameId,
+        providerGameId: game.providerGameId,
+      };
+
+      return {
+        ...base,
+        category: getCasinoCategory(base),
+      };
     });
