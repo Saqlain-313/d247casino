@@ -1,0 +1,8303 @@
+import React from 'react';
+import { useCasino } from '../../context/CasinoContext';
+import OddsBox from './OddsBox';
+import RouletteTable from './RouletteTable';
+import Goal2Table from './games/Goal2Table';
+import Vlucky7Table from './games/Vlucky7Table';
+
+/* ==========================================================================
+   AUTHENTIC 93 CASINO GAME DEDICATED MARKET TABLES
+   100% INDIVIDUAL, ZERO GROUPING, ZERO FAMILY SPECIFICATION
+   ========================================================================== */
+
+// --------------------------------------------------------------------------
+// Game: Goal 2 (goal2)
+// --------------------------------------------------------------------------
+function TableGoal2({ isMobile, isSuspended, openBetSlip, markets }) {
+  const quadrants = [
+    { key: 'TL', name: 'Top Left', odds: '4.5' },
+    { key: 'TR', name: 'Top Right', odds: '4.5' },
+    { key: 'BL', name: 'Bottom Left', odds: '4.5' },
+    { key: 'BR', name: 'Bottom Right', odds: '4.5' },
+    { key: 'C', name: 'Center', odds: '5.0' },
+  ];
+  return (
+    <div className="casino-table goal">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-3 mb-3">
+          <div className="w-50 p-3 border rounded text-center">
+            <div className="h5 fw-bold text-success">Goal</div>
+            <OddsBox nation="Goal" odds={markets?.goal?.back || '1.98'} type="back" className="w-100 mt-2" />
+          </div>
+          <div className="w-50 p-3 border rounded text-center">
+            <div className="h5 fw-bold text-danger">No Goal</div>
+            <OddsBox nation="No Goal" odds={markets?.noGoal?.back || '1.98'} type="back" className="w-100 mt-2" />
+          </div>
+        </div>
+
+        <div className="casino-odds w-100 text-center fw-bold mb-2">Target Penalty Quadrant</div>
+        <div className="d-flex flex-wrap justify-content-center gap-2">
+          {quadrants.map((q) => (
+            <div
+              key={q.key}
+              className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(`Quadrant ${q.name}`, q.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '90px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : q.odds}</div>
+              <div className="fw-bold">{q.name}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Matka (worli3)
+// --------------------------------------------------------------------------
+function TableWorli3({ isMobile, isSuspended, openBetSlip }) {
+  const [activeTab, setActiveTab] = React.useState('jodi');
+  const [jodiStakes, setJodiStakes] = React.useState({});
+  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  const handleJodiClick = (numStr) => {
+    if (isSuspended) return;
+    openBetSlip(`Jodi ${numStr}`, '95.0', 'back', isMobile);
+    setJodiStakes((prev) => ({
+      ...prev,
+      [numStr]: (prev[numStr] || 0) + 100,
+    }));
+  };
+
+  const handleClear = () => {
+    setJodiStakes({});
+  };
+
+  const totalAmount = Object.values(jodiStakes).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="casino-table worli">
+      <div className="casino-table-box p-3 border rounded">
+        {/* Worli sub-tabs */}
+        <div className="worli-tabs mb-3 overflow-auto" id="worli-tabs">
+          <ul className="nav nav-pills flex-nowrap gap-1 pb-1">
+            {[{"id":"single","name":"Single Ank"},{"id":"jodi","name":"Jodi"},{"id":"singlepatti","name":"Single Patti"},{"id":"doublepatti","name":"Double Patti"},{"id":"triplepatti","name":"Triple Patti"},{"id":"halfsangam","name":"Half Sangam"},{"id":"fullsangam","name":"Full Sangam"},{"id":"spmotor","name":"SP Motor"},{"id":"dpmotor","name":"DP Motor"},{"id":"tpmotor","name":"TP Motor"},{"id":"cyclepana","name":"Cycle Pana"},{"id":"fdpana","name":"FD Pana"},{"id":"sdpana","name":"SD Pana"},{"id":"tdpana","name":"TD Pana"}].map((t) => (
+              <li key={t.id} className="nav-item">
+                <button
+                  type="button"
+                  className={`nav-link py-1 px-2 small ${activeTab === t.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(t.id)}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {t.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Tab 1: Jodi 10x10 Matrix */}
+        {activeTab === 'jodi' && (
+          <div className="jodi-matrix-container mb-3">
+            <h6 className="fw-bold mb-2 text-center">Jodi 00 to 99 (Odds: 95.00)</h6>
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered text-center align-middle mb-0">
+                <tbody>
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
+                    <tr key={row}>
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((col) => {
+                        const num = `${row}${col}`;
+                        const stake = jodiStakes[num];
+                        return (
+                          <td
+                            key={num}
+                            className={`p-1 ${stake ? 'table-warning fw-bold' : ''} ${isSuspended ? 'bg-light text-muted' : ''}`}
+                            onClick={() => handleJodiClick(num)}
+                            style={{
+                              cursor: isSuspended ? 'not-allowed' : 'pointer',
+                              minWidth: '34px',
+                              height: '38px',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <div className="small">{num}</div>
+                            {stake ? <div className="text-danger" style={{ fontSize: '9px' }}>{stake}</div> : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Single Digit (0-9) */}
+        {activeTab === 'single' && (
+          <div className="single-digit-container mb-3 text-center">
+            <h6 className="fw-bold mb-2">Single Ank (0 to 9) - Odds: 9.50</h6>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {digits.map((d) => (
+                <div
+                  key={d}
+                  className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Single ${d}`, '9.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '9.5'}</div>
+                  <div className="fw-bold h5 mb-0">{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Pana / Patti combinations */}
+        {activeTab !== 'jodi' && activeTab !== 'single' && (
+          <div className="pana-container mb-3 text-center p-3 bg-light rounded">
+            <h6 className="fw-bold mb-2">{activeTab.toUpperCase()} Matrix - Odds: 150.00</h6>
+            <p className="text-muted small mb-3">Quick combination selector for {activeTab}</p>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {['120', '123', '124', '125', '126', '127', '128', '129', '130', '134'].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className="btn btn-sm btn-outline-dark"
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Pana ${p}`, '150.0', 'back', isMobile)}
+                  disabled={isSuspended}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Worli Action Box */}
+        <div className="worli-clear-box d-flex justify-content-between align-items-center p-2 bg-light border rounded">
+          <div className="total-amount fw-bold">
+            Total Amount: <span className="text-primary">{totalAmount}</span>
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-danger px-3"
+              onClick={handleClear}
+              disabled={totalAmount === 0}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-success px-3"
+              disabled={totalAmount === 0 || isSuspended}
+              onClick={() => {
+                Object.entries(jodiStakes).forEach(([num, st]) => {
+                  openBetSlip(`Jodi ${num}`, '95.0', 'back', isMobile);
+                });
+              }}
+            >
+              Place Bet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Dolidana (dolidana)
+// --------------------------------------------------------------------------
+function TableDolidana({ isMobile, isSuspended, openBetSlip, markets }) {
+  const sumOdds = [
+    { sum: 3, odd: '70' }, { sum: 4, odd: '35' }, { sum: 5, odd: '20' },
+    { sum: 6, odd: '14' }, { sum: 7, odd: '10' }, { sum: 8, odd: '8' },
+    { sum: 9, odd: '7' }, { sum: 10, odd: '6.5' }, { sum: 11, odd: '6.5' },
+    { sum: 12, odd: '7' }, { sum: 13, odd: '8' }, { sum: 14, odd: '10' },
+    { sum: 15, odd: '14' }, { sum: 16, odd: '20' }, { sum: 17, odd: '35' },
+    { sum: 18, odd: '70' },
+  ];
+
+  return (
+    <div className="casino-table dolidana">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">Dolidana (3-Dice Roll Showdown)</h5>
+
+        {/* 6 Dice Faces */}
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {[1, 2, 3, 4, 5, 6].map((face) => (
+            <div
+              key={face}
+              className={`card-odd-box p-2 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(`Single Dice ${face}`, '5.50', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '65px' }}
+            >
+              <img
+                src={`/assets/img/dice${face}.png`}
+                onError={(e) => {
+                  e.currentTarget.src = `https://cdn.926assets.com/g3ver/v107/static/front/img/dice${face}.png`;
+                }}
+                alt={`Dice ${face}`}
+                style={{ width: '32px', height: '32px', marginBottom: '4px' }}
+              />
+              <div className="casino-odds small">{isSuspended ? '-' : '5.50'}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Small vs Big vs Any Triple */}
+        <div className="row g-2 justify-content-center mb-3">
+          <div className="col-4">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Small (4-10)', '1.98', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Small (4-10)</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+            </div>
+          </div>
+          <div className="col-4">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Any Triple', '31.00', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold text-danger">Any Triple</div>
+              <div className="casino-odds text-danger">{isSuspended ? '-' : '31.00'}</div>
+            </div>
+          </div>
+          <div className="col-4">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Big (11-17)', '1.98', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Big (11-17)</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sum Totals (3 to 18) */}
+        <div className="d-flex flex-wrap justify-content-center gap-1">
+          {sumOdds.map((s) => (
+            <div
+              key={s.sum}
+              className={`card-odd-box p-1 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(`Sum ${s.sum}`, s.odd, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '48px', fontSize: '11px' }}
+            >
+              <div className="fw-bold">{s.sum}</div>
+              <div className="text-muted">{isSuspended ? '-' : s.odd}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Mogambo (mogambo)
+// --------------------------------------------------------------------------
+function TableMogambo({ isMobile, isSuspended, openBetSlip }) {
+  const characters = [
+    { key: 'A', name: 'Mogambo', odds: '2.85' },
+    { key: 'B', name: 'Mr. India', odds: '2.85' },
+    { key: 'C', name: 'Seema', odds: '2.85' },
+  ];
+
+  return (
+    <div className="casino-table mogambo">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">Mogambo (Khush Hua Duel)</h5>
+        
+        {/* 3 Characters */}
+        <div className="row g-3 mb-3">
+          {characters.map((char) => (
+            <div key={char.key} className="col-4">
+              <div
+                className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`${char.key}. ${char.name}`, char.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="fw-bold fs-5">{char.name}</div>
+                <div className="casino-odds text-primary fs-4">{isSuspended ? '-' : char.odds}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Red / Black & Odd / Even */}
+        <div className="row g-2 justify-content-center">
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold text-danger">Red</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold text-dark">Black</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Odd</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Even', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Even</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Lucky 6 / Lucky 5 (lucky5)
+// --------------------------------------------------------------------------
+function TableLucky5({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards11 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  return (
+    <div className="casino-table lucky7a lucky5">
+      <div className="casino-table-box">
+        <div className="casino-table-full-box">
+          <div className="lucky7low">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.low?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low Card (1-5)', markets?.low?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Low (1-5)</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.six?.back || '11')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Exact 6', markets?.six?.back || '11', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Exact 6</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7high">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.high?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High Card (7-11)', markets?.high?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">High (7-11)</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3">
+          <div className="casino-table-left-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.even?.back || '2.05')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Even', markets?.even?.back || '2.05', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Even</span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.odd?.back || '1.85')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Odd', markets?.odd?.back || '1.85', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Odd</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="casino-table-right-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.red?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Red', markets?.red?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-red">Red</span></span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.black?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Black', markets?.black?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-black">Black</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between gap-2">
+          {[
+            { label: 'A-2-3', odds: '4.00' },
+            { label: '4-5-6', odds: '4.00' },
+            { label: '8-9-10', odds: '4.00' },
+            { label: 'J-Q-K', odds: '4.00' },
+          ].map((grp) => (
+            <div key={grp.label} className="lucky7cards flex-fill text-center">
+              <div className="casino-odds w-100 text-center fw-bold">{isSuspended ? '-' : grp.odds}</div>
+              <div
+                className={`card-odd-box-container p-1 border rounded ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Group ${grp.label}`, grp.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#273646' }}
+              >
+                <span className="fw-bold text-white">{grp.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-full-box lucky7acards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">11 Cards Market (Payout 11.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards11.map((num) => (
+              <div
+                key={num}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${num}`, '11', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '45px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '11'}</div>
+                <div className="fw-bold">{num}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Beach Roulette (roulette12)
+// --------------------------------------------------------------------------
+function TableRoulette12() {
+  return <RouletteTable />;
+}
+
+// --------------------------------------------------------------------------
+// Game: Roulette (roulette13)
+// --------------------------------------------------------------------------
+function TableRoulette13() {
+  return <RouletteTable />;
+}
+
+// --------------------------------------------------------------------------
+// Game: VIP Roulette (roulette11)
+// --------------------------------------------------------------------------
+function TableRoulette11() {
+  return <RouletteTable />;
+}
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti Poison One Day (poison)
+// --------------------------------------------------------------------------
+
+function TablePoison({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  const sideMarkets = [
+    { name: 'Pair Plus A', odds: '2.0' },
+    { name: 'Pair Plus B', odds: '2.0' },
+    { name: '3 Baccarat A', odds: '1.95' },
+    { name: '3 Baccarat B', odds: '1.95' },
+  ];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-7 w-7 text-white"
+    >
+      <path d="M7 8V6a5 5 0 0110 0v2h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V10a2 2 0 012-2h1zm2 0h6V6a3 3 0 00-6 0v2zm3 4a2 2 0 00-1 3.73V18h2v-2.27A2 2 0 0012 12z" />
+    </svg>
+  );
+
+  const OddsButton = ({ nation, odds, type }) => {
+    const isBack = type === 'back';
+
+    return (
+      <button
+        type="button"
+        disabled={isSuspended}
+        onClick={() => {
+          if (!isSuspended) {
+            openBetSlip(nation, odds, type, isMobile);
+          }
+        }}
+        className={`flex min-h-[60px] w-full items-center justify-center border-l border-white/50 transition-colors ${
+          isSuspended
+            ? 'cursor-not-allowed bg-[#414c56]'
+            : isBack
+              ? 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+              : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+        }`}
+      >
+        {isSuspended ? (
+          <LockIcon />
+        ) : (
+          <span className="text-lg font-bold text-[#303b45]">
+            {odds}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="w-full min-w-0 bg-white p-1">
+
+      {/* MAIN BETTING LAYOUT */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
+
+        {/* PLAYER MARKETS */}
+        <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
+
+          {/* Header */}
+          <div className="grid grid-cols-[minmax(0,1fr)_85px_85px] bg-[#4b5b6b] text-white">
+
+            <div className="flex items-center px-3 py-3">
+              <span className="text-sm font-bold">Nation</span>
+            </div>
+
+            <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
+              Back
+            </div>
+
+            <div className="flex items-center justify-center bg-[#f5a5b8] py-3 text-sm font-bold text-[#303b45]">
+              Lay
+            </div>
+
+          </div>
+
+          {/* Player Rows */}
+          {players.map((player, index) => (
+            <div
+              key={player.name}
+              className={`grid min-h-[65px] grid-cols-[minmax(0,1fr)_85px_85px] border-t border-[#d1d1d1] ${
+                index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
+              }`}
+            >
+
+              <div className="flex items-center px-3 py-3">
+                <span className="text-base font-semibold text-[#333333]">
+                  {player.name}
+                </span>
+              </div>
+
+              <OddsButton
+                nation={player.name}
+                odds={player.back}
+                type="back"
+              />
+
+              <OddsButton
+                nation={player.name}
+                odds={player.lay}
+                type="lay"
+              />
+
+            </div>
+          ))}
+
+        </section>
+
+        {/* SIDE BETS */}
+        <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
+
+          {/* Header */}
+          <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] text-white">
+
+            <div className="flex items-center px-3 py-3">
+              <span className="text-sm font-bold">Side Bets</span>
+            </div>
+
+            <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
+              Back
+            </div>
+
+          </div>
+
+          {/* Side Bet Rows */}
+          {sideMarkets.map((item, index) => (
+            <div
+              key={item.name}
+              className={`grid min-h-[65px] grid-cols-[minmax(0,1fr)_90px] border-t border-[#d1d1d1] ${
+                index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
+              }`}
+            >
+
+              <div className="flex items-center px-3 py-3">
+                <span className="text-sm font-medium text-[#333333] sm:text-base">
+                  {item.name}
+                </span>
+              </div>
+
+              <OddsButton
+                nation={item.name}
+                odds={item.odds}
+                type="back"
+              />
+
+            </div>
+          ))}
+
+        </section>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Unique Teenpatti (teenunique)
+// --------------------------------------------------------------------------
+
+function TableTeenunique({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  const sideMarkets = [
+    { name: 'Pair Plus A', odds: '2.0' },
+    { name: 'Pair Plus B', odds: '2.0' },
+    { name: '3 Baccarat A', odds: '1.95' },
+    { name: '3 Baccarat B', odds: '1.95' },
+  ];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-7 w-7 text-white"
+    >
+      <path d="M7 8V6a5 5 0 0110 0v2h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V10a2 2 0 012-2h1zm2 0h6V6a3 3 0 00-6 0v2zm3 4a2 2 0 00-1 3.73V18h2v-2.27A2 2 0 0012 12z" />
+    </svg>
+  );
+
+  const OddsButton = ({ nation, odds, type }) => {
+    const isBack = type === 'back';
+
+    return (
+      <button
+        type="button"
+        disabled={isSuspended}
+        onClick={() => {
+          if (!isSuspended) {
+            openBetSlip(nation, odds, type, isMobile);
+          }
+        }}
+        className={`flex min-h-[60px] w-full items-center justify-center border-l border-white/50 transition-colors ${
+          isSuspended
+            ? 'cursor-not-allowed bg-[#414c56]'
+            : isBack
+              ? 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+              : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+        }`}
+      >
+        {isSuspended ? (
+          <LockIcon />
+        ) : (
+          <span className="text-lg font-bold text-[#303b45]">
+            {odds}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="w-full min-w-0 bg-white p-1">
+
+      {/* MAIN BETTING LAYOUT */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
+
+        {/* PLAYER MARKETS */}
+        <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
+
+          {/* Header */}
+          <div className="grid grid-cols-[minmax(0,1fr)_85px_85px] bg-[#4b5b6b] text-white">
+
+            <div className="flex items-center px-3 py-3">
+              <span className="text-sm font-bold">Nation</span>
+            </div>
+
+            <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
+              Back
+            </div>
+
+            <div className="flex items-center justify-center bg-[#f5a5b8] py-3 text-sm font-bold text-[#303b45]">
+              Lay
+            </div>
+
+          </div>
+
+          {/* Player Rows */}
+          {players.map((player, index) => (
+            <div
+              key={player.name}
+              className={`grid min-h-[65px] grid-cols-[minmax(0,1fr)_85px_85px] border-t border-[#d1d1d1] ${
+                index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
+              }`}
+            >
+
+              <div className="flex items-center px-3 py-3">
+                <span className="text-base font-semibold text-[#333333]">
+                  {player.name}
+                </span>
+              </div>
+
+              <OddsButton
+                nation={player.name}
+                odds={player.back}
+                type="back"
+              />
+
+              <OddsButton
+                nation={player.name}
+                odds={player.lay}
+                type="lay"
+              />
+
+            </div>
+          ))}
+
+        </section>
+
+        {/* SIDE BETS */}
+        <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
+
+          {/* Header */}
+          <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] text-white">
+
+            <div className="flex items-center px-3 py-3">
+              <span className="text-sm font-bold">Side Bets</span>
+            </div>
+
+            <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
+              Back
+            </div>
+
+          </div>
+
+          {/* Side Bet Rows */}
+          {sideMarkets.map((item, index) => (
+            <div
+              key={item.name}
+              className={`grid min-h-[65px] grid-cols-[minmax(0,1fr)_90px] border-t border-[#d1d1d1] ${
+                index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
+              }`}
+            >
+
+              <div className="flex items-center px-3 py-3">
+                <span className="text-sm font-medium text-[#333333] sm:text-base">
+                  {item.name}
+                </span>
+              </div>
+
+              <OddsButton
+                nation={item.name}
+                odds={item.odds}
+                type="back"
+              />
+
+            </div>
+          ))}
+
+        </section>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti Poison 20-20 (poison20)
+// --------------------------------------------------------------------------
+function TablePoison20({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  const sideMarkets = [
+    { name: 'Pair Plus A', odds: '2.0' },
+    { name: 'Pair Plus B', odds: '2.0' },
+    { name: '3 Baccarat A', odds: '1.95' },
+    { name: '3 Baccarat B', odds: '1.95' },
+  ];
+
+  const OddsButton = ({ nation, odds, type }) => (
+    <button
+      type="button"
+      disabled={isSuspended}
+      onClick={() => openBetSlip(nation, odds, type, isMobile)}
+      className={`relative flex min-h-[42px] w-full items-center justify-center rounded-sm text-sm font-bold transition-colors ${
+        type === 'back'
+          ? 'bg-[#72b9e8] hover:bg-[#5da9dc]'
+          : 'bg-[#f5a5b8] hover:bg-[#ed91a7]'
+      } ${isSuspended ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+    >
+      {isSuspended ? (
+        <span className="text-gray-700">🔒</span>
+      ) : (
+        odds
+      )}
+    </button>
+  );
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.6fr_1fr]">
+
+        {/* Player A & Player B */}
+        <div className="grid grid-cols-2 gap-2">
+
+          {players.map((player) => (
+            <div
+              key={player.name}
+              className="min-w-0 overflow-hidden rounded-sm border border-[#d1d1d1] bg-white"
+            >
+              <div className="bg-[#4b5b6b] px-2 py-2 text-center text-sm font-semibold text-white">
+                {player.name}
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 bg-[#f8f9fa] p-2">
+                <div className="text-center text-xs font-semibold text-gray-700">
+                  Back
+                </div>
+                <div className="text-center text-xs font-semibold text-gray-700">
+                  Lay
+                </div>
+
+                <OddsButton
+                  nation={player.name}
+                  odds={player.back}
+                  type="back"
+                />
+
+                <OddsButton
+                  nation={player.name}
+                  odds={player.lay}
+                  type="lay"
+                />
+              </div>
+            </div>
+          ))}
+
+        </div>
+
+        {/* Side Bets */}
+        <div className="min-w-0 overflow-hidden rounded-sm border border-[#d1d1d1] bg-white">
+          <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] px-2 py-2 text-sm font-semibold text-white">
+            <div>Side Bets</div>
+            <div className="text-center">Back</div>
+          </div>
+
+          <div>
+            {sideMarkets.map((market) => (
+              <div
+                key={market.name}
+                className="grid grid-cols-[minmax(0,1fr)_90px] items-center gap-2 border-b border-[#d1d1d1] px-2 py-1.5 last:border-b-0"
+              >
+                <div className="truncate text-sm font-medium text-gray-800">
+                  {market.name}
+                </div>
+
+                <OddsButton
+                  nation={market.name}
+                  odds={market.odds}
+                  type="back"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Unlimited Joker 20-20 (joker120)
+// --------------------------------------------------------------------------
+
+function TableJoker120({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  // Use API result when available, otherwise mock results
+  const results = Array.isArray(markets?.lastResult)
+    ? markets.lastResult
+    : Array(10).fill('R');
+
+  // Lock Icon
+  const LockIcon = () => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-7 w-7 text-white"
+    >
+      <path
+        fillRule="evenodd"
+        d="M7 8V6a5 5 0 0110 0v2h1.5A2.5 2.5 0 0121 10.5v9a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 19.5v-9A2.5 2.5 0 015.5 8H7zm2 0h6V6a3 3 0 00-6 0v2zm3 4a2 2 0 00-1 3.732V18h2v-2.268A2 2 0 0012 12z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+
+  // Odds Button
+  const OddsButton = ({ nation, odds, type }) => {
+    const isBack = type === 'back';
+
+    return (
+      <button
+        type="button"
+        disabled={isSuspended}
+        onClick={() => {
+          if (!isSuspended) {
+            openBetSlip(nation, odds, type, isMobile);
+          }
+        }}
+        className={`
+          flex min-h-[64px] w-full flex-col
+          items-center justify-center gap-1
+          border-l border-white/50
+          transition-colors
+          ${
+            isBack
+              ? 'bg-[#72b9e8] hover:bg-[#5da9dc]'
+              : 'bg-[#f5a5b8] hover:bg-[#ed91a7]'
+          }
+          ${
+            isSuspended
+              ? 'cursor-not-allowed bg-[#414c56] hover:bg-[#414c56]'
+              : 'cursor-pointer'
+          }
+        `}
+      >
+        {isSuspended ? (
+          <LockIcon />
+        ) : (
+          <span className="text-xl font-bold leading-6 text-[#293744]">
+            {odds}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  // Player Card
+  const PlayerCard = ({ player }) => (
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_98px_98px] overflow-hidden border border-[#d1d1d1] bg-[#f1f1f1]">
+
+      {/* Player Name */}
+      <div className="flex min-w-0 items-center px-3 py-4">
+        <span className="text-lg font-bold text-[#333333] sm:text-xl">
+          {player.name}
+        </span>
+      </div>
+
+      {/* Back */}
+      <OddsButton
+        nation={player.name}
+        odds={player.back}
+        type="back"
+      />
+
+      {/* Lay */}
+      <OddsButton
+        nation={player.name}
+        odds={player.lay}
+        type="lay"
+      />
+
+    </div>
+  );
+
+  return (
+    <div className="w-full min-w-0 bg-white">
+
+      {/* Player Markets */}
+      <div className="grid grid-cols-1 gap-2 p-1 lg:grid-cols-2">
+
+        {players.map((player) => (
+          <PlayerCard
+            key={player.name}
+            player={player}
+          />
+        ))}
+
+      </div>
+
+      {/* Last Result */}
+      <section className="mt-1 w-full">
+
+        {/* Header */}
+        <div className="flex items-center justify-between bg-[#4b5b6b] px-3 py-3">
+
+          <h3 className="text-lg font-bold text-white sm:text-xl">
+            Last Result
+          </h3>
+
+          <button
+            type="button"
+            onClick={() => {
+              // Connect your existing result history action here.
+            }}
+            className="text-base font-bold text-white transition-colors hover:text-blue-300 sm:text-lg"
+          >
+            View All
+          </button>
+
+        </div>
+
+        {/* Result Balls */}
+        <div className="flex min-h-[76px] flex-wrap items-center justify-end gap-2 px-2 py-2">
+
+          {results.map((result, index) => (
+            <div
+              key={index}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#315d38] shadow-sm sm:h-14 sm:w-14"
+            >
+              <span className="text-xl font-extrabold text-[#ffff00]">
+                {result}
+              </span>
+            </div>
+          ))}
+
+        </div>
+
+      </section>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti Joker 20-20 (joker20)
+// --------------------------------------------------------------------------
+
+function TableJoker20({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  const sideMarkets = [
+    { name: 'Pair Plus A', odds: '2.0' },
+    { name: 'Pair Plus B', odds: '2.0' },
+    { name: '3 Baccarat A', odds: '1.95' },
+    { name: '3 Baccarat B', odds: '1.95' },
+  ];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-7 w-7 text-white"
+    >
+      <path d="M7 8V6a5 5 0 0110 0v2h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V10a2 2 0 012-2h1zm2 0h6V6a3 3 0 00-6 0v2zm3 4a2 2 0 00-1 3.73V18h2v-2.27A2 2 0 0012 12z" />
+    </svg>
+  );
+
+  const OddsButton = ({ nation, odds, type }) => {
+    const isBack = type === 'back';
+
+    return (
+      <button
+        type="button"
+        disabled={isSuspended}
+        onClick={() => {
+          if (!isSuspended) {
+            openBetSlip(nation, odds, type, isMobile);
+          }
+        }}
+        className={`flex min-h-[58px] w-full items-center justify-center border-l border-white/50 transition-colors ${
+          isSuspended
+            ? 'cursor-not-allowed bg-[#414c56]'
+            : isBack
+              ? 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+              : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+        }`}
+      >
+        {isSuspended ? (
+          <LockIcon />
+        ) : (
+          <span className="text-lg font-bold text-[#303b45]">
+            {odds}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="w-full min-w-0 bg-white p-1">
+
+      {/* MAIN BETTING LAYOUT */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
+
+        {/* PLAYER MARKETS */}
+        <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
+
+          {/* Header */}
+          <div className="grid grid-cols-[minmax(0,1fr)_85px_85px] bg-[#4b5b6b] text-white">
+
+            <div className="flex items-center px-3 py-3">
+              <span className="text-sm font-bold">Nation</span>
+            </div>
+
+            <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
+              Back
+            </div>
+
+            <div className="flex items-center justify-center bg-[#f5a5b8] py-3 text-sm font-bold text-[#303b45]">
+              Lay
+            </div>
+
+          </div>
+
+          {/* Player Rows */}
+          {players.map((player, index) => (
+            <div
+              key={player.name}
+              className={`grid min-h-[65px] grid-cols-[minmax(0,1fr)_85px_85px] border-t border-[#d1d1d1] ${
+                index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
+              }`}
+            >
+
+              <div className="flex items-center px-3 py-3">
+                <span className="text-base font-semibold text-[#333333]">
+                  {player.name}
+                </span>
+              </div>
+
+              <OddsButton
+                nation={player.name}
+                odds={player.back}
+                type="back"
+              />
+
+              <OddsButton
+                nation={player.name}
+                odds={player.lay}
+                type="lay"
+              />
+
+            </div>
+          ))}
+
+        </section>
+
+        {/* SIDE BETS */}
+        <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
+
+          {/* Header */}
+          <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] text-white">
+
+            <div className="flex items-center px-3 py-3">
+              <span className="text-sm font-bold">Side Bets</span>
+            </div>
+
+            <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
+              Back
+            </div>
+
+          </div>
+
+          {/* Side Bet Rows */}
+          {sideMarkets.map((item, index) => (
+            <div
+              key={item.name}
+              className={`grid min-h-[65px] grid-cols-[minmax(0,1fr)_90px] border-t border-[#d1d1d1] ${
+                index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
+              }`}
+            >
+
+              <div className="flex items-center px-3 py-3">
+                <span className="text-sm font-medium text-[#333333] sm:text-base">
+                  {item.name}
+                </span>
+              </div>
+
+              <OddsButton
+                nation={item.name}
+                odds={item.odds}
+                type="back"
+              />
+
+            </div>
+          ))}
+
+        </section>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Unlimited Joker Oneday (joker1)
+// --------------------------------------------------------------------------
+function TableJoker1({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+ return (
+  <div className="w-full overflow-hidden border border-[#d1d1d1] bg-white">
+    <div className="grid grid-cols-2 gap-[2px]">
+      {players.map((player) => (
+        <div
+          key={player.name}
+          className="grid min-w-0 grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1fr)] gap-[2px]"
+        >
+          {/* Player Name */}
+          <div className="flex h-[48px] min-w-0 items-center bg-[#f1f1f1] px-2">
+            <span className="truncate text-sm font-bold text-[#333] sm:text-base">
+              {player.name}
+            </span>
+          </div>
+
+          {/* Back */}
+          <button
+            type="button"
+            disabled={isSuspended}
+            onClick={() =>
+              openBetSlip(player.name, player.back, 'back', isMobile)
+            }
+            className={`flex h-[48px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#333] sm:text-base ${
+              isSuspended
+                ? 'cursor-not-allowed opacity-70'
+                : 'cursor-pointer hover:bg-[#5da9dc]'
+            }`}
+          >
+            {isSuspended ? '🔒' : player.back}
+          </button>
+
+          {/* Lay */}
+          <button
+            type="button"
+            disabled={isSuspended}
+            onClick={() =>
+              openBetSlip(player.name, player.lay, 'lay', isMobile)
+            }
+            className={`flex h-[48px] items-center justify-center bg-[#f5a5b8] text-sm font-bold text-[#333] sm:text-base ${
+              isSuspended
+                ? 'cursor-not-allowed opacity-70'
+                : 'cursor-pointer hover:bg-[#ed91a7]'
+            }`}
+          >
+            {isSuspended ? '🔒' : player.lay}
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 Teenpatti C (teen20c)
+// --------------------------------------------------------------------------
+function TableTeen20c({ isMobile, isSuspended, openBetSlip, markets }) {
+  const sections = [
+    {
+      title: 'Player A',
+      markets: [
+        {
+          name: 'Player A',
+          odds: markets?.playerA?.back || '1.98',
+        },
+        {
+          name: '3 Baccarat A',
+          odds: markets?.baccaratA?.back || '1.98',
+        },
+        {
+          name: 'Total A',
+          odds: markets?.totalA?.back || '2',
+        },
+        {
+          name: 'Pair Plus A',
+          odds: markets?.pairPlusA?.back || 'A',
+        },
+      ],
+    },
+    {
+      title: 'Player B',
+      markets: [
+        {
+          name: 'Player B',
+          odds: markets?.playerB?.back || '1.98',
+        },
+        {
+          name: '3 Baccarat B',
+          odds: markets?.baccaratB?.back || '1.98',
+        },
+        {
+          name: 'Total B',
+          odds: markets?.totalB?.back || '2',
+        },
+        {
+          name: 'Pair Plus B',
+          odds: markets?.pairPlusB?.back || 'B',
+        },
+      ],
+    },
+  ];
+
+  const suitMarkets = [
+    {
+      name: 'Black Suits A',
+      suits: ['♠', '♣'],
+      odds: markets?.blackA?.back || '1.98',
+    },
+    {
+      name: 'Red Suits A',
+      suits: ['♥', '♦'],
+      odds: markets?.redA?.back || '1.98',
+    },
+    {
+      name: 'Black Suits B',
+      suits: ['♠', '♣'],
+      odds: markets?.blackB?.back || '1.98',
+    },
+    {
+      name: 'Red Suits B',
+      suits: ['♥', '♦'],
+      odds: markets?.redB?.back || '1.98',
+    },
+  ];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-7 w-7 fill-white"
+      aria-hidden="true"
+    >
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  return (
+    <div className="w-full space-y-2">
+      {/* Player A & Player B */}
+      <div className="grid grid-cols-2 gap-1.5">
+        {sections.map((section) => (
+          <div
+            key={section.title}
+            className="min-w-0 overflow-hidden border border-[#c9c9c9]"
+          >
+            {/* Player Header */}
+            <div className="flex h-[28px] items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+              {section.title}
+            </div>
+
+            {/* Market Names */}
+            <div className="grid grid-cols-4 border-t border-[#c9c9c9]">
+              {section.markets.map((market) => (
+                <div
+                  key={market.name}
+                  className="flex h-[46px] min-w-0 items-center justify-center border-r border-[#c9c9c9] bg-[#f1f1f1] px-1 text-center text-[11px] font-bold text-[#333333] last:border-r-0 sm:text-sm"
+                >
+                  {market.name}
+                </div>
+              ))}
+            </div>
+
+            {/* Market Odds */}
+            <div className="grid grid-cols-4 border-t border-[#c9c9c9]">
+              {section.markets.map((market) => (
+                <button
+                  key={market.name}
+                  type="button"
+                  disabled={isSuspended}
+                  onClick={() =>
+                    openBetSlip(
+                      market.name,
+                      market.odds,
+                      'back',
+                      isMobile
+                    )
+                  }
+                  className={`flex h-[48px] min-w-0 items-center justify-center border-r border-[#c9c9c9] bg-[#72b9e8] last:border-r-0 ${
+                    isSuspended
+                      ? 'cursor-not-allowed opacity-70'
+                      : 'cursor-pointer hover:bg-[#5da9dc]'
+                  }`}
+                >
+                  {isSuspended ? (
+                    <LockIcon />
+                  ) : (
+                    <span className="text-sm font-bold text-[#333333] sm:text-base">
+                      {market.odds}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Suit Markets */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {suitMarkets.map((market) => (
+          <button
+            key={market.name}
+            type="button"
+            disabled={isSuspended}
+            onClick={() =>
+              openBetSlip(
+                market.name,
+                market.odds,
+                'back',
+                isMobile
+              )
+            }
+            className={`flex h-[48px] min-w-0 items-center justify-between gap-1 bg-[#72b9e8] px-2 ${
+              isSuspended
+                ? 'cursor-not-allowed opacity-70'
+                : 'cursor-pointer hover:bg-[#5da9dc]'
+            }`}
+          >
+            {/* Suit Icons */}
+            <div className="flex shrink-0 items-center gap-1 text-xl font-bold sm:text-2xl">
+              {market.suits.map((suit) => (
+                <span
+                  key={suit}
+                  className={
+                    suit === '♥' || suit === '♦'
+                      ? 'text-[#d84b4b]'
+                      : 'text-[#222222]'
+                  }
+                >
+                  {suit}
+                </span>
+              ))}
+            </div>
+
+            {/* Odds / Lock */}
+            {isSuspended ? (
+              <LockIcon />
+            ) : (
+              <span className="truncate text-sm font-bold text-[#333333] sm:text-base">
+                {market.odds}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Bollywood Casino 2 (btable2)
+// --------------------------------------------------------------------------
+function TableBtable2({ isMobile, isSuspended, openBetSlip, markets }) {
+  const chars = [
+    { key: 'A', name: 'Don' },
+    { key: 'B', name: 'Amar' },
+    { key: 'C', name: 'Anthony' },
+    { key: 'D', name: 'Vijay' },
+    { key: 'E', name: 'Shehenshah' },
+    { key: 'F', name: 'Gabbar' },
+  ];
+  return (
+    <div className="casino-table bollywood">
+      <div className="casino-table-box">
+        <div className="row g-2 mb-3">
+          {chars.map((char) => (
+            <div key={char.key} className="col-12 col-md-4">
+              <div className="casino-odd-box-container p-2 border rounded">
+                <div className="casino-nation-name fw-bold">{char.key}. {char.name}</div>
+                <div className="d-flex gap-2 mt-1">
+                  <OddsBox nation={`${char.key}. ${char.name}`} odds="5.5" type="back" className="w-50" />
+                  <OddsBox nation={`${char.key}. ${char.name}`} odds="6.0" type="lay" className="w-50" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-box mt-2 d-flex justify-content-between gap-2">
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Unique Roulette (ourroullete)
+// --------------------------------------------------------------------------
+function TableOurroullete() {
+  return <RouletteTable />;
+}
+
+// --------------------------------------------------------------------------
+// Game: Mini Superover (superover3)
+// --------------------------------------------------------------------------
+function TableSuperover3({ isMobile, isSuspended, openBetSlip }) {
+  const outcomes = [
+    { label: '0 Runs (Dot)', odds: '2.50' },
+    { label: '1 Run', odds: '2.20' },
+    { label: '2 Runs', odds: '4.50' },
+    { label: '3 Runs', odds: '12.00' },
+    { label: '4 Runs (Boundary)', odds: '5.50' },
+    { label: '6 Runs (Sixer)', odds: '8.00' },
+    { label: 'Wicket', odds: '4.00' },
+    { label: 'Wide / No Ball', odds: '6.00' },
+  ];
+
+  return (
+    <div className="casino-table cricket superover3">
+      <div className="casino-table-box text-center p-3 border rounded">
+        <h5 className="fw-bold mb-3">Mini Superover - Live Ball Prediction</h5>
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {outcomes.map((o) => (
+            <div
+              key={o.label}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(o.label, o.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '110px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : o.odds}</div>
+              <div className="fw-bold small">{o.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Goal (goal)
+// --------------------------------------------------------------------------
+function TableGoal({ isMobile, isSuspended, openBetSlip, markets }) {
+  const quadrants = [
+    { key: 'TL', name: 'Top Left', odds: '4.5' },
+    { key: 'TR', name: 'Top Right', odds: '4.5' },
+    { key: 'BL', name: 'Bottom Left', odds: '4.5' },
+    { key: 'BR', name: 'Bottom Right', odds: '4.5' },
+    { key: 'C', name: 'Center', odds: '5.0' },
+  ];
+  return (
+    <div className="casino-table goal">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-3 mb-3">
+          <div className="w-50 p-3 border rounded text-center">
+            <div className="h5 fw-bold text-success">Goal</div>
+            <OddsBox nation="Goal" odds={markets?.goal?.back || '1.98'} type="back" className="w-100 mt-2" />
+          </div>
+          <div className="w-50 p-3 border rounded text-center">
+            <div className="h5 fw-bold text-danger">No Goal</div>
+            <OddsBox nation="No Goal" odds={markets?.noGoal?.back || '1.98'} type="back" className="w-100 mt-2" />
+          </div>
+        </div>
+
+        <div className="casino-odds w-100 text-center fw-bold mb-2">Target Penalty Quadrant</div>
+        <div className="d-flex flex-wrap justify-content-center gap-2">
+          {quadrants.map((q) => (
+            <div
+              key={q.key}
+              className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(`Quadrant ${q.name}`, q.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '90px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : q.odds}</div>
+              <div className="fw-bold">{q.name}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: ANDAR BAHAR 150 cards (ab4)
+// --------------------------------------------------------------------------
+function TableAb4({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  return (
+    <div className="casino-table andar-bahar">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="andar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-primary mb-2">ANDAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Andar Main" odds={markets?.andar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Andar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bahar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-danger mb-2">BAHAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Bahar Main" odds={markets?.bahar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Bahar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Lucky 15 Cricket (lucky15)
+// --------------------------------------------------------------------------
+function TableLucky15({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cricketRuns = [0, 1, 2, 3, 4, 6];
+  return (
+    <div className="casino-table cricket20 lucky15">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box w-100">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">15-Ball Cricket Match Odds</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Team A (15 Balls)</div></div>
+              <OddsBox nation="Team A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Team A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Team B (15 Balls)</div></div>
+              <OddsBox nation="Team B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Team B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 w-100">
+          <div className="casino-odds w-100 text-center fw-bold mb-2">Next Ball Outcome (Runs / Wicket / Extras)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cricketRuns.map((r) => (
+              <div
+                key={r}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`${r} Runs`, r === 4 ? '5.5' : r === 6 ? '8.0' : '3.2', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : (r === 4 ? '5.5' : r === 6 ? '8.0' : '3.2')}</div>
+                <div className="fw-bold">{r} Runs</div>
+              </div>
+            ))}
+            <div
+              className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Wicket', '4.5', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center', background: '#ffebee' }}
+            >
+              <div className="casino-odds text-danger">{isSuspended ? '-' : '4.5'}</div>
+              <div className="fw-bold text-danger">Wicket</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Super Over 2 (superover2)
+// --------------------------------------------------------------------------
+function TableSuperover2({ isMobile, isSuspended, openBetSlip }) {
+  const outcomes = [
+    { label: '0 Runs (Dot)', odds: '2.50' },
+    { label: '1 Run', odds: '2.20' },
+    { label: '2 Runs', odds: '4.50' },
+    { label: '3 Runs', odds: '12.00' },
+    { label: '4 Runs (Boundary)', odds: '5.50' },
+    { label: '6 Runs (Sixer)', odds: '8.00' },
+    { label: 'Wicket', odds: '4.00' },
+    { label: 'Wide / No Ball', odds: '6.00' },
+  ];
+
+  return (
+    <div className="casino-table cricket superover2">
+      <div className="casino-table-box text-center p-3 border rounded">
+        <h5 className="fw-bold mb-3">Super Over 2 - Live Ball Prediction</h5>
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {outcomes.map((o) => (
+            <div
+              key={o.label}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(o.label, o.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '110px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : o.odds}</div>
+              <div className="fw-bold small">{o.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Queen Top Open Teenpatti (teen41)
+// --------------------------------------------------------------------------
+function TableTeen41({ isMobile, isSuspended, openBetSlip, markets }) {
+  const playerA = {
+    back: markets?.playerA?.back || '1.98',
+    lay: markets?.playerA?.lay || '2.02',
+  };
+
+  const playerB = {
+    back: markets?.playerB?.back || '1.6',
+    lay: markets?.playerB?.lay || '1.65',
+  };
+
+  const sideMarkets = [
+    {
+      name: 'Player B Under 21',
+      odds: markets?.under21?.back || '2.45',
+    },
+    {
+      name: 'Player B Over 21',
+      odds: markets?.over21?.back || '1.69',
+    },
+  ];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 fill-white"
+      aria-hidden="true"
+    >
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  const OddsButton = ({ nation, odds, type }) => (
+    <button
+      type="button"
+      disabled={isSuspended}
+      onClick={() => openBetSlip(nation, odds, type, isMobile)}
+      className={`flex h-[48px] min-w-0 items-center justify-center text-sm font-bold text-[#333333] sm:text-base ${
+        type === 'back'
+          ? 'bg-[#72b9e8] hover:bg-[#5da9dc]'
+          : 'bg-[#f5a5b8] hover:bg-[#ed91a7]'
+      } ${
+        isSuspended
+          ? 'cursor-not-allowed bg-[#414b54] opacity-100'
+          : 'cursor-pointer'
+      }`}
+    >
+      {isSuspended ? <LockIcon /> : odds}
+    </button>
+  );
+
+  const PlayerSection = ({ name, data }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+      {/* Header */}
+      <div className="grid h-[48px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] border-b border-[#c9c9c9]">
+        <div className="col-span-1 flex items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {name}
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base">
+          Back
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] sm:text-base">
+          Lay
+        </div>
+      </div>
+
+      {/* Main Market */}
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="flex h-[48px] items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Main
+        </div>
+
+        <OddsButton
+          nation={name}
+          odds={data.back}
+          type="back"
+        />
+
+        <OddsButton
+          nation={name}
+          odds={data.lay}
+          type="lay"
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-2">
+        {/* Player A */}
+        <PlayerSection name="Player A" data={playerA} />
+
+        {/* Player B + Side Bets */}
+        <div className="min-w-0 space-y-2">
+          <PlayerSection name="Player B" data={playerB} />
+
+          {/* Under 21 / Over 21 */}
+          <div className="grid grid-cols-2 gap-2">
+            {sideMarkets.map((market) => (
+              <div
+                key={market.name}
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px] overflow-hidden border border-[#c9c9c9]"
+              >
+                <div className="flex min-h-[48px] items-center bg-[#f1f1f1] px-2 text-xs font-bold text-[#333333] sm:text-sm">
+                  {market.name}
+                </div>
+
+                <OddsButton
+                  nation={market.name}
+                  odds={market.odds}
+                  type="back"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Jack Top Open Teenpatti (teen42)
+// --------------------------------------------------------------------------
+function TableTeen42({ isMobile, isSuspended, openBetSlip, markets }) {
+  const playerA = {
+    back: markets?.playerA?.back || '1.98',
+    lay: markets?.playerA?.lay || '2.02',
+  };
+
+  const playerB = {
+    back: markets?.playerB?.back || '1.6',
+    lay: markets?.playerB?.lay || '1.65',
+  };
+
+  const sideMarkets = [
+    {
+      name: 'Player B Under 21',
+      odds: markets?.under21?.back || '2.45',
+    },
+    {
+      name: 'Player B Over 21',
+      odds: markets?.over21?.back || '1.69',
+    },
+  ];
+
+  const LockIcon = () => (
+    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white">
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  const OddsButton = ({ nation, odds, type }) => (
+    <button
+      type="button"
+      disabled={isSuspended}
+      onClick={() => openBetSlip(nation, odds, type, isMobile)}
+      className={`flex h-[48px] min-w-0 items-center justify-center text-sm font-bold text-[#333333] sm:text-base ${
+        isSuspended
+          ? type === 'back'
+            ? 'cursor-not-allowed bg-[#414b54]'
+            : 'cursor-not-allowed bg-[#5b4b4f]'
+          : type === 'back'
+            ? 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+            : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+      }`}
+    >
+      {isSuspended ? <LockIcon /> : odds}
+    </button>
+  );
+
+  const PlayerSection = ({ name, data }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+      {/* Player Header */}
+      <div className="grid h-[48px] grid-cols-[3fr_1fr_1fr] border-b border-[#c9c9c9]">
+        <div className="flex items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {name}
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base">
+          Back
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] sm:text-base">
+          Lay
+        </div>
+      </div>
+
+      {/* Main Market */}
+      <div className="grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Main
+        </div>
+
+        <OddsButton
+          nation={name}
+          odds={data.back}
+          type="back"
+        />
+
+        <OddsButton
+          nation={name}
+          odds={data.lay}
+          type="lay"
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-2">
+
+        {/* LEFT: Player A */}
+        <div className="min-w-0">
+          <PlayerSection name="Player A" data={playerA} />
+        </div>
+
+        {/* RIGHT: Player B + Under/Over */}
+        <div className="min-w-0 space-y-2">
+          <PlayerSection name="Player B" data={playerB} />
+
+          <div className="grid grid-cols-2 gap-2">
+            {sideMarkets.map((market) => (
+              <div
+                key={market.name}
+                className="grid min-w-0 grid-cols-[minmax(0,3fr)_minmax(0,1fr)] overflow-hidden border border-[#c9c9c9]"
+              >
+                <div className="flex h-[48px] min-w-0 items-center bg-[#f1f1f1] px-2 text-xs font-bold text-[#333333] sm:text-base">
+                  {market.name}
+                </div>
+
+                <OddsButton
+                  nation={market.name}
+                  odds={market.odds}
+                  type="back"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Sic Bo2 (sicbo2)
+// --------------------------------------------------------------------------
+function TableSicbo2({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table sicbo">
+      <div className="casino-table-box">
+        <div className="sicbo-top d-flex justify-content-between mb-3 gap-2">
+          <div className="sicbo-top-box sicbo-title-box w-100">Small 4-10 (1:1) Lose to Any Triple</div>
+          <div className="sicbo-top-box sicbo-title-box w-100">Specific Triple (150:1)</div>
+          <div className="sicbo-top-box sicbo-title-box w-100">Big 11-17 (1:1) Lose to Any Triple</div>
+        </div>
+
+        <div className="sicbo-middle d-flex justify-content-between gap-3 mb-3">
+          <div
+            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Small (4-10)', '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="h4 fw-bold">Small</div>
+            <div className="sicbo-box-value">4 - 10</div>
+            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+          </div>
+
+          <div
+            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Big (11-17)', '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="h4 fw-bold">Big</div>
+            <div className="sicbo-box-value">11 - 17</div>
+            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-center gap-2">
+          <div
+            className={`sicbo-square-box p-2 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Any Triple', '31.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '120px' }}
+          >
+            <div className="fw-bold">Any Triple</div>
+            <div className="casino-odds">{isSuspended ? '-' : '31.0'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Instant Teenpatti 3.0 (teen33)
+// --------------------------------------------------------------------------
+function TableTeen33({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+      suspended: markets?.playerA?.isSuspended ?? true,
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.86',
+      lay: markets?.playerB?.lay || '1.91',
+      suspended: markets?.playerB?.isSuspended ?? isSuspended,
+    },
+  ];
+
+  const LockIcon = () => (
+    <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white">
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  const PlayerSection = ({ player }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+      {/* Header Row */}
+      <div className="grid h-[48px] grid-cols-[3fr_1fr_1fr]">
+        <div className="flex items-center border-b border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {player.name}
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base">
+          Back
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] sm:text-base">
+          Lay
+        </div>
+      </div>
+
+      {/* Main Row */}
+      <div className="grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center border-t border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Main
+        </div>
+
+        <button
+          type="button"
+          disabled={player.suspended}
+          onClick={() =>
+            openBetSlip(player.name, player.back, 'back', isMobile)
+          }
+          className={`flex h-[48px] items-center justify-center text-sm font-bold text-[#333333] sm:text-base ${
+            player.suspended
+              ? 'cursor-not-allowed bg-[#414b54]'
+              : 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+          }`}
+        >
+          {player.suspended ? <LockIcon /> : player.back}
+        </button>
+
+        <button
+          type="button"
+          disabled={player.suspended}
+          onClick={() =>
+            openBetSlip(player.name, player.lay, 'lay', isMobile)
+          }
+          className={`flex h-[48px] items-center justify-center text-sm font-bold text-[#333333] sm:text-base ${
+            player.suspended
+              ? 'cursor-not-allowed bg-[#5b4b4f]'
+              : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+          }`}
+        >
+          {player.suspended ? <LockIcon /> : player.lay}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full">
+      {/* Player A and Player B */}
+      <div className="grid grid-cols-2 gap-2">
+        {players.map((player) => (
+          <PlayerSection key={player.name} player={player} />
+        ))}
+      </div>
+
+      {/* Bottom Message */}
+      <div className="flex min-h-[42px] items-center justify-center bg-[#f8f8f8] px-2 text-center">
+        <span className="text-sm font-bold text-[#16839a] sm:text-base">
+          Play Our New Game Premium Teenpatti 1 Day
+        </span>
+      </div>
+
+      {/* Bottom Strip */}
+      <div className="h-[16px] w-full bg-[#4b5b6b]" />
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Sic Bo (sicbo)
+// --------------------------------------------------------------------------
+function TableSicbo({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table sicbo">
+      <div className="casino-table-box">
+        <div className="sicbo-top d-flex justify-content-between mb-3 gap-2">
+          <div className="sicbo-top-box sicbo-title-box w-100">Small 4-10 (1:1) Lose to Any Triple</div>
+          <div className="sicbo-top-box sicbo-title-box w-100">Specific Triple (150:1)</div>
+          <div className="sicbo-top-box sicbo-title-box w-100">Big 11-17 (1:1) Lose to Any Triple</div>
+        </div>
+
+        <div className="sicbo-middle d-flex justify-content-between gap-3 mb-3">
+          <div
+            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Small (4-10)', '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="h4 fw-bold">Small</div>
+            <div className="sicbo-box-value">4 - 10</div>
+            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+          </div>
+
+          <div
+            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Big (11-17)', '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="h4 fw-bold">Big</div>
+            <div className="sicbo-box-value">11 - 17</div>
+            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-center gap-2">
+          <div
+            className={`sicbo-square-box p-2 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Any Triple', '31.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '120px' }}
+          >
+            <div className="fw-bold">Any Triple</div>
+            <div className="casino-odds">{isSuspended ? '-' : '31.0'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Ball by Ball (ballbyball)
+// --------------------------------------------------------------------------
+function TableBallbyball({ isMobile, isSuspended, openBetSlip }) {
+  const outcomes = [
+    { label: '0 Runs (Dot)', odds: '2.50' },
+    { label: '1 Run', odds: '2.20' },
+    { label: '2 Runs', odds: '4.50' },
+    { label: '3 Runs', odds: '12.00' },
+    { label: '4 Runs (Boundary)', odds: '5.50' },
+    { label: '6 Runs (Sixer)', odds: '8.00' },
+    { label: 'Wicket', odds: '4.00' },
+    { label: 'Wide / No Ball', odds: '6.00' },
+  ];
+
+  return (
+    <div className="casino-table cricket ballbyball">
+      <div className="casino-table-box text-center p-3 border rounded">
+        <h5 className="fw-bold mb-3">Ball by Ball - Live Ball Prediction</h5>
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {outcomes.map((o) => (
+            <div
+              key={o.label}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(o.label, o.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '110px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : o.odds}</div>
+              <div className="fw-bold small">{o.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Instant Teenpatti 2.0 (teen32)
+// --------------------------------------------------------------------------
+function TableTeen32({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.81',
+      lay: markets?.playerA?.lay || '1.86',
+      suspended: isSuspended || (markets?.playerA?.isSuspended ?? false),
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '0',
+      lay: markets?.playerB?.lay || '0',
+      suspended: isSuspended || (markets?.playerB?.isSuspended ?? true),
+    },
+  ];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 fill-white"
+      aria-hidden="true"
+    >
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  const PlayerSection = ({ player }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+      {/* Header */}
+      <div className="grid h-[48px] grid-cols-[3fr_1fr_1fr]">
+        <div className="flex items-center border-b border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {player.name}
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base">
+          Back
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] sm:text-base">
+          Lay
+        </div>
+      </div>
+
+      {/* Main Market */}
+      <div className="relative grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center border-t border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Main
+        </div>
+
+        <button
+          type="button"
+          disabled={player.suspended}
+          onClick={() =>
+            openBetSlip(player.name, player.back, 'back', isMobile)
+          }
+          className={`flex h-[48px] items-center justify-center text-sm font-bold text-[#333333] sm:text-base ${
+            player.suspended
+              ? 'cursor-not-allowed bg-[#414b54]'
+              : 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+          }`}
+        >
+          {player.suspended ? (
+            <span className="opacity-30">0</span>
+          ) : (
+            player.back
+          )}
+        </button>
+
+        <button
+          type="button"
+          disabled={player.suspended}
+          onClick={() =>
+            openBetSlip(player.name, player.lay, 'lay', isMobile)
+          }
+          className={`flex h-[48px] items-center justify-center text-sm font-bold text-[#333333] sm:text-base ${
+            player.suspended
+              ? 'cursor-not-allowed bg-[#5b4b4f]'
+              : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+          }`}
+        >
+          {player.suspended ? (
+            <span className="opacity-30">0</span>
+          ) : (
+            player.lay
+          )}
+        </button>
+
+        {player.suspended && (
+          <div className="pointer-events-none absolute inset-y-0 left-[60%] right-0 flex items-center justify-center">
+            <LockIcon />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-2">
+        <PlayerSection player={players[0]} />
+        <PlayerSection player={players[1]} />
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti 1-day (teen)
+// --------------------------------------------------------------------------
+function TableTeen({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table teen">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box mt-3 mt-md-0">
+          <div className="teenpatti20-other-oods">
+            <div className="casino-table-header">
+              <div className="casino-nation-detail">Side Bets</div>
+              <div className="casino-odds-box back">Back</div>
+            </div>
+            <div className="casino-table-body">
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus A</div>
+                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus B</div>
+                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat A</div>
+                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat B</div>
+                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 Teenpatti (teen20)
+// --------------------------------------------------------------------------
+
+function TableTeen20({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      items: [
+        { name: 'Player A', odds: markets?.playerA?.back || '1.98', type: 'back' },
+        { name: '3 Baccarat A', odds: markets?.baccaratA?.back || '1.95', type: 'back' },
+        { name: 'Total A', odds: markets?.totalA?.back || '2.0', type: 'back' },
+        { name: 'Pair Plus A', odds: markets?.pairPlusA?.back || '2.0', type: 'back' },
+      ],
+    },
+    {
+      name: 'Player B',
+      items: [
+        { name: 'Player B', odds: markets?.playerB?.back || '1.98', type: 'back' },
+        { name: '3 Baccarat B', odds: markets?.baccaratB?.back || '1.95', type: 'back' },
+        { name: 'Total B', odds: markets?.totalB?.back || '2.0', type: 'back' },
+        { name: 'Pair Plus B', odds: markets?.pairPlusB?.back || '2.0', type: 'back' },
+      ],
+    },
+  ];
+
+  const suitMarkets = [
+    { name: 'Spades + Clubs', symbols: ['♠', '♣'] },
+    { name: 'Hearts + Diamonds', symbols: ['♥', '♦'] },
+    { name: 'Spades + Clubs B', symbols: ['♠', '♣'] },
+    { name: 'Hearts + Diamonds B', symbols: ['♥', '♦'] },
+  ];
+
+  const results = Array.isArray(markets?.lastResult)
+    ? markets.lastResult
+    : ['A', 'A', 'A', 'A', 'B', 'A', 'B', 'A', 'A', 'B'];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-7 w-7 text-white"
+    >
+      <path d="M7 8V6a5 5 0 0110 0v2h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V10a2 2 0 012-2h1zm2 0h6V6a3 3 0 00-6 0v2zm3 4a2 2 0 00-1 3.73V18h2v-2.27A2 2 0 0012 12z" />
+    </svg>
+  );
+
+  const OddsButton = ({ nation, odds, type = 'back' }) => (
+    <button
+      type="button"
+      disabled={isSuspended}
+      onClick={() => {
+        if (!isSuspended) {
+          openBetSlip(nation, odds, type, isMobile);
+        }
+      }}
+      className={`flex min-h-[60px] w-full items-center justify-center border border-white/50 transition-colors ${
+        isSuspended
+          ? 'cursor-not-allowed bg-[#414c56]'
+          : 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+      }`}
+    >
+      {isSuspended ? (
+        <LockIcon />
+      ) : (
+        <span className="text-xl font-bold text-[#303b45]">
+          {odds}
+        </span>
+      )}
+    </button>
+  );
+
+  return (
+    <div className="w-full min-w-0 bg-white">
+
+      {/* PLAYER A AND PLAYER B */}
+      <div className="grid grid-cols-1 gap-2 p-1 lg:grid-cols-2">
+
+        {players.map((player) => (
+          <section
+            key={player.name}
+            className="min-w-0 overflow-hidden border border-[#cccccc] bg-[#f1f1f1]"
+          >
+
+            {/* Player Heading */}
+            <div className="border-b border-[#cccccc] px-3 py-2">
+              <h3 className="text-lg font-bold text-[#333333]">
+                {player.name}
+              </h3>
+            </div>
+
+            {/* Four Markets */}
+            <div className="grid grid-cols-2">
+              {player.items.map((item) => (
+                <div
+                  key={item.name}
+                  className="min-w-0 border-b border-r border-[#cccccc]"
+                >
+                  <div className="flex min-h-[90px] items-center justify-center text-center">
+                    <span className="text-sm font-bold text-[#333333] sm:text-base">
+                      {item.name}
+                    </span>
+                  </div>
+
+                  <OddsButton
+                    nation={item.name}
+                    odds={item.odds}
+                    type={item.type}
+                  />
+                </div>
+              ))}
+            </div>
+
+          </section>
+        ))}
+
+      </div>
+
+      {/* SUIT BETS */}
+      <div className="grid grid-cols-1 gap-2 p-1 sm:grid-cols-2 lg:grid-cols-4">
+
+        {suitMarkets.map((item) => (
+          <button
+            key={item.name}
+            type="button"
+            disabled={isSuspended}
+            onClick={() => {
+              if (!isSuspended) {
+                openBetSlip(item.name, '2.0', 'back', isMobile);
+              }
+            }}
+            className={`flex min-h-[72px] items-center justify-between gap-2 border border-[#c9c9c9] px-3 ${
+              isSuspended
+                ? 'cursor-not-allowed bg-[#414c56]'
+                : 'cursor-pointer bg-[#414c56] hover:bg-[#35414b]'
+            }`}
+          >
+            <span className="flex items-center gap-2 text-2xl">
+              <span className="text-[#252525]">{item.symbols[0]}</span>
+              <span className="text-[#252525]">{item.symbols[1]}</span>
+            </span>
+
+            {isSuspended ? (
+              <LockIcon />
+            ) : (
+              <span className="text-lg font-bold text-white">0</span>
+            )}
+          </button>
+        ))}
+
+      </div>
+
+      {/* LAST RESULT */}
+      <section className="mt-1 w-full">
+
+        <div className="flex items-center justify-between bg-[#4b5b6b] px-3 py-3">
+          <h3 className="text-lg font-bold text-white">
+            Last Result
+          </h3>
+
+          <button
+            type="button"
+            className="text-base font-bold text-white hover:text-blue-300"
+          >
+            View All
+          </button>
+        </div>
+
+        <div className="flex min-h-[72px] flex-wrap items-center justify-end gap-2 px-2 py-2">
+          {results.map((result, index) => (
+            <div
+              key={index}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#315d38] sm:h-14 sm:w-14"
+            >
+              <span
+                className={`text-xl font-extrabold ${
+                  String(result).toUpperCase() === 'A'
+                    ? 'text-[#ff4b25]'
+                    : 'text-[#ffff00]'
+                }`}
+              >
+                {result}
+              </span>
+            </div>
+          ))}
+        </div>
+
+      </section>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti Test (teen9)
+// --------------------------------------------------------------------------
+function TableTeen9({ isMobile, isSuspended, openBetSlip, markets }) {
+  const columns = ['Tiger', 'Lion', 'Dragon'];
+
+  const rows = [
+    {
+      name: 'Winner',
+      key: 'winner',
+      odds: ['2.94', '2.94', '2.94'],
+    },
+    {
+      name: 'Pair',
+      key: 'pair',
+      odds: ['5', '5', '5'],
+    },
+    {
+      name: 'Flush',
+      key: 'flush',
+      odds: ['12', '12', '12'],
+    },
+    {
+      name: 'Straight',
+      key: 'straight',
+      odds: ['21', '21', '21'],
+    },
+    {
+      name: 'Trio',
+      key: 'trio',
+      odds: ['126', '126', '126'],
+    },
+    {
+      name: 'Straight Flush',
+      key: 'straightFlush',
+      odds: ['151', '151', '151'],
+    },
+  ];
+
+  return (
+    <div className="w-full overflow-hidden border border-[#c9c9c9]">
+      {/* Column Headers */}
+      <div className="grid grid-cols-[2fr_1fr_1fr_1fr]">
+        <div className="h-[48px] border-b border-[#c9c9c9] bg-[#f1f1f1]" />
+
+        {columns.map((column) => (
+          <div
+            key={column}
+            className="flex h-[48px] items-center justify-center border-b border-l border-[#c9c9c9] bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base"
+          >
+            {column}
+          </div>
+        ))}
+      </div>
+
+      {/* Market Rows */}
+      {rows.map((row) => (
+        <div
+          key={row.key}
+          className="grid grid-cols-[2fr_1fr_1fr_1fr]"
+        >
+          {/* Market Name */}
+          <div className="flex h-[48px] min-w-0 items-center border-b border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+            {row.name}
+          </div>
+
+          {/* Tiger, Lion, Dragon Odds */}
+          {columns.map((column, index) => {
+            const odds =
+              markets?.[row.key]?.[column.toLowerCase()] ??
+              row.odds[index];
+
+            const marketName = `${row.name} ${column}`;
+
+            return (
+              <button
+                key={column}
+                type="button"
+                disabled={isSuspended}
+                onClick={() =>
+                  openBetSlip(marketName, odds, 'back', isMobile)
+                }
+                className="flex h-[48px] min-w-0 items-center justify-center border-b border-l border-[#c9c9c9] bg-[#72b9e8] text-sm font-bold text-[#333333] transition-colors hover:bg-[#5da9dc] disabled:cursor-not-allowed disabled:opacity-60 sm:text-base"
+              >
+                {odds}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti Open (teen8)
+// --------------------------------------------------------------------------
+function TableTeen8({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player 1',
+      card: 'J ♣',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 1',
+      total: '1.98',
+    },
+    {
+      name: 'Player 2',
+      card: '9 ♠',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 2',
+      total: '1.98',
+    },
+    {
+      name: 'Player 3',
+      card: '7 ♣',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 3',
+      total: '1.98',
+    },
+    {
+      name: 'Player 4',
+      card: '',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 4',
+      total: '1.98',
+    },
+    {
+      name: 'Player 5',
+      card: '',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 5',
+      total: '1.98',
+    },
+    {
+      name: 'Player 6',
+      card: '',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 6',
+      total: '1.98',
+    },
+    {
+      name: 'Player 7',
+      card: '',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 7',
+      total: '1.98',
+    },
+    {
+      name: 'Player 8',
+      card: '',
+      odds: '1.98',
+      pairPlus: 'Pair Plus 8',
+      total: '1.98',
+    },
+  ];
+
+  const columns = ['Odds', 'Pair Plus', 'Total'];
+
+  const LockIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-6 w-6 fill-white"
+      aria-hidden="true"
+    >
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  return (
+    <div className="w-full overflow-x-auto border border-[#c9c9c9]">
+      <div className="min-w-[600px]">
+
+        {/* Table Header */}
+        <div className="grid grid-cols-[2fr_1fr_1fr_1fr]">
+          <div className="h-[48px] border-b border-[#c9c9c9] bg-[#f1f1f1]" />
+
+          {columns.map((column) => (
+            <div
+              key={column}
+              className="flex h-[48px] items-center justify-center border-b border-l border-[#c9c9c9] bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base"
+            >
+              {column}
+            </div>
+          ))}
+        </div>
+
+        {/* Player Rows */}
+        {players.map((player, index) => {
+          const odds =
+            markets?.[`player${index + 1}`]?.odds ??
+            markets?.[`player${index + 1}`]?.back ??
+            player.odds;
+
+          const pairPlus =
+            markets?.[`player${index + 1}`]?.pairPlus ??
+            player.pairPlus;
+
+          const total =
+            markets?.[`player${index + 1}`]?.total ??
+            player.total;
+
+          const marketItems = [
+            { name: `${player.name} Odds`, value: odds },
+            { name: `${player.name} Pair Plus`, value: pairPlus },
+            { name: `${player.name} Total`, value: total },
+          ];
+
+          return (
+            <div
+              key={player.name}
+              className="grid grid-cols-[2fr_1fr_1fr_1fr]"
+            >
+              {/* Player Name + Card */}
+              <div className="flex h-[48px] min-w-0 items-center gap-2 border-b border-[#c9c9c9] bg-[#f1f1f1] px-2">
+                <span className="truncate text-sm font-bold text-[#333333] sm:text-base">
+                  {player.name}
+                </span>
+
+                {player.card && (
+                  <span className="flex h-[32px] min-w-[42px] items-center justify-center bg-[#cccccc] px-2 text-sm font-bold text-black">
+                    {player.card}
+                  </span>
+                )}
+              </div>
+
+              {/* Odds / Pair Plus / Total */}
+              {marketItems.map((market, marketIndex) => (
+                <button
+                  key={market.name}
+                  type="button"
+                  disabled={isSuspended}
+                  onClick={() =>
+                    openBetSlip(
+                      market.name,
+                      market.value,
+                      'back',
+                      isMobile
+                    )
+                  }
+                  className={`relative flex h-[48px] min-w-0 items-center justify-center border-b border-l border-[#c9c9c9] text-sm font-bold text-[#333333] sm:text-base ${
+                    isSuspended
+                      ? 'cursor-not-allowed bg-[#414b54]'
+                      : 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+                  }`}
+                >
+                  {isSuspended ? (
+                    <>
+                      <span className="opacity-30">
+                        {market.value}
+                      </span>
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <LockIcon />
+                      </span>
+                    </>
+                  ) : (
+                    market.value
+                  )}
+                </button>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Poker 1-Day (poker)
+// --------------------------------------------------------------------------
+function TablePoker({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table poker">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-3 mb-3">
+          <div className="w-50 border p-3 rounded text-center">
+            <div className="h5 fw-bold text-primary">Player A</div>
+            <div className="d-flex gap-2 mt-2">
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" className="w-50" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-50 border p-3 rounded text-center">
+            <div className="h5 fw-bold text-danger">Player B</div>
+            <div className="d-flex gap-2 mt-2">
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" className="w-50" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" className="w-50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 Poker (poker20)
+// --------------------------------------------------------------------------
+function TablePoker20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table poker">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-3 mb-3">
+          <div className="w-50 border p-3 rounded text-center">
+            <div className="h5 fw-bold text-primary">Player A</div>
+            <div className="d-flex gap-2 mt-2">
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" className="w-50" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-50 border p-3 rounded text-center">
+            <div className="h5 fw-bold text-danger">Player B</div>
+            <div className="d-flex gap-2 mt-2">
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" className="w-50" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" className="w-50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Poker 6 Players (poker6)
+// --------------------------------------------------------------------------
+function TablePoker6({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table poker">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-3 mb-3">
+          <div className="w-50 border p-3 rounded text-center">
+            <div className="h5 fw-bold text-primary">Player A</div>
+            <div className="d-flex gap-2 mt-2">
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" className="w-50" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-50 border p-3 rounded text-center">
+            <div className="h5 fw-bold text-danger">Player B</div>
+            <div className="d-flex gap-2 mt-2">
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" className="w-50" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" className="w-50" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Baccarat (baccarat)
+// --------------------------------------------------------------------------
+function TableBaccarat({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table baccarat">
+      <div className="casino-table-full-box">
+        <div className="baccarat-main-odds">
+          <div
+            className={`player-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Player', markets?.player?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Player</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.player?.back || '1.98')}</div>
+          </div>
+
+          <div
+            className={`tie-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '9.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Tie</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.tie?.back || '9.0')}</div>
+          </div>
+
+          <div
+            className={`banker-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Banker', markets?.banker?.back || '1.95', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Banker</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.banker?.back || '1.95')}</div>
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-between mt-3 gap-2">
+          <div
+            className={`baccarat-other-odd-box w-50 p-2 text-center rounded ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Player Pair', '11.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#d68910', color: '#fff' }}
+          >
+            <div className="fw-bold">Player Pair</div>
+            <div className="casino-odds">{isSuspended ? '-' : '11.0'}</div>
+          </div>
+          <div
+            className={`baccarat-other-odd-box w-50 p-2 text-center rounded ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Banker Pair', '11.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#d68910', color: '#fff' }}
+          >
+            <div className="fw-bold">Banker Pair</div>
+            <div className="casino-odds">{isSuspended ? '-' : '11.0'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Baccarat 2 (baccarat2)
+// --------------------------------------------------------------------------
+function TableBaccarat2({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table baccarat">
+      <div className="casino-table-full-box">
+        <div className="baccarat-main-odds">
+          <div
+            className={`player-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Player', markets?.player?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Player</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.player?.back || '1.98')}</div>
+          </div>
+
+          <div
+            className={`tie-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '9.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Tie</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.tie?.back || '9.0')}</div>
+          </div>
+
+          <div
+            className={`banker-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Banker', markets?.banker?.back || '1.95', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Banker</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.banker?.back || '1.95')}</div>
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-between mt-3 gap-2">
+          <div
+            className={`baccarat-other-odd-box w-50 p-2 text-center rounded ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Player Pair', '11.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#d68910', color: '#fff' }}
+          >
+            <div className="fw-bold">Player Pair</div>
+            <div className="casino-odds">{isSuspended ? '-' : '11.0'}</div>
+          </div>
+          <div
+            className={`baccarat-other-odd-box w-50 p-2 text-center rounded ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Banker Pair', '11.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#d68910', color: '#fff' }}
+          >
+            <div className="fw-bold">Banker Pair</div>
+            <div className="casino-odds">{isSuspended ? '-' : '11.0'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 Dragon Tiger (dt20)
+// --------------------------------------------------------------------------
+function TableDt20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dt20">
+      <div className="casino-table-full-box">
+        <div className="dt20-odd-box dt20dragon">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Dragon</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tie">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tie</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tiger">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tiger</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20pair">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Pair</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+      </div>
+
+      <div className="casino-table-box mt-3">
+        <div className="casino-table-left-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 1 Day Dragon Tiger (dt6)
+// --------------------------------------------------------------------------
+function TableDt6({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dt20">
+      <div className="casino-table-full-box">
+        <div className="dt20-odd-box dt20dragon">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Dragon</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tie">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tie</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tiger">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tiger</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20pair">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Pair</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+      </div>
+
+      <div className="casino-table-box mt-3">
+        <div className="casino-table-left-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 D T L (dtl20)
+// --------------------------------------------------------------------------
+function TableDtl20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dtl20">
+      <div className="casino-table-box">
+        <div className="casino-table-header">
+          <div className="casino-nation-detail">Nation</div>
+          <div className="casino-odds-box back">Back</div>
+          <div className="casino-odds-box lay">Lay</div>
+        </div>
+        <div className="casino-table-body">
+          <div className="casino-table-row">
+            <div className="casino-nation-detail"><div className="casino-nation-name">Dragon</div></div>
+            <OddsBox nation="Dragon" odds={markets?.dragon?.back || '2.95'} type="back" />
+            <OddsBox nation="Dragon" odds={markets?.dragon?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-table-row">
+            <div className="casino-nation-detail"><div className="casino-nation-name">Tiger</div></div>
+            <OddsBox nation="Tiger" odds={markets?.tiger?.back || '2.95'} type="back" />
+            <OddsBox nation="Tiger" odds={markets?.tiger?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-table-row">
+            <div className="casino-nation-detail"><div className="casino-nation-name">Lion</div></div>
+            <OddsBox nation="Lion" odds={markets?.lion?.back || '2.95'} type="back" />
+            <OddsBox nation="Lion" odds={markets?.lion?.lay || '3.05'} type="lay" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 Dragon Tiger 2 (dt202)
+// --------------------------------------------------------------------------
+function TableDt202({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dt20">
+      <div className="casino-table-full-box">
+        <div className="dt20-odd-box dt20dragon">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Dragon</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tie">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tie</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tiger">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tiger</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20pair">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Pair</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+      </div>
+
+      <div className="casino-table-box mt-3">
+        <div className="casino-table-left-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 32 Cards A (card32)
+// --------------------------------------------------------------------------
+function TableCard32({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table cards32">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 8 (8 pts)</div></div>
+              <OddsBox nation="Player 8" odds={markets?.player8?.back || '2.10'} type="back" />
+              <OddsBox nation="Player 8" odds={markets?.player8?.lay || '2.20'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 9 (9 pts)</div></div>
+              <OddsBox nation="Player 9" odds={markets?.player9?.back || '2.40'} type="back" />
+              <OddsBox nation="Player 9" odds={markets?.player9?.lay || '2.50'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box-divider"></div>
+
+        <div className="casino-table-right-box">
+          <div className="casino-table-header d-none d-md-flex">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 10 (10 pts)</div></div>
+              <OddsBox nation="Player 10" odds={markets?.player10?.back || '2.90'} type="back" />
+              <OddsBox nation="Player 10" odds={markets?.player10?.lay || '3.00'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 11 (11 pts)</div></div>
+              <OddsBox nation="Player 11" odds={markets?.player11?.back || '3.50'} type="back" />
+              <OddsBox nation="Player 11" odds={markets?.player11?.lay || '3.60'} type="lay" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 32 Cards B (card32eu)
+// --------------------------------------------------------------------------
+function TableCard32eu({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table cards32">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 8 (8 pts)</div></div>
+              <OddsBox nation="Player 8" odds={markets?.player8?.back || '2.10'} type="back" />
+              <OddsBox nation="Player 8" odds={markets?.player8?.lay || '2.20'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 9 (9 pts)</div></div>
+              <OddsBox nation="Player 9" odds={markets?.player9?.back || '2.40'} type="back" />
+              <OddsBox nation="Player 9" odds={markets?.player9?.lay || '2.50'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box-divider"></div>
+
+        <div className="casino-table-right-box">
+          <div className="casino-table-header d-none d-md-flex">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 10 (10 pts)</div></div>
+              <OddsBox nation="Player 10" odds={markets?.player10?.back || '2.90'} type="back" />
+              <OddsBox nation="Player 10" odds={markets?.player10?.lay || '3.00'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 11 (11 pts)</div></div>
+              <OddsBox nation="Player 11" odds={markets?.player11?.back || '3.50'} type="back" />
+              <OddsBox nation="Player 11" odds={markets?.player11?.lay || '3.60'} type="lay" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Andar Bahar (ab20)
+// --------------------------------------------------------------------------
+function TableAb20({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  return (
+    <div className="casino-table andar-bahar">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="andar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-primary mb-2">ANDAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Andar Main" odds={markets?.andar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Andar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bahar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-danger mb-2">BAHAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Bahar Main" odds={markets?.bahar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Bahar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Andar Bahar 2 (abj)
+// --------------------------------------------------------------------------
+function TableAbj({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  return (
+    <div className="casino-table andar-bahar">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="andar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-primary mb-2">ANDAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Andar Main" odds={markets?.andar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Andar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bahar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-danger mb-2">BAHAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Bahar Main" odds={markets?.bahar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Bahar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Lucky 7 - A (lucky7)
+// --------------------------------------------------------------------------
+function TableLucky7({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table lucky7a">
+      <div className="casino-table-box">
+        <div className="casino-table-full-box">
+          <div className="lucky7low">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.low?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low Card', markets?.low?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Low Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.seven?.back || '12')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Exact 7', markets?.seven?.back || '12', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Exact 7</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7high">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.high?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High Card', markets?.high?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">High Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3">
+          <div className="casino-table-left-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.even?.back || '2.10')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Even', markets?.even?.back || '2.10', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Even</span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.odd?.back || '1.79')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Odd', markets?.odd?.back || '1.79', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Odd</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="casino-table-right-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.red?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Red', markets?.red?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-red">Red</span></span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.black?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Black', markets?.black?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-black">Black</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between gap-2">
+          {[
+            { label: 'A-2-3', odds: '4.00' },
+            { label: '4-5-6', odds: '4.00' },
+            { label: '8-9-10', odds: '4.00' },
+            { label: 'J-Q-K', odds: '4.00' },
+          ].map((grp) => (
+            <div key={grp.label} className="lucky7cards flex-fill text-center">
+              <div className="casino-odds w-100 text-center fw-bold">{isSuspended ? '-' : grp.odds}</div>
+              <div
+                className={`card-odd-box-container p-1 border rounded ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Group ${grp.label}`, grp.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#273646' }}
+              >
+                <span className="fw-bold text-white">{grp.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-full-box lucky7acards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">Cards 1 to 13 (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Lucky 7 - B (lucky7eu)
+// --------------------------------------------------------------------------
+function TableLucky7eu({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table lucky7a">
+      <div className="casino-table-box">
+        <div className="casino-table-full-box">
+          <div className="lucky7low">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.low?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low Card', markets?.low?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Low Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.seven?.back || '12')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Exact 7', markets?.seven?.back || '12', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Exact 7</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7high">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.high?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High Card', markets?.high?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">High Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3">
+          <div className="casino-table-left-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.even?.back || '2.10')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Even', markets?.even?.back || '2.10', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Even</span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.odd?.back || '1.79')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Odd', markets?.odd?.back || '1.79', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Odd</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="casino-table-right-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.red?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Red', markets?.red?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-red">Red</span></span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.black?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Black', markets?.black?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-black">Black</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between gap-2">
+          {[
+            { label: 'A-2-3', odds: '4.00' },
+            { label: '4-5-6', odds: '4.00' },
+            { label: '8-9-10', odds: '4.00' },
+            { label: 'J-Q-K', odds: '4.00' },
+          ].map((grp) => (
+            <div key={grp.label} className="lucky7cards flex-fill text-center">
+              <div className="casino-odds w-100 text-center fw-bold">{isSuspended ? '-' : grp.odds}</div>
+              <div
+                className={`card-odd-box-container p-1 border rounded ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Group ${grp.label}`, grp.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#273646' }}
+              >
+                <span className="fw-bold text-white">{grp.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-full-box lucky7acards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">Cards 1 to 13 (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 3 Cards Judgement (3cardj)
+// --------------------------------------------------------------------------
+function Table3cardj({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table trio">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-2 mb-3">
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 1</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 1" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 1" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 2</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 2" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 2" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 3</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 3" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 3" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box triocards mt-3">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Side Bets (Hand Combinations)</div>
+            <div className="casino-odds-box back">Back Rate</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Pair (Payout 5.5)</div>
+              <OddsBox nation="Pair" odds="5.5" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Flush (Payout 17.0)</div>
+              <OddsBox nation="Flush" odds="17.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Straight (Payout 24.0)</div>
+              <OddsBox nation="Straight" odds="24.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Trio (Payout 201.0)</div>
+              <OddsBox nation="Trio" odds="201.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Straight Flush (Payout 226.0)</div>
+              <OddsBox nation="Straight Flush" odds="226.0" type="back" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Instant Worli (worli)
+// --------------------------------------------------------------------------
+function TableWorli({ isMobile, isSuspended, openBetSlip }) {
+  const [activeTab, setActiveTab] = React.useState('jodi');
+  const [jodiStakes, setJodiStakes] = React.useState({});
+  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  const handleJodiClick = (numStr) => {
+    if (isSuspended) return;
+    openBetSlip(`Jodi ${numStr}`, '95.0', 'back', isMobile);
+    setJodiStakes((prev) => ({
+      ...prev,
+      [numStr]: (prev[numStr] || 0) + 100,
+    }));
+  };
+
+  const handleClear = () => {
+    setJodiStakes({});
+  };
+
+  const totalAmount = Object.values(jodiStakes).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="casino-table worli">
+      <div className="casino-table-box p-3 border rounded">
+        {/* Worli sub-tabs */}
+        <div className="worli-tabs mb-3 overflow-auto" id="worli-tabs">
+          <ul className="nav nav-pills flex-nowrap gap-1 pb-1">
+            {[{"id":"single","name":"Single Ank"},{"id":"jodi","name":"Jodi"},{"id":"singlepatti","name":"Single Patti"},{"id":"doublepatti","name":"Double Patti"},{"id":"triplepatti","name":"Triple Patti"},{"id":"halfsangam","name":"Half Sangam"},{"id":"fullsangam","name":"Full Sangam"},{"id":"spmotor","name":"SP Motor"},{"id":"dpmotor","name":"DP Motor"},{"id":"cyclepana","name":"Cycle Pana"},{"id":"fdpana","name":"FD Pana"},{"id":"sdpana","name":"SD Pana"},{"id":"tdpana","name":"TD Pana"}].map((t) => (
+              <li key={t.id} className="nav-item">
+                <button
+                  type="button"
+                  className={`nav-link py-1 px-2 small ${activeTab === t.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(t.id)}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {t.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Tab 1: Jodi 10x10 Matrix */}
+        {activeTab === 'jodi' && (
+          <div className="jodi-matrix-container mb-3">
+            <h6 className="fw-bold mb-2 text-center">Jodi 00 to 99 (Odds: 95.00)</h6>
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered text-center align-middle mb-0">
+                <tbody>
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
+                    <tr key={row}>
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((col) => {
+                        const num = `${row}${col}`;
+                        const stake = jodiStakes[num];
+                        return (
+                          <td
+                            key={num}
+                            className={`p-1 ${stake ? 'table-warning fw-bold' : ''} ${isSuspended ? 'bg-light text-muted' : ''}`}
+                            onClick={() => handleJodiClick(num)}
+                            style={{
+                              cursor: isSuspended ? 'not-allowed' : 'pointer',
+                              minWidth: '34px',
+                              height: '38px',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <div className="small">{num}</div>
+                            {stake ? <div className="text-danger" style={{ fontSize: '9px' }}>{stake}</div> : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Single Digit (0-9) */}
+        {activeTab === 'single' && (
+          <div className="single-digit-container mb-3 text-center">
+            <h6 className="fw-bold mb-2">Single Ank (0 to 9) - Odds: 9.50</h6>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {digits.map((d) => (
+                <div
+                  key={d}
+                  className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Single ${d}`, '9.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '9.5'}</div>
+                  <div className="fw-bold h5 mb-0">{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Pana / Patti combinations */}
+        {activeTab !== 'jodi' && activeTab !== 'single' && (
+          <div className="pana-container mb-3 text-center p-3 bg-light rounded">
+            <h6 className="fw-bold mb-2">{activeTab.toUpperCase()} Matrix - Odds: 150.00</h6>
+            <p className="text-muted small mb-3">Quick combination selector for {activeTab}</p>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {['120', '123', '124', '125', '126', '127', '128', '129', '130', '134'].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className="btn btn-sm btn-outline-dark"
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Pana ${p}`, '150.0', 'back', isMobile)}
+                  disabled={isSuspended}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Worli Action Box */}
+        <div className="worli-clear-box d-flex justify-content-between align-items-center p-2 bg-light border rounded">
+          <div className="total-amount fw-bold">
+            Total Amount: <span className="text-primary">{totalAmount}</span>
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-danger px-3"
+              onClick={handleClear}
+              disabled={totalAmount === 0}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-success px-3"
+              disabled={totalAmount === 0 || isSuspended}
+              onClick={() => {
+                Object.entries(jodiStakes).forEach(([num, st]) => {
+                  openBetSlip(`Jodi ${num}`, '95.0', 'back', isMobile);
+                });
+              }}
+            >
+              Place Bet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Worli 2 (worli2)
+// --------------------------------------------------------------------------
+function TableWorli2({ isMobile, isSuspended, openBetSlip }) {
+  const [activeTab, setActiveTab] = React.useState('jodi');
+  const [jodiStakes, setJodiStakes] = React.useState({});
+  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  const handleJodiClick = (numStr) => {
+    if (isSuspended) return;
+    openBetSlip(`Jodi ${numStr}`, '95.0', 'back', isMobile);
+    setJodiStakes((prev) => ({
+      ...prev,
+      [numStr]: (prev[numStr] || 0) + 100,
+    }));
+  };
+
+  const handleClear = () => {
+    setJodiStakes({});
+  };
+
+  const totalAmount = Object.values(jodiStakes).reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="casino-table worli">
+      <div className="casino-table-box p-3 border rounded">
+        {/* Worli sub-tabs */}
+        <div className="worli-tabs mb-3 overflow-auto" id="worli-tabs">
+          <ul className="nav nav-pills flex-nowrap gap-1 pb-1">
+            {[{"id":"single","name":"Single Ank"},{"id":"jodi","name":"Jodi"},{"id":"singlepatti","name":"Single Patti"},{"id":"doublepatti","name":"Double Patti"},{"id":"triplepatti","name":"Triple Patti"},{"id":"halfsangam","name":"Half Sangam"},{"id":"fullsangam","name":"Full Sangam"},{"id":"spmotor","name":"SP Motor"},{"id":"dpmotor","name":"DP Motor"},{"id":"cyclepana","name":"Cycle Pana"},{"id":"fdpana","name":"FD Pana"},{"id":"sdpana","name":"SD Pana"},{"id":"tdpana","name":"TD Pana"}].map((t) => (
+              <li key={t.id} className="nav-item">
+                <button
+                  type="button"
+                  className={`nav-link py-1 px-2 small ${activeTab === t.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(t.id)}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {t.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Tab 1: Jodi 10x10 Matrix */}
+        {activeTab === 'jodi' && (
+          <div className="jodi-matrix-container mb-3">
+            <h6 className="fw-bold mb-2 text-center">Jodi 00 to 99 (Odds: 95.00)</h6>
+            <div className="table-responsive">
+              <table className="table table-sm table-bordered text-center align-middle mb-0">
+                <tbody>
+                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((row) => (
+                    <tr key={row}>
+                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((col) => {
+                        const num = `${row}${col}`;
+                        const stake = jodiStakes[num];
+                        return (
+                          <td
+                            key={num}
+                            className={`p-1 ${stake ? 'table-warning fw-bold' : ''} ${isSuspended ? 'bg-light text-muted' : ''}`}
+                            onClick={() => handleJodiClick(num)}
+                            style={{
+                              cursor: isSuspended ? 'not-allowed' : 'pointer',
+                              minWidth: '34px',
+                              height: '38px',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <div className="small">{num}</div>
+                            {stake ? <div className="text-danger" style={{ fontSize: '9px' }}>{stake}</div> : null}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 2: Single Digit (0-9) */}
+        {activeTab === 'single' && (
+          <div className="single-digit-container mb-3 text-center">
+            <h6 className="fw-bold mb-2">Single Ank (0 to 9) - Odds: 9.50</h6>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {digits.map((d) => (
+                <div
+                  key={d}
+                  className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Single ${d}`, '9.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '9.5'}</div>
+                  <div className="fw-bold h5 mb-0">{d}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Pana / Patti combinations */}
+        {activeTab !== 'jodi' && activeTab !== 'single' && (
+          <div className="pana-container mb-3 text-center p-3 bg-light rounded">
+            <h6 className="fw-bold mb-2">{activeTab.toUpperCase()} Matrix - Odds: 150.00</h6>
+            <p className="text-muted small mb-3">Quick combination selector for {activeTab}</p>
+            <div className="d-flex flex-wrap justify-content-center gap-2">
+              {['120', '123', '124', '125', '126', '127', '128', '129', '130', '134'].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className="btn btn-sm btn-outline-dark"
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Pana ${p}`, '150.0', 'back', isMobile)}
+                  disabled={isSuspended}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Worli Action Box */}
+        <div className="worli-clear-box d-flex justify-content-between align-items-center p-2 bg-light border rounded">
+          <div className="total-amount fw-bold">
+            Total Amount: <span className="text-primary">{totalAmount}</span>
+          </div>
+          <div className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-sm btn-danger px-3"
+              onClick={handleClear}
+              disabled={totalAmount === 0}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-success px-3"
+              disabled={totalAmount === 0 || isSuspended}
+              onClick={() => {
+                Object.entries(jodiStakes).forEach(([num, st]) => {
+                  openBetSlip(`Jodi ${num}`, '95.0', 'back', isMobile);
+                });
+              }}
+            >
+              Place Bet
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Amar Akbar Anthony (aaa)
+// --------------------------------------------------------------------------
+function TableAaa({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table aaa">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">A. Amar</div>
+            <OddsBox nation="A. Amar" odds={markets?.amar?.back || '2.95'} type="back" />
+            <OddsBox nation="A. Amar" odds={markets?.amar?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">B. Akbar</div>
+            <OddsBox nation="B. Akbar" odds={markets?.akbar?.back || '2.95'} type="back" />
+            <OddsBox nation="B. Akbar" odds={markets?.akbar?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">C. Anthony</div>
+            <OddsBox nation="C. Anthony" odds={markets?.anthony?.back || '2.95'} type="back" />
+            <OddsBox nation="C. Anthony" odds={markets?.anthony?.lay || '3.05'} type="lay" />
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between w-100 gap-2">
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+        </div>
+
+        <div className="casino-table-full-box aaacards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">13 Cards Market (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Bollywood Casino (btable)
+// --------------------------------------------------------------------------
+function TableBtable({ isMobile, isSuspended, openBetSlip, markets }) {
+  const chars = [
+    { key: 'A', name: 'Don' },
+    { key: 'B', name: 'Amar' },
+    { key: 'C', name: 'Anthony' },
+    { key: 'D', name: 'Vijay' },
+    { key: 'E', name: 'Shehenshah' },
+    { key: 'F', name: 'Gabbar' },
+  ];
+  return (
+    <div className="casino-table bollywood">
+      <div className="casino-table-box">
+        <div className="row g-2 mb-3">
+          {chars.map((char) => (
+            <div key={char.key} className="col-12 col-md-4">
+              <div className="casino-odd-box-container p-2 border rounded">
+                <div className="casino-nation-name fw-bold">{char.key}. {char.name}</div>
+                <div className="d-flex gap-2 mt-1">
+                  <OddsBox nation={`${char.key}. ${char.name}`} odds="5.5" type="back" className="w-50" />
+                  <OddsBox nation={`${char.key}. ${char.name}`} odds="6.0" type="lay" className="w-50" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-box mt-2 d-flex justify-content-between gap-2">
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Lottery (lottcard)
+// --------------------------------------------------------------------------
+function TableLottcard({ isMobile, isSuspended, openBetSlip }) {
+  const [selectedNumbers, setSelectedNumbers] = React.useState([]);
+
+  const toggleNumber = (num) => {
+    setSelectedNumbers((prev) =>
+      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
+    );
+    openBetSlip(`Card ${num}`, '9.00', 'back', isMobile);
+  };
+
+  return (
+    <div className="casino-table lottery lottcard">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">Lottery Cards (Pick 0 - 9)</h5>
+        
+        {/* Number Selector Grid 0-9 */}
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => {
+            const isPicked = selectedNumbers.includes(num);
+            return (
+              <button
+                key={num}
+                type="button"
+                className={`btn btn-lg ${isPicked ? 'btn-warning text-dark' : 'btn-outline-primary'} fw-bold px-3 py-2`}
+                onClick={() => toggleNumber(num)}
+                disabled={isSuspended}
+                style={{ minWidth: '55px', borderRadius: '8px' }}
+              >
+                {num}
+                <div style={{ fontSize: '10px' }}>9.00</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick Prop Bets: Low, High, Even, Odd */}
+        <div className="d-flex justify-content-center gap-2 mb-3 flex-wrap">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => openBetSlip('Low (0-4)', '1.95', 'back', isMobile)}
+            disabled={isSuspended}
+          >
+            Low (0-4) @ 1.95
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => openBetSlip('High (5-9)', '1.95', 'back', isMobile)}
+            disabled={isSuspended}
+          >
+            High (5-9) @ 1.95
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => openBetSlip('Even Numbers', '1.95', 'back', isMobile)}
+            disabled={isSuspended}
+          >
+            Even @ 1.95
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => openBetSlip('Odd Numbers', '1.95', 'back', isMobile)}
+            disabled={isSuspended}
+          >
+            Odd @ 1.95
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="lottery-buttons d-flex justify-content-center gap-3">
+          <button
+            type="button"
+            className="btn btn-danger px-4"
+            onClick={() => setSelectedNumbers([])}
+          >
+            Clear Picks
+          </button>
+          <button
+            type="button"
+            className="btn btn-success px-4"
+            disabled={selectedNumbers.length === 0 || isSuspended}
+            onClick={() => {
+              selectedNumbers.forEach((n) => openBetSlip(`Card ${n}`, '9.00', 'back', isMobile));
+            }}
+          >
+            Bet Selected ({selectedNumbers.length})
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 5Five Cricket (cricketv3)
+// --------------------------------------------------------------------------
+function TableCricketv3({ isMobile, isSuspended, openBetSlip }) {
+  const outcomes = [
+    { label: '0 Runs (Dot)', odds: '2.50' },
+    { label: '1 Run', odds: '2.20' },
+    { label: '2 Runs', odds: '4.50' },
+    { label: '3 Runs', odds: '12.00' },
+    { label: '4 Runs (Boundary)', odds: '5.50' },
+    { label: '6 Runs (Sixer)', odds: '8.00' },
+    { label: 'Wicket', odds: '4.00' },
+    { label: 'Wide / No Ball', odds: '6.00' },
+  ];
+
+  return (
+    <div className="casino-table cricket cricketv3">
+      <div className="casino-table-box text-center p-3 border rounded">
+        <h5 className="fw-bold mb-3">5Five Cricket - Live Ball Prediction</h5>
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {outcomes.map((o) => (
+            <div
+              key={o.label}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(o.label, o.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '110px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : o.odds}</div>
+              <div className="fw-bold small">{o.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Cricket Match 20-20 (cmatch20)
+// --------------------------------------------------------------------------
+function TableCmatch20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table cmatch20">
+      <div className="casino-table-box p-3 border rounded">
+        <h5 className="fw-bold text-center mb-3">Cricket Match 20-20 (Batsman vs Bowler)</h5>
+        
+        {/* Main Duel: Batsman vs Bowler */}
+        <div className="row mb-3">
+          <div className="col-6">
+            <div
+              className={`card-odd-box p-3 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Batsman (Runs >= 11)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Batsman (Runs &ge; 11)</div>
+              <div className="casino-odds text-primary fs-5">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6">
+            <div
+              className={`card-odd-box p-3 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Bowler (Runs <= 10)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Bowler (Runs &le; 10)</div>
+              <div className="casino-odds text-primary fs-5">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Side Markets: Over Total & Boundary / Wicket */}
+        <div className="row g-2">
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Runs Over 10.5', '1.90', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="small text-muted">Total Over Runs</div>
+              <div className="fw-bold">Over 10.5</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.90'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Runs Under 10.5', '1.90', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="small text-muted">Total Over Runs</div>
+              <div className="fw-bold">Under 10.5</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.90'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Boundary In Over (YES)', '1.65', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="small text-muted">Boundary In Over</div>
+              <div className="fw-bold">YES</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.65'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white text-center ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Wicket In Over (YES)', '2.20', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="small text-muted">Wicket In Over</div>
+              <div className="fw-bold">YES</div>
+              <div className="casino-odds">{isSuspended ? '-' : '2.20'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Teenpatti - 2.0 (teen6)
+// --------------------------------------------------------------------------
+function TableTeen6({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.31',
+      lay: markets?.playerA?.lay || '1.36',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.31',
+      lay: markets?.playerB?.lay || '1.36',
+    },
+  ];
+
+  const sideMarkets = [
+    { name: 'Player A Under 21', odds: markets?.under21A?.back || '0' },
+    { name: 'Player A Over 22', odds: markets?.over22A?.back || '0' },
+    { name: 'Player B Under 21', odds: markets?.under21B?.back || '0' },
+    { name: 'Player B Over 22', odds: markets?.over22B?.back || '0' },
+  ];
+
+  const suitMarkets = [
+    { name: 'Spade', icon: '♠', odds: markets?.spade?.back || '4.61' },
+    { name: 'Heart', icon: '♥', odds: markets?.heart?.back || '3.56' },
+    { name: 'Club', icon: '♣', odds: markets?.club?.back || '3.56' },
+    { name: 'Diamond', icon: '♦', odds: markets?.diamond?.back || '3.85' },
+    { name: 'Odd', icon: 'Odd', odds: markets?.odd?.back || '1.97' },
+    { name: 'Even', icon: 'Even', odds: markets?.even?.back || '1.97' },
+  ];
+
+  const cardValues = [
+    { value: 'A', odds: '11.12' },
+    { value: '2', odds: '11.12' },
+    { value: '3', odds: '22.16' },
+    { value: '4', odds: '11.12' },
+    { value: '5', odds: '11.12' },
+    { value: '6', odds: '11.12' },
+    { value: '7', odds: '14.8' },
+    { value: '8', odds: '11.12' },
+    { value: '9', odds: '11.12' },
+    { value: '10', odds: '11.12' },
+    { value: 'J', odds: '14.8' },
+    { value: 'Q', odds: '11.12' },
+    { value: 'K', odds: '11.12' },
+  ];
+
+  const PlayerSection = ({ player }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+      {/* Player Header */}
+      <div className="grid h-[48px] grid-cols-[3fr_1fr_1fr]">
+        <div className="flex items-center border-b border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {player.name}
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base">
+          Back
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] sm:text-base">
+          Lay
+        </div>
+      </div>
+
+      {/* Main Market */}
+      <div className="grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center border-t border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Main
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(player.name, player.back, 'back', isMobile)
+          }
+          className="flex h-[48px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#333333] hover:bg-[#5da9dc] sm:text-base"
+        >
+          {player.back}
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(player.name, player.lay, 'lay', isMobile)
+          }
+          className="flex h-[48px] items-center justify-center bg-[#f5a5b8] text-sm font-bold text-[#333333] hover:bg-[#ed91a7] sm:text-base"
+        >
+          {player.lay}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full space-y-3">
+
+      {/* Player A & Player B */}
+      <div className="grid grid-cols-2 gap-2">
+        {players.map((player) => (
+          <PlayerSection key={player.name} player={player} />
+        ))}
+      </div>
+
+      {/* Under 21 / Over 22 */}
+      <div className="grid grid-cols-2 gap-2">
+        {sideMarkets.map((market) => (
+          <div
+            key={market.name}
+            className="grid min-w-0 grid-cols-[minmax(0,3fr)_minmax(0,1.25fr)] overflow-hidden border border-[#c9c9c9]"
+          >
+            <div className="flex h-[48px] items-center bg-[#f1f1f1] px-2 text-xs font-bold text-[#333333] sm:text-base">
+              {market.name}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                openBetSlip(market.name, market.odds, 'back', isMobile)
+              }
+              className="flex h-[48px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#333333] hover:bg-[#5da9dc] sm:text-base"
+            >
+              {market.odds}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Suit Markets */}
+      <div className="grid grid-cols-6 gap-2">
+        {suitMarkets.map((market) => (
+          <button
+            key={market.name}
+            type="button"
+            onClick={() =>
+              openBetSlip(market.name, market.odds, 'back', isMobile)
+            }
+            className="flex h-[48px] min-w-0 items-center justify-between gap-1 bg-[#72b9e8] px-2 hover:bg-[#5da9dc]"
+          >
+            <span
+              className={`truncate text-xl font-bold sm:text-2xl ${
+                market.name === 'Heart' || market.name === 'Diamond'
+                  ? 'text-[#e52c32]'
+                  : market.name === 'Odd' || market.name === 'Even'
+                    ? 'text-[#333333] text-sm sm:text-base'
+                    : 'text-[#222222]'
+              }`}
+            >
+              {market.icon}
+            </span>
+
+            <span className="truncate text-xs font-bold text-[#333333] sm:text-base">
+              {market.odds}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Card Odds */}
+      <div className="w-full overflow-x-auto bg-[#f1f1f1] px-2 py-2">
+        <div className="mx-auto flex w-max items-end justify-center gap-1.5">
+          {cardValues.map((card) => (
+            <button
+              key={card.value}
+              type="button"
+              onClick={() =>
+                openBetSlip(
+                  `Card ${card.value}`,
+                  card.odds,
+                  'back',
+                  isMobile
+                )
+              }
+              className="flex w-[58px] shrink-0 flex-col items-center gap-1"
+            >
+              {/* Card Odds */}
+              <span className="text-xs font-bold text-[#333333]">
+                {card.odds}
+              </span>
+
+              {/* Card */}
+              <div className="flex h-[126px] w-[58px] flex-col items-center justify-between border-2 border-[#f2e600] bg-white py-1">
+                <span className="text-[35px] font-bold leading-[38px] text-black">
+                  {card.value}
+                </span>
+
+                <div className="grid w-full grid-cols-2 px-1 text-[24px] font-bold leading-[25px]">
+                  <span className="text-black">♠</span>
+                  <span className="text-red-600">♦</span>
+                  <span className="text-black">♣</span>
+                  <span className="text-red-600">♥</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Queen (queen)
+// --------------------------------------------------------------------------
+function TableQueen({ isMobile, isSuspended, openBetSlip }) {
+  const cards = [
+    { label: 'Card 1', odds: '2.85' },
+    { label: 'Card 2', odds: '2.85' },
+    { label: 'Card 3', odds: '2.85' },
+  ];
+
+  return (
+    <div className="casino-table queen">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">Queen (Find the Queen)</h5>
+        
+        {/* 3 Positions */}
+        <div className="row g-3 mb-3">
+          {cards.map((c) => (
+            <div key={c.label} className="col-4">
+              <div
+                className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(c.label, c.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="fw-bold fs-5">{c.label}</div>
+                <div className="casino-odds text-primary fs-4">{isSuspended ? '-' : c.odds}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Color and Suits */}
+        <div className="row g-2 justify-content-center">
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Red Queen (♥/♦)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold text-danger">Red Queen</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Black Queen (♠/♣)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold text-dark">Black Queen</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Race20 (race20)
+// --------------------------------------------------------------------------
+function TableRace20({ isMobile, isSuspended, openBetSlip }) {
+  const kings = [
+    { id: 'spade', name: 'Spade King', code: 'KSS', symbol: '♠', color: '#000', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'heart', name: 'Heart King', code: 'KHH', symbol: '♥', color: '#e53935', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'club', name: 'Club King', code: 'KCC', symbol: '♣', color: '#000', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'diamond', name: 'Diamond King', code: 'KDD', symbol: '♦', color: '#e53935', oddsYes: '3.75', oddsNo: '1.25' },
+  ];
+
+  return (
+    <div className="casino-table race race20">
+      <div className="casino-table-box p-3 border rounded">
+        <h5 className="fw-bold text-center mb-3">4 Kings Race to 20</h5>
+        <div className="table-responsive">
+          <table className="table table-bordered text-center align-middle mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th>King</th>
+                <th>Card</th>
+                <th style={{ width: '120px' }}>YES (Back)</th>
+                <th style={{ width: '120px' }}>NO (Lay)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kings.map((k) => (
+                <tr key={k.id}>
+                  <td className="fw-bold text-start ps-3" style={{ color: k.color }}>
+                    <span className="fs-5 me-2">{k.symbol}</span>
+                    {k.name}
+                  </td>
+                  <td>
+                    <img
+                      src={`/assets/img/cards/${k.code}.jpg`}
+                      onError={(e) => {
+                        e.currentTarget.src = `https://cdn.926assets.com/g3ver/v107/static/front/img/cards/${k.code}.jpg`;
+                      }}
+                      alt={k.name}
+                      style={{ height: '36px', borderRadius: '4px' }}
+                    />
+                  </td>
+                  <td>
+                    <OddsBox nation={`${k.name} YES`} odds={k.oddsYes} type="back" />
+                  </td>
+                  <td>
+                    <OddsBox nation={`${k.name} NO`} odds={k.oddsNo} type="lay" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Lucky 7 - C (lucky7eu2)
+// --------------------------------------------------------------------------
+function TableLucky7eu2({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table lucky7a">
+      <div className="casino-table-box">
+        <div className="casino-table-full-box">
+          <div className="lucky7low">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.low?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low Card', markets?.low?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Low Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.seven?.back || '12')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Exact 7', markets?.seven?.back || '12', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Exact 7</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7high">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.high?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High Card', markets?.high?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">High Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3">
+          <div className="casino-table-left-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.even?.back || '2.10')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Even', markets?.even?.back || '2.10', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Even</span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.odd?.back || '1.79')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Odd', markets?.odd?.back || '1.79', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Odd</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="casino-table-right-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.red?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Red', markets?.red?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-red">Red</span></span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.black?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Black', markets?.black?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-black">Black</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between gap-2">
+          {[
+            { label: 'A-2-3', odds: '4.00' },
+            { label: '4-5-6', odds: '4.00' },
+            { label: '8-9-10', odds: '4.00' },
+            { label: 'J-Q-K', odds: '4.00' },
+          ].map((grp) => (
+            <div key={grp.label} className="lucky7cards flex-fill text-center">
+              <div className="casino-odds w-100 text-center fw-bold">{isSuspended ? '-' : grp.odds}</div>
+              <div
+                className={`card-odd-box-container p-1 border rounded ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Group ${grp.label}`, grp.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#273646' }}
+              >
+                <span className="fw-bold text-white">{grp.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-full-box lucky7acards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">Cards 1 to 13 (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Super Over (superover)
+// --------------------------------------------------------------------------
+function TableSuperover({ isMobile, isSuspended, openBetSlip }) {
+  const outcomes = [
+    { label: '0 Runs (Dot)', odds: '2.50' },
+    { label: '1 Run', odds: '2.20' },
+    { label: '2 Runs', odds: '4.50' },
+    { label: '3 Runs', odds: '12.00' },
+    { label: '4 Runs (Boundary)', odds: '5.50' },
+    { label: '6 Runs (Sixer)', odds: '8.00' },
+    { label: 'Wicket', odds: '4.00' },
+    { label: 'Wide / No Ball', odds: '6.00' },
+  ];
+
+  return (
+    <div className="casino-table cricket superover">
+      <div className="casino-table-box text-center p-3 border rounded">
+        <h5 className="fw-bold mb-3">Super Over - Live Ball Prediction</h5>
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {outcomes.map((o) => (
+            <div
+              key={o.label}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(o.label, o.odds, 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '110px', textAlign: 'center' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : o.odds}</div>
+              <div className="fw-bold small">{o.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: The Trap (trap)
+// --------------------------------------------------------------------------
+function TableTrap({ isMobile, isSuspended, openBetSlip }) {
+  return (
+    <div className="casino-table trap">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">The Trap - Escape Duel</h5>
+        
+        {/* Core Inside vs Outside vs Trap Hit */}
+        <div className="row g-3 mb-3">
+          <div className="col-4">
+            <div
+              className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Inside (Between Limits)', '2.00', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Inside</div>
+              <div className="small text-muted">Falls Between</div>
+              <div className="casino-odds text-primary fs-5">{isSuspended ? '-' : '2.00'}</div>
+            </div>
+          </div>
+          <div className="col-4">
+            <div
+              className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Outside (Beyond Limits)', '2.00', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Outside</div>
+              <div className="small text-muted">Falls Outside</div>
+              <div className="casino-odds text-primary fs-5">{isSuspended ? '-' : '2.00'}</div>
+            </div>
+          </div>
+          <div className="col-4">
+            <div
+              className={`card-odd-box p-3 border rounded bg-warning bg-opacity-25 border-warning ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Trap Hit (Exact Match)', '15.00', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold text-danger">Trap Hit</div>
+              <div className="small text-muted">Matches Limit</div>
+              <div className="casino-odds text-danger fs-5">{isSuspended ? '-' : '15.00'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Seven Up-Down Trap Box */}
+        <div className="seven-up-down-box p-2 bg-light border rounded mb-2">
+          <h6 className="fw-bold text-muted mb-2">The Trap 7 High/Low</h6>
+          <div className="row g-2">
+            <div className="col-4">
+              <div
+                className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Down (< 7)', '2.00', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="fw-bold">Down (&lt; 7)</div>
+                <div className="casino-odds">{isSuspended ? '-' : '2.00'}</div>
+              </div>
+            </div>
+            <div className="col-4">
+              <div
+                className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Trap Seven (= 7)', '12.00', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="fw-bold text-danger">Trap Seven (= 7)</div>
+                <div className="casino-odds text-danger">{isSuspended ? '-' : '12.00'}</div>
+              </div>
+            </div>
+            <div className="col-4">
+              <div
+                className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Up (> 7)', '2.00', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <div className="fw-bold">Up (&gt; 7)</div>
+                <div className="casino-odds">{isSuspended ? '-' : '2.00'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 2 Cards Teenpatti (patti2)
+// --------------------------------------------------------------------------
+function TablePatti2({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      mainBack: markets?.playerA?.back || '1.96',
+      mainLay: markets?.playerA?.lay || '0',
+      miniBaccarat: markets?.miniBaccaratA?.back || '2.59',
+      totalBack: markets?.totalA?.back || '34',
+      totalLay: markets?.totalA?.lay || '43',
+      totalBackTop: '14',
+      totalLayTop: '15',
+    },
+    {
+      name: 'Player B',
+      mainBack: markets?.playerB?.back || '1.96',
+      mainLay: markets?.playerB?.lay || '0',
+      miniBaccarat: markets?.miniBaccaratB?.back || '1.85',
+      totalBack: markets?.totalB?.back || '95',
+      totalLay: markets?.totalB?.lay || '105',
+      totalBackTop: '14',
+      totalLayTop: '15',
+    },
+  ];
+
+  const PlayerSection = ({ player }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+
+      {/* Main */}
+      <div className="grid grid-cols-[3fr_1fr_1fr] border-b border-[#c9c9c9]">
+        <div className="flex h-[48px] items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {player.name}
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(player.name, player.mainBack, 'back', isMobile)
+          }
+          className="flex h-[48px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] hover:bg-[#5da9dc] sm:text-base"
+        >
+          {player.mainBack}
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(player.name, player.mainLay, 'lay', isMobile)
+          }
+          className="flex h-[48px] items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] hover:bg-[#ed91a7] sm:text-base"
+        >
+          {player.mainLay}
+        </button>
+      </div>
+
+      {/* Mini Baccarat */}
+      <div className="grid grid-cols-[3fr_2fr] border-b border-[#c9c9c9]">
+        <div className="flex h-[48px] items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Mini Baccarat {player.name.slice(-1)}
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(
+              `Mini Baccarat ${player.name.slice(-1)}`,
+              player.miniBaccarat,
+              'back',
+              isMobile
+            )
+          }
+          className="flex h-[48px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] hover:bg-[#5da9dc] sm:text-base"
+        >
+          {player.miniBaccarat}
+        </button>
+      </div>
+
+      {/* Total */}
+      <div className="grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Total {player.name.slice(-1)}
+        </div>
+
+        {/* Total Back */}
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(
+              `Total ${player.name.slice(-1)}`,
+              player.totalBack,
+              'lay',
+              isMobile
+            )
+          }
+          className="flex h-[48px] flex-col items-center justify-center bg-[#f5a5b8] text-[#333333] hover:brightness-95"
+        >
+          <span className="text-xs leading-4">
+            {player.totalBackTop}
+          </span>
+          <span className="text-sm font-bold leading-4 sm:text-base">
+            {player.totalBack}
+          </span>
+        </button>
+
+        {/* Total Lay */}
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(
+              `Total ${player.name.slice(-1)}`,
+              player.totalLay,
+              'back',
+              isMobile
+            )
+          }
+          className="flex h-[48px] flex-col items-center justify-center bg-[#72b9e8] text-[#333333] hover:brightness-95"
+        >
+          <span className="text-xs leading-4">
+            {player.totalLayTop}
+          </span>
+          <span className="text-sm font-bold leading-4 sm:text-base">
+            {player.totalLay}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+
+  const colorPlusOdds = markets?.colorPlus?.back || '0';
+
+  return (
+    <div className="w-full space-y-2">
+
+      {/* Player A & Player B */}
+      <div className="grid grid-cols-2 gap-2">
+        {players.map((player) => (
+          <PlayerSection
+            key={player.name}
+            player={player}
+          />
+        ))}
+      </div>
+
+      {/* Color Plus */}
+      <button
+        type="button"
+        onClick={() =>
+          openBetSlip('Color Plus', colorPlusOdds, 'back', isMobile)
+        }
+        className="flex h-[48px] w-full items-center justify-center bg-[#414b54] text-sm font-bold text-white transition-colors hover:bg-[#35414a] sm:text-base"
+      >
+        Color Plus
+      </button>
+
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 29Card Baccarat (teensin)
+// --------------------------------------------------------------------------
+function TableTeensin({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table teensin">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box mt-3 mt-md-0">
+          <div className="teenpatti20-other-oods">
+            <div className="casino-table-header">
+              <div className="casino-nation-detail">Side Bets</div>
+              <div className="casino-odds-box back">Back</div>
+            </div>
+            <div className="casino-table-body">
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus A</div>
+                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus B</div>
+                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat A</div>
+                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat B</div>
+                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Muflis Teenpatti (teenmuf)
+// --------------------------------------------------------------------------
+function TableTeenmuf({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      suffix: 'A',
+      winner: markets?.playerA?.back || '1.98',
+      top9: 'A',
+      baccarat: markets?.miniBaccaratA?.back || '1.95',
+    },
+    {
+      name: 'Player B',
+      suffix: 'B',
+      winner: markets?.playerB?.back || '1.98',
+      top9: 'B',
+      baccarat: markets?.miniBaccaratB?.back || '1.95',
+    },
+  ];
+
+  const PlayerSection = ({ player }) => {
+    const marketsList = [
+      {
+        name: 'Winner',
+        value: player.winner,
+        marketName: `Winner ${player.suffix}`,
+      },
+      {
+        name: 'Top 9',
+        value: player.top9,
+        marketName: `Top 9 ${player.suffix}`,
+      },
+      {
+        name: `M Baccarat ${player.suffix}`,
+        value: player.baccarat,
+        marketName: `M Baccarat ${player.suffix}`,
+      },
+    ];
+
+    return (
+      <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+        {/* Player Header */}
+        <div className="flex h-[48px] items-center border-b border-[#c9c9c9] bg-[#f1f1f1] px-2">
+          <span className="text-sm font-bold text-[#333333] sm:text-base">
+            {player.name}
+          </span>
+        </div>
+
+        {/* Market Names */}
+        <div className="grid grid-cols-3">
+          {marketsList.map((market, index) => (
+            <div
+              key={market.name}
+              className={`flex h-[48px] min-w-0 items-center justify-center bg-[#f1f1f1] px-1 text-center text-xs font-bold text-[#333333] sm:text-base ${
+                index !== 0 ? 'border-l border-[#c9c9c9]' : ''
+              }`}
+            >
+              {market.name}
+            </div>
+          ))}
+        </div>
+
+        {/* Odds */}
+        <div className="grid grid-cols-3">
+          {marketsList.map((market, index) => (
+            <button
+              key={market.marketName}
+              type="button"
+              disabled={isSuspended}
+              onClick={() =>
+                openBetSlip(
+                  market.marketName,
+                  market.value,
+                  'back',
+                  isMobile
+                )
+              }
+              className={`flex h-[48px] min-w-0 items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#333333] transition-colors hover:bg-[#5da9dc] disabled:cursor-not-allowed disabled:opacity-60 sm:text-base ${
+                index !== 0 ? 'border-l border-[#c9c9c9]' : ''
+              }`}
+            >
+              {market.value}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-2">
+        {players.map((player) => (
+          <PlayerSection key={player.name} player={player} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Race To 17 (race17)
+// --------------------------------------------------------------------------
+function TableRace17({ isMobile, isSuspended, openBetSlip }) {
+  const kings = [
+    { id: 'spade', name: 'Spade King', code: 'KSS', symbol: '♠', color: '#000', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'heart', name: 'Heart King', code: 'KHH', symbol: '♥', color: '#e53935', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'club', name: 'Club King', code: 'KCC', symbol: '♣', color: '#000', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'diamond', name: 'Diamond King', code: 'KDD', symbol: '♦', color: '#e53935', oddsYes: '3.75', oddsNo: '1.25' },
+  ];
+
+  return (
+    <div className="casino-table race race17">
+      <div className="casino-table-box p-3 border rounded">
+        <h5 className="fw-bold text-center mb-3">4 Kings Race to 20</h5>
+        <div className="table-responsive">
+          <table className="table table-bordered text-center align-middle mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th>King</th>
+                <th>Card</th>
+                <th style={{ width: '120px' }}>YES (Back)</th>
+                <th style={{ width: '120px' }}>NO (Lay)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kings.map((k) => (
+                <tr key={k.id}>
+                  <td className="fw-bold text-start ps-3" style={{ color: k.color }}>
+                    <span className="fs-5 me-2">{k.symbol}</span>
+                    {k.name}
+                  </td>
+                  <td>
+                    <img
+                      src={`/assets/img/cards/${k.code}.jpg`}
+                      onError={(e) => {
+                        e.currentTarget.src = `https://cdn.926assets.com/g3ver/v107/static/front/img/cards/${k.code}.jpg`;
+                      }}
+                      alt={k.name}
+                      style={{ height: '36px', borderRadius: '4px' }}
+                    />
+                  </td>
+                  <td>
+                    <OddsBox nation={`${k.name} YES`} odds={k.oddsYes} type="back" />
+                  </td>
+                  <td>
+                    <OddsBox nation={`${k.name} NO`} odds={k.oddsNo} type="lay" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 20-20 Teenpatti B (teen20b)
+// --------------------------------------------------------------------------
+function TableTeen20b({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      suffix: 'A',
+      markets: [
+        {
+          name: 'Player A',
+          odds: markets?.playerA?.back || '1.98',
+        },
+        {
+          name: '3 Baccarat A',
+          odds: markets?.baccaratA?.back || '1.98',
+        },
+        {
+          name: 'Total A',
+          odds: markets?.totalA?.back || '2',
+        },
+        {
+          name: 'Pair Plus A',
+          odds: 'A',
+        },
+      ],
+      suits: [
+        {
+          name: 'Spade Club A',
+          icons: ['♠', '♣'],
+          odds: markets?.spadeClubA?.back || '1.98',
+        },
+        {
+          name: 'Heart Diamond A',
+          icons: ['♥', '♦'],
+          odds: markets?.heartDiamondA?.back || '1.98',
+        },
+      ],
+    },
+    {
+      name: 'Player B',
+      suffix: 'B',
+      markets: [
+        {
+          name: 'Player B',
+          odds: markets?.playerB?.back || '1.98',
+        },
+        {
+          name: '3 Baccarat B',
+          odds: markets?.baccaratB?.back || '1.98',
+        },
+        {
+          name: 'Total B',
+          odds: markets?.totalB?.back || '2',
+        },
+        {
+          name: 'Pair Plus B',
+          odds: 'B',
+        },
+      ],
+      suits: [
+        {
+          name: 'Spade Club B',
+          icons: ['♠', '♣'],
+          odds: markets?.spadeClubB?.back || '1.98',
+        },
+        {
+          name: 'Heart Diamond B',
+          icons: ['♥', '♦'],
+          odds: markets?.heartDiamondB?.back || '1.98',
+        },
+      ],
+    },
+  ];
+
+  const PlayerSection = ({ player }) => (
+    <div className="min-w-0">
+      {/* Player Heading */}
+      <div className="flex h-[48px] items-center border border-[#c9c9c9] bg-[#f1f1f1] px-2">
+        <span className="text-sm font-bold text-[#333333] sm:text-base">
+          {player.name}
+        </span>
+      </div>
+
+      {/* Market Names */}
+      <div className="grid grid-cols-4">
+        {player.markets.map((market) => (
+          <div
+            key={market.name}
+            className="flex h-[46px] min-w-0 items-center justify-center border border-[#c9c9c9] bg-[#f1f1f1] px-1 text-center text-xs font-bold text-[#333333] sm:text-sm"
+          >
+            {market.name}
+          </div>
+        ))}
+      </div>
+
+      {/* Market Odds */}
+      <div className="grid grid-cols-4">
+        {player.markets.map((market) => (
+          <button
+            key={market.name}
+            type="button"
+            onClick={() =>
+              openBetSlip(market.name, market.odds, 'back', isMobile)
+            }
+            className="flex h-[46px] min-w-0 items-center justify-center border border-[#c9c9c9] bg-[#72b9e8] text-sm font-bold text-[#333333] hover:bg-[#5da9dc] sm:text-base"
+          >
+            {market.odds}
+          </button>
+        ))}
+      </div>
+
+      {/* Suit Bets */}
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {player.suits.map((suit) => (
+          <button
+            key={suit.name}
+            type="button"
+            onClick={() =>
+              openBetSlip(suit.name, suit.odds, 'back', isMobile)
+            }
+            className="flex h-[48px] min-w-0 items-center justify-between bg-[#72b9e8] px-2 hover:bg-[#5da9dc]"
+          >
+            <div className="flex items-center gap-1 text-2xl">
+              {suit.icons.map((icon) => (
+                <span
+                  key={icon}
+                  className={
+                    icon === '♥' || icon === '♦'
+                      ? 'text-[#e52c32]'
+                      : 'text-black'
+                  }
+                >
+                  {icon}
+                </span>
+              ))}
+            </div>
+
+            <span className="text-sm font-bold text-[#333333] sm:text-base">
+              {suit.odds}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-2">
+        {players.map((player) => (
+          <PlayerSection key={player.name} player={player} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Trio (trio)
+// --------------------------------------------------------------------------
+function TableTrio({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table trio">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-2 mb-3">
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 1</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 1" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 1" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 2</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 2" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 2" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 3</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 3" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 3" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box triocards mt-3">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Side Bets (Hand Combinations)</div>
+            <div className="casino-odds-box back">Back Rate</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Pair (Payout 5.5)</div>
+              <OddsBox nation="Pair" odds="5.5" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Flush (Payout 17.0)</div>
+              <OddsBox nation="Flush" odds="17.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Straight (Payout 24.0)</div>
+              <OddsBox nation="Straight" odds="24.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Trio (Payout 201.0)</div>
+              <OddsBox nation="Trio" odds="201.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Straight Flush (Payout 226.0)</div>
+              <OddsBox nation="Straight Flush" odds="226.0" type="back" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Note Number (notenum)
+// --------------------------------------------------------------------------
+function TableNotenum({ isMobile, isSuspended, openBetSlip }) {
+  const digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+
+  return (
+    <div className="casino-table notenum">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">Note Number (Ending Digit 0 - 9)</h5>
+        
+        {/* Digits 0-9 */}
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {digits.map((n) => (
+            <div
+              key={n}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(`Number ${n}`, '9.50', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '55px' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : '9.50'}</div>
+              <div className="fw-bold h5 mb-0">{n}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Odd/Even, Low/High */}
+        <div className="row g-2 justify-content-center">
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Even Digit', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Even</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Odd Digit', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Odd</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low (0-4)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Low (0-4)</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High (5-9)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">High (5-9)</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 1 CARD 20-20 (teen120)
+// --------------------------------------------------------------------------
+function TableTeen120({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.95',
+      lay: markets?.playerA?.lay || '2.00',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.95',
+      lay: markets?.playerB?.lay || '2.00',
+    },
+  ];
+
+  const sideBets = [
+    {
+      name: 'Pair Plus A',
+      odds: markets?.pairPlusA?.back || '2.0',
+    },
+    {
+      name: 'Pair Plus B',
+      odds: markets?.pairPlusB?.back || '2.0',
+    },
+    {
+      name: '3 Baccarat A',
+      odds: markets?.baccaratA?.back || '1.95',
+    },
+    {
+      name: '3 Baccarat B',
+      odds: markets?.baccaratB?.back || '1.95',
+    },
+  ];
+
+  return (
+    <div className="grid w-full grid-cols-2 items-start gap-3">
+
+      {/* LEFT: Player A / Player B */}
+      <div className="min-w-0 overflow-hidden rounded-lg border border-[#d8dee5] bg-white shadow-sm">
+
+        {/* Header */}
+        <div className="grid grid-cols-[minmax(0,1fr)_68px_68px] bg-[#4b5b6b]">
+          <div className="flex h-[44px] items-center px-3 text-sm font-bold text-white">
+            Nation
+          </div>
+
+          <div className="flex h-[44px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#253746]">
+            Back
+          </div>
+
+          <div className="flex h-[44px] items-center justify-center bg-[#f5a5b8] text-sm font-bold text-[#253746]">
+            Lay
+          </div>
+        </div>
+
+        {/* Player Rows */}
+        {players.map((player, index) => (
+          <div
+            key={player.name}
+            className={`grid grid-cols-[minmax(0,1fr)_68px_68px] ${
+              index % 2 === 0 ? 'bg-white' : 'bg-[#f6f7f8]'
+            }`}
+          >
+            <div className="flex h-[56px] items-center px-3 text-sm font-bold text-[#343a40]">
+              {player.name}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                openBetSlip(player.name, player.back, 'back', isMobile)
+              }
+              className="flex h-[56px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#253746] hover:bg-[#5da9dc]"
+            >
+              {player.back}
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                openBetSlip(player.name, player.lay, 'lay', isMobile)
+              }
+              className="flex h-[56px] items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#253746] hover:bg-[#ed91a7]"
+            >
+              {player.lay}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* RIGHT: Side Bets */}
+      <div className="min-w-0 overflow-hidden rounded-lg border border-[#d8dee5] bg-white shadow-sm">
+
+        {/* Header */}
+        <div className="grid grid-cols-[minmax(0,1fr)_76px] bg-[#4b5b6b]">
+          <div className="flex h-[44px] items-center px-3 text-sm font-bold text-white">
+            Side Bets
+          </div>
+
+          <div className="flex h-[44px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#253746]">
+            Back
+          </div>
+        </div>
+
+        {/* Side Bet Rows */}
+        {sideBets.map((bet, index) => (
+          <div
+            key={bet.name}
+            className={`grid grid-cols-[minmax(0,1fr)_76px] ${
+              index % 2 === 0 ? 'bg-white' : 'bg-[#f6f7f8]'
+            }`}
+          >
+            <div className="flex h-[56px] min-w-0 items-center px-3 text-sm font-bold text-[#343a40]">
+              {bet.name}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                openBetSlip(bet.name, bet.odds, 'back', isMobile)
+              }
+              className="flex h-[56px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#253746] hover:bg-[#5da9dc]"
+            >
+              {bet.odds}
+            </button>
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
+}
+// --------------------------------------------------------------------------
+// Game: 1 CARD ONE-DAY (teen1)
+// --------------------------------------------------------------------------
+function TableTeen1({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  const sideBets = [
+    {
+      name: 'Pair Plus A',
+      odds: markets?.pairPlusA?.back || '2.0',
+    },
+    {
+      name: 'Pair Plus B',
+      odds: markets?.pairPlusB?.back || '2.0',
+    },
+    {
+      name: '3 Baccarat A',
+      odds: markets?.baccaratA?.back || '1.95',
+    },
+    {
+      name: '3 Baccarat B',
+      odds: markets?.baccaratB?.back || '1.95',
+    },
+  ];
+
+  return (
+    <div className="grid w-full grid-cols-2 items-start gap-3">
+
+      {/* LEFT: Players */}
+      <div className="min-w-0 overflow-hidden rounded-lg border border-[#d8dee5] bg-white shadow-sm">
+
+        {/* Header */}
+        <div className="grid grid-cols-[minmax(0,1fr)_68px_68px] bg-[#4b5b6b]">
+          <div className="flex h-[44px] items-center px-3 text-sm font-bold text-white">
+            Nation
+          </div>
+
+          <div className="flex h-[44px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#253746]">
+            Back
+          </div>
+
+          <div className="flex h-[44px] items-center justify-center bg-[#f5a5b8] text-sm font-bold text-[#253746]">
+            Lay
+          </div>
+        </div>
+
+        {/* Player Rows */}
+        {players.map((player, index) => (
+          <div
+            key={player.name}
+            className={`grid grid-cols-[minmax(0,1fr)_68px_68px] ${
+              index % 2 === 0 ? 'bg-white' : 'bg-[#f6f7f8]'
+            }`}
+          >
+            <div className="flex h-[56px] items-center px-3 text-sm font-bold text-[#343a40]">
+              {player.name}
+            </div>
+
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() =>
+                openBetSlip(player.name, player.back, 'back', isMobile)
+              }
+              className="flex h-[56px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#253746] hover:bg-[#5da9dc] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {player.back}
+            </button>
+
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() =>
+                openBetSlip(player.name, player.lay, 'lay', isMobile)
+              }
+              className="flex h-[56px] items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#253746] hover:bg-[#ed91a7] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {player.lay}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* RIGHT: Side Bets */}
+      <div className="min-w-0 overflow-hidden rounded-lg border border-[#d8dee5] bg-white shadow-sm">
+
+        {/* Header */}
+        <div className="grid grid-cols-[minmax(0,1fr)_76px] bg-[#4b5b6b]">
+          <div className="flex h-[44px] items-center px-3 text-sm font-bold text-white">
+            Side Bets
+          </div>
+
+          <div className="flex h-[44px] items-center justify-center bg-[#72b9e8] text-sm font-bold text-[#253746]">
+            Back
+          </div>
+        </div>
+
+        {/* Side Bet Rows */}
+        {sideBets.map((bet, index) => (
+          <div
+            key={bet.name}
+            className={`grid grid-cols-[minmax(0,1fr)_76px] ${
+              index % 2 === 0 ? 'bg-white' : 'bg-[#f6f7f8]'
+            }`}
+          >
+            <div className="flex h-[56px] min-w-0 items-center px-3 text-sm font-bold text-[#343a40]">
+              {bet.name}
+            </div>
+
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() =>
+                openBetSlip(bet.name, bet.odds, 'back', isMobile)
+              }
+              className="flex h-[56px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#253746] hover:bg-[#5da9dc] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {bet.odds}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: ANDAR BAHAR 50 cards (ab3)
+// --------------------------------------------------------------------------
+function TableAb3({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+  return (
+    <div className="casino-table andar-bahar">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="andar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-primary mb-2">ANDAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Andar Main" odds={markets?.andar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Andar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bahar-box w-50 p-2 border rounded">
+            <div className="ab-title text-center fw-bold text-danger mb-2">BAHAR</div>
+            <div className="d-flex justify-content-center gap-2">
+              <OddsBox nation="Bahar Main" odds={markets?.bahar?.back || '1.98'} type="back" className="w-100" />
+            </div>
+            <div className="ab-cards d-flex flex-wrap justify-content-center gap-1 mt-2">
+              {cards13.map((c) => (
+                <div
+                  key={c}
+                  className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                  onClick={isSuspended ? undefined : () => openBetSlip(`Bahar ${c}`, '12.5', 'back', isMobile)}
+                  style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '35px', textAlign: 'center' }}
+                >
+                  <div className="casino-odds">{isSuspended ? '-' : '12.5'}</div>
+                  <div className="fw-bold">{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Amar Akbar Anthony 2 (aaa2)
+// --------------------------------------------------------------------------
+function TableAaa2({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table aaa">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">A. Amar</div>
+            <OddsBox nation="A. Amar" odds={markets?.amar?.back || '2.95'} type="back" />
+            <OddsBox nation="A. Amar" odds={markets?.amar?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">B. Akbar</div>
+            <OddsBox nation="B. Akbar" odds={markets?.akbar?.back || '2.95'} type="back" />
+            <OddsBox nation="B. Akbar" odds={markets?.akbar?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">C. Anthony</div>
+            <OddsBox nation="C. Anthony" odds={markets?.anthony?.back || '2.95'} type="back" />
+            <OddsBox nation="C. Anthony" odds={markets?.anthony?.lay || '3.05'} type="lay" />
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between w-100 gap-2">
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+        </div>
+
+        <div className="casino-table-full-box aaacards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">13 Cards Market (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Race to 2nd (race2)
+// --------------------------------------------------------------------------
+function TableRace2({ isMobile, isSuspended, openBetSlip }) {
+  const kings = [
+    { id: 'spade', name: 'Spade King', code: 'KSS', symbol: '♠', color: '#000', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'heart', name: 'Heart King', code: 'KHH', symbol: '♥', color: '#e53935', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'club', name: 'Club King', code: 'KCC', symbol: '♣', color: '#000', oddsYes: '3.75', oddsNo: '1.25' },
+    { id: 'diamond', name: 'Diamond King', code: 'KDD', symbol: '♦', color: '#e53935', oddsYes: '3.75', oddsNo: '1.25' },
+  ];
+
+  return (
+    <div className="casino-table race race2">
+      <div className="casino-table-box p-3 border rounded">
+        <h5 className="fw-bold text-center mb-3">4 Kings Race to 20</h5>
+        <div className="table-responsive">
+          <table className="table table-bordered text-center align-middle mb-0">
+            <thead className="table-dark">
+              <tr>
+                <th>King</th>
+                <th>Card</th>
+                <th style={{ width: '120px' }}>YES (Back)</th>
+                <th style={{ width: '120px' }}>NO (Lay)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kings.map((k) => (
+                <tr key={k.id}>
+                  <td className="fw-bold text-start ps-3" style={{ color: k.color }}>
+                    <span className="fs-5 me-2">{k.symbol}</span>
+                    {k.name}
+                  </td>
+                  <td>
+                    <img
+                      src={`/assets/img/cards/${k.code}.jpg`}
+                      onError={(e) => {
+                        e.currentTarget.src = `https://cdn.926assets.com/g3ver/v107/static/front/img/cards/${k.code}.jpg`;
+                      }}
+                      alt={k.name}
+                      style={{ height: '36px', borderRadius: '4px' }}
+                    />
+                  </td>
+                  <td>
+                    <OddsBox nation={`${k.name} YES`} odds={k.oddsYes} type="back" />
+                  </td>
+                  <td>
+                    <OddsBox nation={`${k.name} NO`} odds={k.oddsNo} type="lay" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Instant Teenpatti (teen3)
+// --------------------------------------------------------------------------
+function TableTeen3({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.96',
+      lay: markets?.playerA?.lay || '0',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.96',
+      lay: markets?.playerB?.lay || '0',
+    },
+  ];
+
+  const PlayerSection = ({ player }) => (
+    <div className="min-w-0 overflow-hidden border border-[#c9c9c9]">
+      {/* Header */}
+      <div className="grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center border-b border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          {player.name}
+        </div>
+
+        <div className="flex h-[48px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] sm:text-base">
+          Back
+        </div>
+
+        <div className="flex h-[48px] items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] sm:text-base">
+          Lay
+        </div>
+      </div>
+
+      {/* Main Market */}
+      <div className="grid grid-cols-[3fr_1fr_1fr]">
+        <div className="flex h-[48px] items-center border-t border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333333] sm:text-base">
+          Main
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(player.name, player.back, 'back', isMobile)
+          }
+          className="flex h-[48px] items-center justify-center border-l border-white bg-[#72b9e8] text-sm font-bold text-[#333333] hover:bg-[#5da9dc] sm:text-base"
+        >
+          {player.back}
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            openBetSlip(player.name, player.lay, 'lay', isMobile)
+          }
+          className="flex h-[48px] items-center justify-center border-l border-white bg-[#f5a5b8] text-sm font-bold text-[#333333] hover:bg-[#ed91a7] sm:text-base"
+        >
+          {player.lay}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="grid w-full grid-cols-2 gap-2">
+      {players.map((player) => (
+        <PlayerSection key={player.name} player={player} />
+      ))}
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: 10 Dosh / Dum 10 (dum10)
+// --------------------------------------------------------------------------
+function TableDum10({ isMobile, isSuspended, openBetSlip }) {
+  const cards = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+  return (
+    <div className="casino-table dum10">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">10 Dosh / Dum 10 (Pick 1 to 10)</h5>
+        
+        {/* Card 1 to 10 Grid */}
+        <div className="d-flex flex-wrap justify-content-center gap-2 mb-3">
+          {cards.map((c) => (
+            <div
+              key={c}
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '9.50', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px' }}
+            >
+              <div className="casino-odds">{isSuspended ? '-' : '9.50'}</div>
+              <div className="fw-bold h5 mb-0">{c}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Low/High, Even/Odd, Red/Black */}
+        <div className="row g-2 justify-content-center">
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low (1-5)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Low (1-5)</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High (6-10)', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">High (6-10)</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Even Cards', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Even</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-3">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Odd Cards', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Odd</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Card Meter 1 (cmeter1)
+// --------------------------------------------------------------------------
+function TableCmeter1({ isMobile, isSuspended, openBetSlip }) {
+  return (
+    <div className="casino-table cmeter1">
+      <div className="casino-table-box p-3 border rounded text-center">
+        <h5 className="fw-bold mb-3">Card Meter 1 (1-Card Meter Battle)</h5>
+        <div className="row g-3 mb-3">
+          <div className="col-6">
+            <div
+              className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Fighter 1', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold fs-5">Fighter 1</div>
+              <div className="casino-odds text-primary fs-4">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6">
+            <div
+              className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Fighter 2', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold fs-5">Fighter 2</div>
+              <div className="casino-odds text-primary fs-4">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Meter Over / Under 10.5 */}
+        <div className="row g-2 justify-content-center">
+          <div className="col-6 col-md-4">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Meter Under 10.5', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Meter Under 10.5</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+          <div className="col-6 col-md-4">
+            <div
+              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Meter Over 10.5', '1.95', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="fw-bold">Meter Over 10.5</div>
+              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium Teenpatti 1Day (pteen)
+// --------------------------------------------------------------------------
+function TablePteen({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table pteen">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box mt-3 mt-md-0">
+          <div className="teenpatti20-other-oods">
+            <div className="casino-table-header">
+              <div className="casino-nation-detail">Side Bets</div>
+              <div className="casino-odds-box back">Back</div>
+            </div>
+            <div className="casino-table-body">
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus A</div>
+                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus B</div>
+                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat A</div>
+                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat B</div>
+                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium Teenpatti 20-20 (pteen20)
+// --------------------------------------------------------------------------
+function TablePteen20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table pteen20">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box mt-3 mt-md-0">
+          <div className="teenpatti20-other-oods">
+            <div className="casino-table-header">
+              <div className="casino-nation-detail">Side Bets</div>
+              <div className="casino-odds-box back">Back</div>
+            </div>
+            <div className="casino-table-body">
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus A</div>
+                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus B</div>
+                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat A</div>
+                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat B</div>
+                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium Baccarat (pbaccarat)
+// --------------------------------------------------------------------------
+function TablePbaccarat({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table baccarat">
+      <div className="casino-table-full-box">
+        <div className="baccarat-main-odds">
+          <div
+            className={`player-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Player', markets?.player?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Player</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.player?.back || '1.98')}</div>
+          </div>
+
+          <div
+            className={`tie-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '9.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Tie</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.tie?.back || '9.0')}</div>
+          </div>
+
+          <div
+            className={`banker-box ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Banker', markets?.banker?.back || '1.95', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <div className="fw-bold">Banker</div>
+            <div className="casino-odds">{isSuspended ? '-' : (markets?.banker?.back || '1.95')}</div>
+          </div>
+        </div>
+
+        <div className="d-flex justify-content-between mt-3 gap-2">
+          <div
+            className={`baccarat-other-odd-box w-50 p-2 text-center rounded ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Player Pair', '11.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#d68910', color: '#fff' }}
+          >
+            <div className="fw-bold">Player Pair</div>
+            <div className="casino-odds">{isSuspended ? '-' : '11.0'}</div>
+          </div>
+          <div
+            className={`baccarat-other-odd-box w-50 p-2 text-center rounded ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Banker Pair', '11.0', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#d68910', color: '#fff' }}
+          >
+            <div className="fw-bold">Banker Pair</div>
+            <div className="casino-odds">{isSuspended ? '-' : '11.0'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium Dragon Tiger 20-20 (pdt20)
+// --------------------------------------------------------------------------
+function TablePdt20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dt20">
+      <div className="casino-table-full-box">
+        <div className="dt20-odd-box dt20dragon">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Dragon</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tie">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tie</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tiger">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tiger</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20pair">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Pair</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+      </div>
+
+      <div className="casino-table-box mt-3">
+        <div className="casino-table-left-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium Dragon Tiger 1Day (pdt6)
+// --------------------------------------------------------------------------
+function TablePdt6({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dt20">
+      <div className="casino-table-full-box">
+        <div className="dt20-odd-box dt20dragon">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Dragon</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tie">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tie</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tiger">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tiger</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20pair">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Pair</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+      </div>
+
+      <div className="casino-table-box mt-3">
+        <div className="casino-table-left-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium 32 Cards (pcard32)
+// --------------------------------------------------------------------------
+function TablePcard32({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table cards32">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 8 (8 pts)</div></div>
+              <OddsBox nation="Player 8" odds={markets?.player8?.back || '2.10'} type="back" />
+              <OddsBox nation="Player 8" odds={markets?.player8?.lay || '2.20'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 9 (9 pts)</div></div>
+              <OddsBox nation="Player 9" odds={markets?.player9?.back || '2.40'} type="back" />
+              <OddsBox nation="Player 9" odds={markets?.player9?.lay || '2.50'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box-divider"></div>
+
+        <div className="casino-table-right-box">
+          <div className="casino-table-header d-none d-md-flex">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 10 (10 pts)</div></div>
+              <OddsBox nation="Player 10" odds={markets?.player10?.back || '2.90'} type="back" />
+              <OddsBox nation="Player 10" odds={markets?.player10?.lay || '3.00'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player 11 (11 pts)</div></div>
+              <OddsBox nation="Player 11" odds={markets?.player11?.back || '3.50'} type="back" />
+              <OddsBox nation="Player 11" odds={markets?.player11?.lay || '3.60'} type="lay" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Premium Lucky 7 (plucky7)
+// --------------------------------------------------------------------------
+function TablePlucky7({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table lucky7a">
+      <div className="casino-table-box">
+        <div className="casino-table-full-box">
+          <div className="lucky7low">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.low?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low Card', markets?.low?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Low Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.seven?.back || '12')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Exact 7', markets?.seven?.back || '12', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Exact 7</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7high">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.high?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High Card', markets?.high?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">High Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3">
+          <div className="casino-table-left-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.even?.back || '2.10')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Even', markets?.even?.back || '2.10', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Even</span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.odd?.back || '1.79')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Odd', markets?.odd?.back || '1.79', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Odd</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="casino-table-right-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.red?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Red', markets?.red?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-red">Red</span></span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.black?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Black', markets?.black?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-black">Black</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between gap-2">
+          {[
+            { label: 'A-2-3', odds: '4.00' },
+            { label: '4-5-6', odds: '4.00' },
+            { label: '8-9-10', odds: '4.00' },
+            { label: 'J-Q-K', odds: '4.00' },
+          ].map((grp) => (
+            <div key={grp.label} className="lucky7cards flex-fill text-center">
+              <div className="casino-odds w-100 text-center fw-bold">{isSuspended ? '-' : grp.odds}</div>
+              <div
+                className={`card-odd-box-container p-1 border rounded ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Group ${grp.label}`, grp.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#273646' }}
+              >
+                <span className="fw-bold text-white">{grp.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-full-box lucky7acards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">Cards 1 to 13 (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual Lucky 7 (vlucky7)
+// --------------------------------------------------------------------------
+function TableVlucky7({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table lucky7a">
+      <div className="casino-table-box">
+        <div className="casino-table-full-box">
+          <div className="lucky7low">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.low?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Low Card', markets?.low?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Low Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.seven?.back || '12')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Exact 7', markets?.seven?.back || '12', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">Exact 7</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+
+          <div className="lucky7high">
+            <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.high?.back || '2')}</div>
+            <div
+              className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('High Card', markets?.high?.back || '2', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              <span className="casino-odds">High Card</span>
+            </div>
+            <div className="casino-nation-book text-center"></div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3">
+          <div className="casino-table-left-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.even?.back || '2.10')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Even', markets?.even?.back || '2.10', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Even</span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.odd?.back || '1.79')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Odd', markets?.odd?.back || '1.79', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="casino-odds">Odd</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="casino-table-right-box">
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.red?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Red', markets?.red?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-red">Red</span></span>
+              </div>
+            </div>
+            <div className="lucky7odds">
+              <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.black?.back || '1.95')}</div>
+              <div
+                className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip('Black', markets?.black?.back || '1.95', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+              >
+                <span className="card-icon ms-1"><span className="card-black">Black</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between gap-2">
+          {[
+            { label: 'A-2-3', odds: '4.00' },
+            { label: '4-5-6', odds: '4.00' },
+            { label: '8-9-10', odds: '4.00' },
+            { label: 'J-Q-K', odds: '4.00' },
+          ].map((grp) => (
+            <div key={grp.label} className="lucky7cards flex-fill text-center">
+              <div className="casino-odds w-100 text-center fw-bold">{isSuspended ? '-' : grp.odds}</div>
+              <div
+                className={`card-odd-box-container p-1 border rounded ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Group ${grp.label}`, grp.odds, 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', background: '#273646' }}
+              >
+                <span className="fw-bold text-white">{grp.label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-full-box lucky7acards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">Cards 1 to 13 (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual Trio (vtrio)
+// --------------------------------------------------------------------------
+function TableVtrio({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table trio">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between gap-2 mb-3">
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 1</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 1" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 1" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 2</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 2" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 2" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+          <div className="w-100 border p-2 rounded">
+            <div className="fw-bold">Player 3</div>
+            <div className="d-flex gap-2 mt-1">
+              <OddsBox nation="Player 3" odds="2.95" type="back" className="w-50" />
+              <OddsBox nation="Player 3" odds="3.05" type="lay" className="w-50" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-box triocards mt-3">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Side Bets (Hand Combinations)</div>
+            <div className="casino-odds-box back">Back Rate</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Pair (Payout 5.5)</div>
+              <OddsBox nation="Pair" odds="5.5" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Flush (Payout 17.0)</div>
+              <OddsBox nation="Flush" odds="17.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Straight (Payout 24.0)</div>
+              <OddsBox nation="Straight" odds="24.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Trio (Payout 201.0)</div>
+              <OddsBox nation="Trio" odds="201.0" type="back" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail">Straight Flush (Payout 226.0)</div>
+              <OddsBox nation="Straight Flush" odds="226.0" type="back" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual 20-20 DTL (vdtl20)
+// --------------------------------------------------------------------------
+function TableVdtl20({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dtl20">
+      <div className="casino-table-box">
+        <div className="casino-table-header">
+          <div className="casino-nation-detail">Nation</div>
+          <div className="casino-odds-box back">Back</div>
+          <div className="casino-odds-box lay">Lay</div>
+        </div>
+        <div className="casino-table-body">
+          <div className="casino-table-row">
+            <div className="casino-nation-detail"><div className="casino-nation-name">Dragon</div></div>
+            <OddsBox nation="Dragon" odds={markets?.dragon?.back || '2.95'} type="back" />
+            <OddsBox nation="Dragon" odds={markets?.dragon?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-table-row">
+            <div className="casino-nation-detail"><div className="casino-nation-name">Tiger</div></div>
+            <OddsBox nation="Tiger" odds={markets?.tiger?.back || '2.95'} type="back" />
+            <OddsBox nation="Tiger" odds={markets?.tiger?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-table-row">
+            <div className="casino-nation-detail"><div className="casino-nation-name">Lion</div></div>
+            <OddsBox nation="Lion" odds={markets?.lion?.back || '2.95'} type="back" />
+            <OddsBox nation="Lion" odds={markets?.lion?.lay || '3.05'} type="lay" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual Muflis Teenpatti (vteenmuf)
+// --------------------------------------------------------------------------
+function TableVteenmuf({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table vteenmuf">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box mt-3 mt-md-0">
+          <div className="teenpatti20-other-oods">
+            <div className="casino-table-header">
+              <div className="casino-nation-detail">Side Bets</div>
+              <div className="casino-odds-box back">Back</div>
+            </div>
+            <div className="casino-table-body">
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus A</div>
+                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus B</div>
+                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat A</div>
+                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat B</div>
+                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual Amar Akbar Anthony (vaaa)
+// --------------------------------------------------------------------------
+function TableVaaa({ isMobile, isSuspended, openBetSlip, markets }) {
+  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  return (
+    <div className="casino-table aaa">
+      <div className="casino-table-box">
+        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">A. Amar</div>
+            <OddsBox nation="A. Amar" odds={markets?.amar?.back || '2.95'} type="back" />
+            <OddsBox nation="A. Amar" odds={markets?.amar?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">B. Akbar</div>
+            <OddsBox nation="B. Akbar" odds={markets?.akbar?.back || '2.95'} type="back" />
+            <OddsBox nation="B. Akbar" odds={markets?.akbar?.lay || '3.05'} type="lay" />
+          </div>
+          <div className="casino-odd-box-container w-100">
+            <div className="casino-nation-name">C. Anthony</div>
+            <OddsBox nation="C. Anthony" odds={markets?.anthony?.back || '2.95'} type="back" />
+            <OddsBox nation="C. Anthony" odds={markets?.anthony?.lay || '3.05'} type="lay" />
+          </div>
+        </div>
+
+        <div className="casino-table-box mt-3 d-flex justify-content-between w-100 gap-2">
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+        </div>
+
+        <div className="casino-table-full-box aaacards mt-3">
+          <div className="casino-odds w-100 text-center fw-bold mb-1">13 Cards Market (Payout 12.0)</div>
+          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
+            {cards13.map((c) => (
+              <div
+                key={c}
+                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
+                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
+              >
+                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
+                <div className="fw-bold">{c}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual Bollywood Casino (vbtable)
+// --------------------------------------------------------------------------
+function TableVbtable({ isMobile, isSuspended, openBetSlip, markets }) {
+  const chars = [
+    { key: 'A', name: 'Don' },
+    { key: 'B', name: 'Amar' },
+    { key: 'C', name: 'Anthony' },
+    { key: 'D', name: 'Vijay' },
+    { key: 'E', name: 'Shehenshah' },
+    { key: 'F', name: 'Gabbar' },
+  ];
+  return (
+    <div className="casino-table bollywood">
+      <div className="casino-table-box">
+        <div className="row g-2 mb-3">
+          {chars.map((char) => (
+            <div key={char.key} className="col-12 col-md-4">
+              <div className="casino-odd-box-container p-2 border rounded">
+                <div className="casino-nation-name fw-bold">{char.key}. {char.name}</div>
+                <div className="d-flex gap-2 mt-1">
+                  <OddsBox nation={`${char.key}. ${char.name}`} odds="5.5" type="back" className="w-50" />
+                  <OddsBox nation={`${char.key}. ${char.name}`} odds="6.0" type="lay" className="w-50" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="casino-table-box mt-2 d-flex justify-content-between gap-2">
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
+            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual 1 Day Dragon Tiger (vdt6)
+// --------------------------------------------------------------------------
+function TableVdt6({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table dt20">
+      <div className="casino-table-full-box">
+        <div className="dt20-odd-box dt20dragon">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Dragon</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tie">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tie</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20tiger">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Tiger</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+
+        <div className="dt20-odd-box dt20pair">
+          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
+          <div
+            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
+            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+          >
+            <span className="casino-odds">Pair</span>
+          </div>
+          <div className="casino-nation-book text-center"></div>
+        </div>
+      </div>
+
+      <div className="casino-table-box mt-3">
+        <div className="casino-table-left-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box">
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Even
+            </div>
+          </div>
+          <div className="dt20-odd-box dt20odds">
+            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
+            <div
+              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
+              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
+              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+            >
+              Odd
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual 1 Day Teenpatti (vteen)
+// --------------------------------------------------------------------------
+function TableVteen({ isMobile, isSuspended, openBetSlip, markets }) {
+  return (
+    <div className="casino-table vteen">
+      <div className="casino-table-box">
+        <div className="casino-table-left-box">
+          <div className="casino-table-header">
+            <div className="casino-nation-detail">Nation</div>
+            <div className="casino-odds-box back">Back</div>
+            <div className="casino-odds-box lay">Lay</div>
+          </div>
+          <div className="casino-table-body">
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
+              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
+              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+            </div>
+            <div className="casino-table-row">
+              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
+              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
+              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+            </div>
+          </div>
+        </div>
+
+        <div className="casino-table-right-box mt-3 mt-md-0">
+          <div className="teenpatti20-other-oods">
+            <div className="casino-table-header">
+              <div className="casino-nation-detail">Side Bets</div>
+              <div className="casino-odds-box back">Back</div>
+            </div>
+            <div className="casino-table-body">
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus A</div>
+                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">Pair Plus B</div>
+                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat A</div>
+                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
+              </div>
+              <div className="casino-table-row">
+                <div className="casino-nation-detail">3 Baccarat B</div>
+                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Game: Virtual 20-20 Teen Patti (vteen20)
+// --------------------------------------------------------------------------
+
+
+function TableVteen20({ isMobile, isSuspended, openBetSlip, markets }) {
+  const mainMarkets = [
+    {
+      name: 'Player A',
+      back: markets?.playerA?.back || '1.98',
+      lay: markets?.playerA?.lay || '2.02',
+    },
+    {
+      name: 'Player B',
+      back: markets?.playerB?.back || '1.98',
+      lay: markets?.playerB?.lay || '2.02',
+    },
+  ];
+
+  const sideMarkets = [
+    { name: 'Pair Plus A', odds: '2.0' },
+    { name: 'Pair Plus B', odds: '2.0' },
+    { name: '3 Baccarat A', odds: '1.95' },
+    { name: '3 Baccarat B', odds: '1.95' },
+  ];
+
+  // Reusable Odds Button
+  const OddsButton = ({ nation, odds, type }) => {
+    const isBack = type === 'back';
+
+    return (
+      <button
+        type="button"
+        disabled={isSuspended}
+        onClick={() => {
+          if (!isSuspended) {
+            openBetSlip(nation, odds, type, isMobile);
+          }
+        }}
+        className={`
+          flex min-h-[54px] w-full min-w-0 flex-col
+          items-center justify-center gap-0.5
+          px-1 py-2 text-center
+          text-[#263747] transition-all duration-150
+          ${
+            isBack
+              ? 'bg-[#78bce9] hover:bg-[#60abe0]'
+              : 'bg-[#f5a6ba] hover:bg-[#ed91a9]'
+          }
+          ${
+            isSuspended
+              ? 'cursor-not-allowed opacity-50'
+              : 'cursor-pointer active:brightness-95'
+          }
+        `}
+      >
+        <span className="text-base font-bold leading-5">
+          {isSuspended ? '-' : odds}
+        </span>
+      </button>
+    );
+  };
+
+  // Main Bets Section
+  const MainBets = () => (
+    <section className="min-w-0 overflow-hidden rounded-md border border-[#d5d9de] bg-white shadow-sm">
+
+      {/* Header */}
+      <div className="grid grid-cols-[minmax(0,1fr)_80px_80px] bg-[#4b5b6b] text-white">
+
+        <div className="flex items-center px-3 py-3">
+          <span className="text-sm font-bold">
+            Nation
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white/20 bg-[#72b9e8] py-3 text-sm font-bold text-[#263747]">
+          Back
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white/20 bg-[#f5a6ba] py-3 text-sm font-bold text-[#263747]">
+          Lay
+        </div>
+
+      </div>
+
+      {/* Players */}
+      <div>
+        {mainMarkets.map((item, index) => (
+          <div
+            key={item.name}
+            className={`
+              grid grid-cols-[minmax(0,1fr)_80px_80px]
+              min-h-[66px] border-t border-[#dfe2e6]
+              ${index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'}
+            `}
+          >
+
+            {/* Player Name */}
+            <div className="flex min-w-0 items-center px-3 py-3">
+              <span className="break-words text-sm font-semibold text-[#343a40] sm:text-base">
+                {item.name}
+              </span>
+            </div>
+
+            {/* Back */}
+            <div className="flex items-stretch border-l border-white/60">
+              <OddsButton
+                nation={item.name}
+                odds={item.back}
+                type="back"
+              />
+            </div>
+
+            {/* Lay */}
+            <div className="flex items-stretch border-l border-white/60">
+              <OddsButton
+                nation={item.name}
+                odds={item.lay}
+                type="lay"
+              />
+            </div>
+
+          </div>
+        ))}
+      </div>
+
+    </section>
+  );
+
+  // Side Bets Section
+  const SideBets = () => (
+    <section className="min-w-0 overflow-hidden rounded-md border border-[#d5d9de] bg-white shadow-sm">
+
+      {/* Header */}
+      <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] text-white">
+
+        <div className="flex items-center px-3 py-3">
+          <span className="text-sm font-bold">
+            Side Bets
+          </span>
+        </div>
+
+        <div className="flex items-center justify-center border-l border-white/20 bg-[#72b9e8] py-3 text-sm font-bold text-[#263747]">
+          Back
+        </div>
+
+      </div>
+
+      {/* Side Bets Rows */}
+      <div>
+        {sideMarkets.map((item, index) => (
+          <div
+            key={item.name}
+            className={`
+              grid grid-cols-[minmax(0,1fr)_90px]
+              min-h-[66px] border-t border-[#dfe2e6]
+              ${index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'}
+            `}
+          >
+
+            {/* Name */}
+            <div className="flex min-w-0 items-center px-3 py-3">
+              <span className="break-words text-sm font-medium text-[#343a40] sm:text-base">
+                {item.name}
+              </span>
+            </div>
+
+            {/* Odds */}
+            <div className="flex items-stretch border-l border-white/60">
+              <OddsButton
+                nation={item.name}
+                odds={item.odds}
+                type="back"
+              />
+            </div>
+
+          </div>
+        ))}
+      </div>
+
+    </section>
+  );
+
+  return (
+    <div className="w-full min-w-0 bg-[#f5f6f8] p-2 sm:p-3">
+
+      {/* Main Layout */}
+      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 lg:gap-4">
+
+        {/* Left: Main Bets */}
+        <MainBets />
+
+        {/* Right: Side Bets */}
+        <SideBets />
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// Master Market Table Dispatcher with 93 Dedicated Cases (Zero Grouping)
+// --------------------------------------------------------------------------
+export const TABLE_COMPONENTS = {
+  goal2: Goal2Table,
+  worli3: TableWorli3,
+  dolidana: TableDolidana,
+  mogambo: TableMogambo,
+  lucky5: TableLucky5,
+  roulette12: TableRoulette12,
+  roulette13: TableRoulette13,
+  roulette11: TableRoulette11,
+  poison: TablePoison,
+  teenunique: TableTeenunique,
+  poison20: TablePoison20,
+  joker120: TableJoker120,
+  joker20: TableJoker20,
+  joker1: TableJoker1,
+  teen20c: TableTeen20c,
+  btable2: TableBtable2,
+  ourroullete: TableOurroullete,
+  superover3: TableSuperover3,
+  goal: TableGoal,
+  ab4: TableAb4,
+  lucky15: TableLucky15,
+  superover2: TableSuperover2,
+  teen41: TableTeen41,
+  teen42: TableTeen42,
+  sicbo2: TableSicbo2,
+  teen33: TableTeen33,
+  sicbo: TableSicbo,
+  ballbyball: TableBallbyball,
+  teen32: TableTeen32,
+  teen: TableTeen,
+  teen20: TableTeen20,
+  teen9: TableTeen9,
+  teen8: TableTeen8,
+  poker: TablePoker,
+  poker20: TablePoker20,
+  poker6: TablePoker6,
+  baccarat: TableBaccarat,
+  baccarat2: TableBaccarat2,
+  dt20: TableDt20,
+  dt6: TableDt6,
+  dtl20: TableDtl20,
+  dt202: TableDt202,
+  card32: TableCard32,
+  card32eu: TableCard32eu,
+  ab20: TableAb20,
+  abj: TableAbj,
+  lucky7: TableLucky7,
+  lucky7eu: TableLucky7eu,
+  '3cardj': Table3cardj,
+  worli: TableWorli,
+  worli2: TableWorli2,
+  aaa: TableAaa,
+  btable: TableBtable,
+  lottcard: TableLottcard,
+  cricketv3: TableCricketv3,
+  cmatch20: TableCmatch20,
+  teen6: TableTeen6,
+  queen: TableQueen,
+  race20: TableRace20,
+  lucky7eu2: TableLucky7eu2,
+  superover: TableSuperover,
+  trap: TableTrap,
+  patti2: TablePatti2,
+  teensin: TableTeensin,
+  teenmuf: TableTeenmuf,
+  race17: TableRace17,
+  teen20b: TableTeen20b,
+  trio: TableTrio,
+  notenum: TableNotenum,
+  teen120: TableTeen120,
+  teen1: TableTeen1,
+  ab3: TableAb3,
+  aaa2: TableAaa2,
+  race2: TableRace2,
+  teen3: TableTeen3,
+  dum10: TableDum10,
+  cmeter1: TableCmeter1,
+  pteen: TablePteen,
+  pteen20: TablePteen20,
+  pbaccarat: TablePbaccarat,
+  pdt20: TablePdt20,
+  pdt6: TablePdt6,
+  pcard32: TablePcard32,
+  plucky7: TablePlucky7,
+  vlucky7: Vlucky7Table,
+  vtrio: TableVtrio,
+  vdtl20: TableVdtl20,
+  vteenmuf: TableVteenmuf,
+  vaaa: TableVaaa,
+  vbtable: TableVbtable,
+  vdt6: TableVdt6,
+  vteen: TableVteen,
+  vteen20: TableVteen20,
+};
+
+export default function GameMarketTable() {
+  const { selectedGame, roundData, isSuspended, openBetSlip } = useCasino();
+  const markets = roundData?.markets || {};
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1200;
+
+  switch (selectedGame) {
+    case 'goal2':
+      return <Goal2Table />;
+    case 'vlucky7':
+      return <Vlucky7Table />;
+    case 'worli3':
+      return <TableWorli3 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'dolidana':
+      return <TableDolidana isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'mogambo':
+      return <TableMogambo isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'lucky5':
+      return <TableLucky5 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'roulette12':
+      return <TableRoulette12 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'roulette13':
+      return <TableRoulette13 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'roulette11':
+      return <TableRoulette11 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'poison':
+      return <TablePoison isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teenunique':
+      return <TableTeenunique isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'poison20':
+      return <TablePoison20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'joker120':
+      return <TableJoker120 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'joker20':
+      return <TableJoker20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'joker1':
+      return <TableJoker1 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen20c':
+      return <TableTeen20c isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'btable2':
+      return <TableBtable2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'ourroullete':
+      return <TableOurroullete isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'superover3':
+      return <TableSuperover3 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'goal':
+      return <TableGoal isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'ab4':
+      return <TableAb4 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'lucky15':
+      return <TableLucky15 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'superover2':
+      return <TableSuperover2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen41':
+      return <TableTeen41 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen42':
+      return <TableTeen42 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'sicbo2':
+      return <TableSicbo2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen33':
+      return <TableTeen33 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'sicbo':
+      return <TableSicbo isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'ballbyball':
+      return <TableBallbyball isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen32':
+      return <TableTeen32 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen':
+      return <TableTeen isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen20':
+      return <TableTeen20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen9':
+      return <TableTeen9 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen8':
+      return <TableTeen8 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'poker':
+      return <TablePoker isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'poker20':
+      return <TablePoker20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'poker6':
+      return <TablePoker6 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'baccarat':
+      return <TableBaccarat isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'baccarat2':
+      return <TableBaccarat2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'dt20':
+      return <TableDt20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'dt6':
+      return <TableDt6 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'dtl20':
+      return <TableDtl20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'dt202':
+      return <TableDt202 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'card32':
+      return <TableCard32 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'card32eu':
+      return <TableCard32eu isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'ab20':
+      return <TableAb20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'abj':
+      return <TableAbj isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'lucky7':
+      return <TableLucky7 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'lucky7eu':
+      return <TableLucky7eu isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case '3cardj':
+      return <Table3cardj isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'worli':
+      return <TableWorli isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'worli2':
+      return <TableWorli2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'aaa':
+      return <TableAaa isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'btable':
+      return <TableBtable isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'lottcard':
+      return <TableLottcard isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'cricketv3':
+      return <TableCricketv3 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'cmatch20':
+      return <TableCmatch20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen6':
+      return <TableTeen6 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'queen':
+      return <TableQueen isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'race20':
+      return <TableRace20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'lucky7eu2':
+      return <TableLucky7eu2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'superover':
+      return <TableSuperover isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'trap':
+      return <TableTrap isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'patti2':
+      return <TablePatti2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teensin':
+      return <TableTeensin isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teenmuf':
+      return <TableTeenmuf isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'race17':
+      return <TableRace17 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen20b':
+      return <TableTeen20b isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'trio':
+      return <TableTrio isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'notenum':
+      return <TableNotenum isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen120':
+      return <TableTeen120 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen1':
+      return <TableTeen1 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'ab3':
+      return <TableAb3 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'aaa2':
+      return <TableAaa2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'race2':
+      return <TableRace2 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'teen3':
+      return <TableTeen3 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'dum10':
+      return <TableDum10 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'cmeter1':
+      return <TableCmeter1 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'pteen':
+      return <TablePteen isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'pteen20':
+      return <TablePteen20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'pbaccarat':
+      return <TablePbaccarat isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'pdt20':
+      return <TablePdt20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'pdt6':
+      return <TablePdt6 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'pcard32':
+      return <TablePcard32 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'plucky7':
+      return <TablePlucky7 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vtrio':
+      return <TableVtrio isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vdtl20':
+      return <TableVdtl20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vteenmuf':
+      return <TableVteenmuf isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vaaa':
+      return <TableVaaa isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vbtable':
+      return <TableVbtable isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vdt6':
+      return <TableVdt6 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vteen':
+      return <TableVteen isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    case 'vteen20':
+      return <TableVteen20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+    default:
+      return <TableVteen20 isMobile={isMobile} isSuspended={isSuspended} openBetSlip={openBetSlip} markets={markets} />;
+  }
+}

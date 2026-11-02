@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <radialGradient id="ballShade" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="70%" stop-color="#e0e0e0"/>
+      <stop offset="100%" stop-color="#9e9e9e"/>
+    </radialGradient>
+  </defs>
+  <!-- Ball base -->
+  <circle cx="100" cy="100" r="95" fill="url(#ballShade)" stroke="#222" stroke-width="4"/>
+  <!-- Center Pentagon -->
+  <polygon points="100,68 126,87 116,118 84,118 74,87" fill="#1a1a1a" stroke="#222" stroke-width="3"/>
+  <!-- Outer polygons and seams -->
+  <line x1="100" y1="68" x2="100" y2="28" stroke="#222" stroke-width="3"/>
+  <polygon points="100,28 78,12 122,12" fill="#1a1a1a" stroke="#222" stroke-width="3"/>
+  
+  <line x1="126" y1="87" x2="162" y2="76" stroke="#222" stroke-width="3"/>
+  <polygon points="162,76 182,54 188,86 172,108" fill="#1a1a1a" stroke="#222" stroke-width="3"/>
+
+  <line x1="116" y1="118" x2="140" y2="150" stroke="#222" stroke-width="3"/>
+  <polygon points="140,150 168,162 144,188 120,180" fill="#1a1a1a" stroke="#222" stroke-width="3"/>
+
+  <line x1="84" y1="118" x2="60" y2="150" stroke="#222" stroke-width="3"/>
+  <polygon points="60,150 32,162 56,188 80,180" fill="#1a1a1a" stroke="#222" stroke-width="3"/>
+
+  <line x1="74" y1="87" x2="38" y2="76" stroke="#222" stroke-width="3"/>
+  <polygon points="38,76 18,54 12,86 28,108" fill="#1a1a1a" stroke="#222" stroke-width="3"/>
+</svg>

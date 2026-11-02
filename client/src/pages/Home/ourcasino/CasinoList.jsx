@@ -50,21 +50,26 @@ function CasinoList() {
   return (
     <>
       {/* <OurCasino  selectedNav="Our Casino"/> */}
-      <div className='flex w-full flex-col md:flex-row md:p-0.5'>
+     <div className='flex w-full flex-row md:p-0.5'>
         {/* Categories Bar - Horizontal scrollable on mobile, Vertical sidebar on desktop */}
-        <div className='scrollbar-hide bg-primary text-primary md-desktop-bg flex w-full flex-row overflow-x-auto md:w-1/6 md:flex-col md:overflow-x-visible md:overflow-y-auto'>
-          {casinoCategories.map((category) => (
-            <button
-              key={category.id}
-              className={`flex-shrink-0 px-2 py-1 text-sm text-[16px] font-[400] whitespace-nowrap md:p-1 ${activeCategory === category.name ? 'bg-primary' : ''}`}
-              onClick={() => {
-                setActiveCategory(category.name);
-              }}
-            >
-              {category.name}
-            </button>
-          ))}
-        </div>
+        {/* Categories Bar - Always Vertical */}
+<div className='scrollbar-hide bg-primary md-desktop-bg flex w-full flex-col overflow-y-auto overflow-x-hidden md:w-1/6'>
+  {casinoCategories.map((category) => (
+    <button
+      key={category.id}
+      className={`w-full flex-shrink-0 whitespace-nowrap px-3 py-3 text-center text-[16px] font-[400] ${
+        activeCategory === category.name
+          ? 'bg-blue-600 text-white'
+          : 'text-white'
+      }`}
+      onClick={() => {
+        setActiveCategory(category.name);
+      }}
+    >
+      {category.name}
+    </button>
+  ))}
+</div>
         {/* Casino Grid */}
         <div className='w-full md:w-5/6'>
           {casinos.length === 0 && loader.games && (

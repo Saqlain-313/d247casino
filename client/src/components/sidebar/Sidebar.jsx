@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { FaRegMinusSquare, FaRegPlusSquare } from 'react-icons/fa';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
-import { FaRegPlusSquare } from 'react-icons/fa';
-import { FaRegMinusSquare } from 'react-icons/fa';
 import { RiCloseCircleLine } from 'react-icons/ri';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import HorseRacing from '../../pages/Home/HorseRacing';
 import { fetchCricketData } from '../../redux/reducer/cricketSlice';
+import { fetchHorseRacingData } from '../../redux/reducer/horseRacingSlice';
 import { fetchSoccerData } from '../../redux/reducer/soccerSlice';
 import { fetchTennisData } from '../../redux/reducer/tennisSlice';
-import { fetchHorseRacingData } from '../../redux/reducer/horseRacingSlice';
-import HorseRacing from '../../pages/Home/HorseRacing';
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
@@ -238,7 +237,7 @@ function Sidebar({ isOpen, onClose }) {
           <div className=''>
             <button
               onClick={() => toggleItem('racingSports')}
-              className='bg-primary text-primary flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 hover:opacity-80'
+              className='bg-primary text-white flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 hover:opacity-80'
             >
               <span className='text-md font-[500]'>Racing Sports</span>
               {isExpanded('racingSports') ? <FiChevronUp /> : <FiChevronDown />}
@@ -265,33 +264,32 @@ function Sidebar({ isOpen, onClose }) {
               </div>
             )}
           </div>
-          {/* Others Section */}
-          <div className=''>
-            <button
-              onClick={() => toggleItem('others')}
-              className='bg-primary text-primary flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 hover:opacity-80'
-            >
-              <span className='text-md font-[500]'>Others</span>
-              {isExpanded('others') ? <FiChevronUp /> : <FiChevronDown />}
-            </button>
-            {isExpanded('others') && (
-              <div className=''>
-                {others.map((item) => (
-                  <a
-                    key={item.name}
-                    className={`block cursor-pointer border-b border-b-[#9e9e9e] p-1 pl-4 text-sm font-[400] text-[#000000] transition-colors ${
-                      item.animate
-                        ? 'animate-blink opacity-50'
-                        : 'hover:opacity-70'
-                    }`}
-                    onClick={() => navigate(item.path)}
-                  >
-                    {item.name}
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
+{/* Others Section */}
+<div>
+  <button
+    onClick={() => toggleItem('others')}
+    className='bg-primary text-white flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-2 hover:opacity-80'
+  >
+    <span className='text-md font-[500]'>Others</span>
+
+    {isExpanded('others') ? <FiChevronUp /> : <FiChevronDown />}
+  </button>
+
+  {isExpanded('others') && (
+    <div className='w-full'>
+      {others.map((item) => (
+        <button
+          key={item.name}
+          type='button'
+          onClick={() => navigate(item.path)}
+          className='block w-full cursor-pointer border-b border-b-[#9e9e9e] bg-transparent p-2 pl-4 text-left text-sm font-[400] !text-gray-600 opacity-100 transition-colors hover:!text-gray-800'
+        >
+          {item.name}
+        </button>
+      ))}
+    </div>
+  )}
+</div>
 
           {/* All Sports Section */}
           <div className=''>
@@ -299,7 +297,7 @@ function Sidebar({ isOpen, onClose }) {
               onClick={() => toggleItem('allSports')}
               className='bg-primary text-primary flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 hover:opacity-80'
             >
-              <span className='text-md font-[500]'>All Sports</span>
+              <span className='text-md text-white font-[500]'>All Sports</span>
               {isExpanded('allSports') ? <FiChevronUp /> : <FiChevronDown />}
             </button>
             {isExpanded('allSports') && (
