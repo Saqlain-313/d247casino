@@ -1610,7 +1610,7 @@ function TableTeen20c({ isMobile, isSuspended, openBetSlip, markets }) {
 // --------------------------------------------------------------------------
 function TableBtable2({ isMobile, isSuspended, openBetSlip, markets }) {
   const chars = [
-    { key: 'A', name: 'Don' },
+    { key: 'A', name: 'Don12' },
     { key: 'B', name: 'Amar' },
     { key: 'C', name: 'Anthony' },
     { key: 'D', name: 'Vijay' },
@@ -5071,7 +5071,7 @@ function TableBtable({ isMobile, isSuspended, openBetSlip, markets }) {
           {chars.map((char) => (
             <div key={char.key} className="col-12 col-md-4">
               <div className="casino-odd-box-container p-2 border rounded">
-                <div className="casino-nation-name fw-bold">{char.key}. {char.name}</div>
+                <div className="casino-nation-name fw-bold">{char.key}. {char.name} </div>
                 <div className="d-flex gap-2 mt-1">
                   <OddsBox nation={`${char.key}. ${char.name}`} odds="5.5" type="back" className="w-50" />
                   <OddsBox nation={`${char.key}. ${char.name}`} odds="6.0" type="lay" className="w-50" />
