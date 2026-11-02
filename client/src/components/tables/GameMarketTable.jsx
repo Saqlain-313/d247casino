@@ -1610,49 +1610,184 @@ function TableTeen20c({ isMobile, isSuspended, openBetSlip, markets }) {
 // --------------------------------------------------------------------------
 function TableBtable2({ isMobile, isSuspended, openBetSlip, markets }) {
   const chars = [
-    { key: 'A', name: 'Don12' },
-    { key: 'B', name: 'Amar' },
-    { key: 'C', name: 'Anthony' },
-    { key: 'D', name: 'Vijay' },
-    { key: 'E', name: 'Shehenshah' },
-    { key: 'F', name: 'Gabbar' },
+    { key: 'A', name: 'Don', back: '15', lay: '17' },
+    { key: 'B', name: 'Amar Akbar Anthony', back: '5.15', lay: '5.5' },
+    { key: 'C', name: 'Sahib Bibi Aur Ghulam', back: '5.15', lay: '5.5' },
+    { key: 'D', name: 'Dharam Veer', back: '7.65', lay: '8.35' },
+    { key: 'E', name: 'Kis Kis ko Pyaar Karoon', back: '3.85', lay: '4.15' },
+    { key: 'F', name: 'Ghulam', back: '5.15', lay: '5.5' },
   ];
+
+  const suits = [
+    { name: 'Red', symbols: '♥ ♦', odds: '1.97', color: 'text-red-600' },
+    { name: 'Black', symbols: '♠ ♣', odds: '1.97', color: 'text-black' },
+  ];
+
+  const cards = ['J', 'Q', 'K', 'A'];
+
+  const GradientButton = ({ name, odds, nation }) => (
+    <button
+      type="button"
+      disabled={isSuspended}
+      onClick={() => openBetSlip(nation || name, odds, 'back', isMobile)}
+      className="flex h-[55px] w-full items-center justify-center bg-gradient-to-r from-[#078dcc] to-[#293e50] px-2 text-center text-sm font-bold text-white shadow-md disabled:opacity-60 sm:h-[65px] sm:text-lg"
+    >
+      {name}
+    </button>
+  );
+
   return (
-    <div className="casino-table bollywood">
-      <div className="casino-table-box">
-        <div className="row g-2 mb-3">
-          {chars.map((char) => (
-            <div key={char.key} className="col-12 col-md-4">
-              <div className="casino-odd-box-container p-2 border rounded">
-                <div className="casino-nation-name fw-bold">{char.key}. {char.name}</div>
-                <div className="d-flex gap-2 mt-1">
-                  <OddsBox nation={`${char.key}. ${char.name}`} odds="5.5" type="back" className="w-50" />
-                  <OddsBox nation={`${char.key}. ${char.name}`} odds="6.0" type="lay" className="w-50" />
-                </div>
+    <div className="w-full bg-[#f5f5f5] p-1">
+
+      {/* Character Markets */}
+      <div className="grid grid-cols-2 gap-x-2 gap-y-5 md:grid-cols-3">
+        {chars.map((char) => (
+          <div key={char.key} className="min-w-0">
+            <div className="mb-1 truncate text-center text-sm font-bold text-[#333] sm:text-lg">
+              {char.key}.{char.name}
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                type="button"
+                disabled={isSuspended}
+                onClick={() =>
+                  openBetSlip(`${char.key}.${char.name}`, char.back, 'back', isMobile)
+                }
+                className="flex h-[45px] items-center justify-center bg-[#72b9e8] text-base font-bold text-[#333] disabled:opacity-60 sm:h-[80px] sm:text-xl"
+              >
+                {isSuspended ? '-' : char.back}
+              </button>
+
+              <button
+                type="button"
+                disabled={isSuspended}
+                onClick={() =>
+                  openBetSlip(`${char.key}.${char.name}`, char.lay, 'lay', isMobile)
+                }
+                className="flex h-[45px] items-center justify-center bg-[#f5a5b8] text-base font-bold text-[#333] disabled:opacity-60 sm:h-[80px] sm:text-xl"
+              >
+                {isSuspended ? '-' : char.lay}
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Odd + Dulha Dulhan + Barati */}
+      <div className="mt-6 grid grid-cols-1 gap-2 md:grid-cols-[0.75fr_2.25fr]">
+
+        {/* Odd */}
+        <div className="border border-[#c8c8c8] p-1">
+          <div className="mb-1 text-center text-lg font-bold text-[#333]">
+            Odd
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() => openBetSlip('Odd', '1.32', 'back', isMobile)}
+              className="flex h-[55px] items-center justify-center bg-[#72b9e8] text-lg font-bold text-[#333]"
+            >
+              {isSuspended ? '-' : '1.32'}
+            </button>
+
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() => openBetSlip('Even', '1.36', 'lay', isMobile)}
+              className="flex h-[55px] items-center justify-center bg-[#f5a5b8] text-lg font-bold text-[#333]"
+            >
+              {isSuspended ? '-' : '1.36'}
+            </button>
+          </div>
+        </div>
+
+        {/* Dulha Dulhan / Barati */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+          <div className="border border-[#c8c8c8] p-2">
+            <div className="mb-1 text-center text-lg font-bold text-[#333]">
+              1.97
+            </div>
+            <GradientButton
+              name="Dulha Dulhan K-Q"
+              odds="1.97"
+            />
+          </div>
+
+          <div className="border border-[#c8c8c8] p-2">
+            <div className="mb-1 text-center text-lg font-bold text-[#333]">
+              1.97
+            </div>
+            <GradientButton
+              name="Barati J-A"
+              odds="1.97"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Suits + Cards */}
+      <div className="mt-5 grid grid-cols-1 gap-2 md:grid-cols-2">
+
+        {/* Suits */}
+        <div className="grid grid-cols-2 gap-2 border border-[#c8c8c8] p-2">
+          {suits.map((suit) => (
+            <div key={suit.name}>
+              <div className="mb-1 text-center text-lg font-bold text-[#333]">
+                {suit.odds}
               </div>
+
+              <button
+                type="button"
+                disabled={isSuspended}
+                onClick={() =>
+                  openBetSlip(suit.name, suit.odds, 'back', isMobile)
+                }
+                className="flex h-[65px] w-full items-center justify-center bg-gradient-to-r from-[#078dcc] to-[#293e50] text-3xl shadow-md disabled:opacity-60"
+              >
+                <span className={suit.color}>{suit.symbols}</span>
+              </button>
             </div>
           ))}
         </div>
 
-        <div className="casino-table-box mt-2 d-flex justify-content-between gap-2">
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
+        {/* Cards */}
+        <div className="flex min-h-[140px] flex-col items-center justify-center border border-[#c8c8c8] p-2">
+          <div className="mb-3 text-center text-xl font-bold text-[#333]">
+            3.75
           </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+            {cards.map((card) => (
+              <button
+                key={card}
+                type="button"
+                disabled={isSuspended}
+                onClick={() =>
+                  openBetSlip(`Card ${card}`, '3.75', 'back', isMobile)
+                }
+                className="flex h-[65px] w-[42px] flex-col items-center justify-between border-2 border-yellow-300 bg-white py-0.5 text-black disabled:opacity-60 sm:h-[82px] sm:w-[55px]"
+              >
+                <span className="text-2xl font-bold leading-none sm:text-4xl">
+                  {card}
+                </span>
+                <span className="text-base leading-none sm:text-xl">
+                  ♠ ♦
+                </span>
+                <span className="text-base leading-none sm:text-xl">
+                  ♣ ♥
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
     </div>
   );
 }
-
 // --------------------------------------------------------------------------
 // Game: Unique Roulette (ourroullete)
 // --------------------------------------------------------------------------
