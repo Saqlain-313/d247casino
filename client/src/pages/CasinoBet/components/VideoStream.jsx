@@ -5,7 +5,7 @@ import CardsDisplay from './CardsDisplay';
 import RulesPopup from './RulesPopup';
 
 const VideoStream = memo(function VideoStream({
-  gameid,
+  eventName,
   bettingData,
   showWinner,
   winnerLabel,
@@ -18,10 +18,10 @@ const VideoStream = memo(function VideoStream({
     setVideoload(true);
     setFailed(false);
     setShowRules(false);
-  }, [gameid]);
+  }, [eventName]);
 
-  // console.log('Video stream casino game ID:', gameid);
-  // console.log('Video stream URL:', getVideoStreamUrl(gameid));
+  // console.log('Video stream casino game ID:', eventName);
+  // console.log('Video stream URL:', getVideoStreamUrl(eventName));
 
   // Video load timeout
   useEffect(() => {
@@ -32,13 +32,13 @@ const VideoStream = memo(function VideoStream({
     }, VIDEO_LOAD_TIMEOUT);
 
     return () => clearTimeout(timeout);
-  }, [videoload, gameid]);
+  }, [videoload, eventName]);
 
   return (
     <div className='relative flex h-[200px] w-full items-center justify-center bg-black md:h-[420px]'>
       {/* Video Iframe */}
       {/* <iframe
-        src={getVideoStreamUrl(gameid)}
+        src={getVideoStreamUrl(eventName)}
         frameBorder='0'
         allowFullScreen
         style={{
@@ -56,7 +56,7 @@ const VideoStream = memo(function VideoStream({
         onError={() => console.warn('Iframe load error')}
       /> */}
       <iframe
-        src={getVideoStreamUrl(gameid)}
+        src={getVideoStreamUrl(eventName)}
         title='Casino TV'
         style={{ width: '100%', height: '100%', border: 'none' }}
         allowFullScreen
@@ -87,7 +87,7 @@ const VideoStream = memo(function VideoStream({
       </div>
 
       {showRules && (
-        <RulesPopup gameid={gameid} onClose={() => setShowRules(false)} />
+        <RulesPopup eventName={eventName} onClose={() => setShowRules(false)} />
       )}
 
       {/* Timer Overlay */}

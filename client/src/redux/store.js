@@ -6,6 +6,7 @@ import casinoReducer from './reducer/casinoSlice';
 import cricketReducer from './reducer/cricketSlice';
 import horseRacingReducer from './reducer/horseRacingSlice';
 // import horseRacingBetReducer from './reducer/horseRacingBetSlice';
+import casinoBetReducer from './reducer/casinoBetSlice';
 import soccerReducer from './reducer/soccerSlice';
 import tennisReducer from './reducer/tennisSlice';
 export const store = configureStore({
@@ -18,5 +19,6 @@ export const store = configureStore({
     soccer: soccerReducer,
     bet: betReducer,
     casino: casinoReducer,
+    casinoBet: casinoBetReducer,
   },
 });
