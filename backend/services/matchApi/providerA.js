@@ -174,7 +174,6 @@ export function createProviderA() {
         `${API_URL}/diamond/casino/detail_result?key=${API_KEY}&type=${gtype}&mid=${mid}`
       );
 
-      console.log(response,"malik1234")
       return response.data;
     },
 
