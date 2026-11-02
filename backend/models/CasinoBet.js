@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const betSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true, required: true },
@@ -18,4 +18,4 @@ const betSchema = new mongoose.Schema({
 
 betSchema.index({ slug: 1, roundId: 1, status: 1 });
 
-module.exports = mongoose.models.CasinoBet || mongoose.model('CasinoBet', betSchema);
+export default mongoose.models.CasinoBet || mongoose.model('CasinoBet', betSchema);

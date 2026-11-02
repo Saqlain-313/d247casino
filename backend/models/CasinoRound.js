@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const roundSchema = new mongoose.Schema({
   slug: { type: String, required: true },
@@ -10,4 +10,4 @@ const roundSchema = new mongoose.Schema({
 
 roundSchema.index({ slug: 1, roundId: 1 }, { unique: true });
 
-module.exports = mongoose.models.CasinoRound || mongoose.model('CasinoRound', roundSchema);
+export default mongoose.models.CasinoRound || mongoose.model('CasinoRound', roundSchema);
