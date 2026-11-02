@@ -227,7 +227,7 @@ export const getCasinoResultData = async (req, res) => {
   if (!eventName) {
     return res.status(400).json({
       success: false,
-      message: 'Game Id is required',
+      message: 'Game event is required',
     });
   }
 

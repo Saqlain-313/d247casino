@@ -28,6 +28,7 @@ import tennisRoutes from './routes/tennisRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cashoutRoute from './routes/cashoutRoute.js';
 import nonDeclaredRoutes from './routes/nonDeclaredRoutes.js';
+import casinobetRoutes from './routes/casinobetRoutes.js'
 
 import { setupWebSocket } from './socket/bettingSocket.js';
 import { connectRedis } from './config/redis.js';
@@ -93,6 +94,7 @@ app.use('/api', marketAnalizeRoutes);
 app.use('/api', matchSettingsRoutes);
 app.use('/api', manualResultRoutes);
 app.use('/api', cashoutRoute);
+app.use('/api', casinobetRoutes);
 app.use(nonDeclaredRoutes);
 
 // Static files

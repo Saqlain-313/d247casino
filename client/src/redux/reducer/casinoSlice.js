@@ -70,10 +70,10 @@ export const fetchCasinoBatingData = createAsyncThunk(
 // Async thunk to fetch casino result
 export const fetchCasinoResultData = createAsyncThunk(
   'casino/fetchCasinoResultData',
-  async (gameId, { rejectWithValue }) => {
+  async (eventName, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/casino-betting-result?gameId=${gameId}`);
-      return { data: response.data.data, gameId };
+      const response = await api.get(`/casino-betting-result?eventName=${eventName}`);
+      return { data: response.data.data, eventName };
     } catch (error) {
       if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
         return rejectWithValue('Request cancelled');
