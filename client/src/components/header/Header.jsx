@@ -256,27 +256,21 @@
 
 // export default Header;
 
-import React, { useState, useEffect, useRef } from 'react';
-import { FiMenu, FiSearch, FiChevronDown } from 'react-icons/fi';
-import { IoMdClose } from 'react-icons/io';
+import { useEffect, useRef, useState } from 'react';
 import { FaSearchPlus } from 'react-icons/fa';
-import { IoLogoAndroid } from 'react-icons/io';
-import { useNavigate } from 'react-router-dom';
-import Alllogo from '../../assets/Alllogo.png';
-import Shivaylogo from '../../assets/shivaylogo.png';
-import newshivalogo from '../../assets/newshivalogo.png';
-import clublogo from '../../assets/81club.png';
+import { FiChevronDown, FiMenu } from 'react-icons/fi';
+import { IoLogoAndroid, IoMdClose } from 'react-icons/io';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import clublogo from '../../assets/81club.png';
 import api from '../../redux/api';
-import { wsService } from '../../services/WebsocketService';
 import {
   getUser,
-  loginUser,
-  user_reset,
-  changePasswordByFirstLogin,
+  user_reset
 } from '../../redux/reducer/authReducer';
-import ExposureDetails from './ExposureDetails';
+import { wsService } from '../../services/WebsocketService';
 import ButtonValues from './ButtonValues';
+import ExposureDetails from './ExposureDetails';
 
 function Header({ onMenuToggle, isSidebarOpen }) {
   const [isExposureDetailsOpen, setExposureDetailsOpen] = useState(false);
@@ -372,7 +366,7 @@ function Header({ onMenuToggle, isSidebarOpen }) {
           />
         </div>
 
-        <div className='flex items-center gap-4 text-[12px]'>
+        <div className='flex items-center gap-4 text-[12px] text-white'>
           <div className='hidden items-center gap-2 md:flex'>
             {isSearchOpen && (
               <input

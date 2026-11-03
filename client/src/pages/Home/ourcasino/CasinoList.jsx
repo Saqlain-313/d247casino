@@ -59,7 +59,7 @@ function CasinoList() {
       key={category.id}
       className={`w-full flex-shrink-0 whitespace-nowrap px-3 py-3 text-center text-[16px] font-[400] ${
         activeCategory === category.name
-          ? 'bg-blue-600 text-white'
+          ? 'bg-[#1E6EA1] text-white'
           : 'text-white'
       }`}
       onClick={() => {

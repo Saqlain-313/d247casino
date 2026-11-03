@@ -2200,53 +2200,132 @@ function TableAb4({ isMobile, isSuspended, openBetSlip, markets }) {
 // Game: Lucky 15 Cricket (lucky15)
 // --------------------------------------------------------------------------
 function TableLucky15({ isMobile, isSuspended, openBetSlip, markets }) {
-  const cricketRuns = [0, 1, 2, 3, 4, 6];
+  const cricketRuns = [
+    { label: '0 Runs', odds: '3.2' },
+    { label: '1 Run', odds: '3.2' },
+    { label: '2 Runs', odds: '3.2' },
+    { label: '3 Runs', odds: '3.2' },
+    { label: '4 Runs', odds: '5.5' },
+    { label: '6 Runs', odds: '8.0' },
+    { label: 'Wicket', odds: '4.5', danger: true },
+  ];
+
+  const teams = [
+    {
+      name: 'Team A',
+      market: markets?.playerA,
+    },
+    {
+      name: 'Team B',
+      market: markets?.playerB,
+    },
+  ];
+
+  const renderOutcome = (item) => (
+    <button
+      key={item.label}
+      type="button"
+      disabled={isSuspended}
+      onClick={() =>
+        !isSuspended &&
+        openBetSlip(item.label, item.odds, 'back', isMobile)
+      }
+      className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-md border border-[#d2d6da] px-1 py-2 transition-colors ${
+        item.danger
+          ? 'bg-[#fff0f0] hover:bg-[#ffe0e0]'
+          : 'bg-white hover:bg-[#edf6fc]'
+      } ${isSuspended ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+    >
+      <span
+        className={`text-[15px] font-bold ${
+          item.danger ? 'text-red-600' : 'text-[#263746]'
+        }`}
+      >
+        {item.odds}
+      </span>
+      <span
+        className={`text-[11px] font-semibold text-center leading-tight ${
+          item.danger ? 'text-red-600' : 'text-[#424b54]'
+        }`}
+      >
+        {item.label}
+      </span>
+    </button>
+  );
+
   return (
-    <div className="casino-table cricket20 lucky15">
-      <div className="casino-table-box">
-        <div className="casino-table-left-box w-100">
-          <div className="casino-table-header">
-            <div className="casino-nation-detail">15-Ball Cricket Match Odds</div>
-            <div className="casino-odds-box back">Back</div>
-            <div className="casino-odds-box lay">Lay</div>
+    <div className="w-full space-y-2">
+
+      {/* Match Odds */}
+      <div className="overflow-hidden rounded-md border border-[#d1d5d9] bg-white">
+        <div className="grid grid-cols-[minmax(0,1fr)_76px_76px] bg-[#4b5b6b] text-white">
+          <div className="flex h-[34px] items-center px-3 text-[13px] font-bold">
+            15-Ball Cricket Match Odds
           </div>
-          <div className="casino-table-body">
-            <div className="casino-table-row">
-              <div className="casino-nation-detail"><div className="casino-nation-name">Team A (15 Balls)</div></div>
-              <OddsBox nation="Team A" odds={markets?.playerA?.back || '1.98'} type="back" />
-              <OddsBox nation="Team A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
-            </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail"><div className="casino-nation-name">Team B (15 Balls)</div></div>
-              <OddsBox nation="Team B" odds={markets?.playerB?.back || '1.98'} type="back" />
-              <OddsBox nation="Team B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
-            </div>
+          <div className="flex h-[34px] items-center justify-center bg-[#72b9e8] text-[12px] font-bold text-[#263746]">
+            Back
+          </div>
+          <div className="flex h-[34px] items-center justify-center bg-[#f5a5b8] text-[12px] font-bold text-[#263746]">
+            Lay
           </div>
         </div>
 
-        <div className="casino-table-box mt-3 w-100">
-          <div className="casino-odds w-100 text-center fw-bold mb-2">Next Ball Outcome (Runs / Wicket / Extras)</div>
-          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
-            {cricketRuns.map((r) => (
-              <div
-                key={r}
-                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
-                onClick={isSuspended ? undefined : () => openBetSlip(`${r} Runs`, r === 4 ? '5.5' : r === 6 ? '8.0' : '3.2', 'back', isMobile)}
-                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center' }}
-              >
-                <div className="casino-odds">{isSuspended ? '-' : (r === 4 ? '5.5' : r === 6 ? '8.0' : '3.2')}</div>
-                <div className="fw-bold">{r} Runs</div>
+        {teams.map((team, index) => (
+          <div
+            key={team.name}
+            className={`grid grid-cols-[minmax(0,1fr)_76px_76px] items-center ${
+              index !== 0 ? 'border-t border-[#d9dde1]' : ''
+            }`}
+          >
+            <div className="min-w-0 px-3 py-3">
+              <div className="text-[13px] font-bold text-[#303943]">
+                {team.name}
               </div>
-            ))}
-            <div
-              className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Wicket', '4.5', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '60px', textAlign: 'center', background: '#ffebee' }}
-            >
-              <div className="casino-odds text-danger">{isSuspended ? '-' : '4.5'}</div>
-              <div className="fw-bold text-danger">Wicket</div>
+              <div className="text-[10px] text-gray-500">
+                15 Balls
+              </div>
             </div>
+
+            {['back', 'lay'].map((type) => {
+              const odds =
+                team.market?.[type] || (type === 'back' ? '1.98' : '2.02');
+
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  disabled={isSuspended}
+                  onClick={() =>
+                    !isSuspended &&
+                    openBetSlip(team.name, odds, type, isMobile)
+                  }
+                  className={`flex h-[48px] items-center justify-center border-l border-white text-[16px] font-bold text-[#263746] ${
+                    type === 'back'
+                      ? 'bg-[#72b9e8] hover:bg-[#5da9dc]'
+                      : 'bg-[#f5a5b8] hover:bg-[#ed91a7]'
+                  } ${isSuspended ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                >
+                  {odds}
+                </button>
+              );
+            })}
           </div>
+        ))}
+      </div>
+
+      {/* Next Ball Outcome */}
+      <div className="overflow-hidden rounded-md border border-[#d1d5d9] bg-[#f5f6f7]">
+        <div className="flex min-h-[36px] items-center justify-between bg-[#4b5b6b] px-3">
+          <span className="text-[13px] font-bold text-white">
+            Next Ball Outcome
+          </span>
+          <span className="text-[10px] font-medium text-gray-200">
+            Runs / Wicket
+          </span>
+        </div>
+
+        <div className="grid grid-cols-4 gap-1.5 p-2 sm:grid-cols-7">
+          {cricketRuns.map(renderOutcome)}
         </div>
       </div>
     </div>
@@ -2592,45 +2671,253 @@ function TableTeen42({ isMobile, isSuspended, openBetSlip, markets }) {
 // Game: Sic Bo2 (sicbo2)
 // --------------------------------------------------------------------------
 function TableSicbo2({ isMobile, isSuspended, openBetSlip, markets }) {
+  const topBets = [
+    { name: 'ODD', odds: '1:1' },
+    { name: '4', odds: '50:1' },
+    { name: '5', odds: '20:1' },
+    { name: '6', odds: '15:1' },
+    { name: '7', odds: '12:1' },
+    { name: '8', odds: '8:1' },
+    { name: '9', odds: '6:1' },
+    { name: '10', odds: '6:1' },
+    { name: 'ANY TRIPLE', odds: '30:1', span: true },
+    { name: '11', odds: '6:1' },
+    { name: '12', odds: '6:1' },
+    { name: '13', odds: '8:1' },
+    { name: '14', odds: '12:1' },
+    { name: '15', odds: '15:1' },
+    { name: '16', odds: '20:1' },
+    { name: '17', odds: '50:1' },
+    { name: 'EVEN', odds: '1:1' },
+  ];
+
+  const diceBets = [
+    { name: '1', dice: [1] },
+    { name: '2', dice: [2] },
+    { name: '3', dice: [3] },
+    { name: '4', dice: [4] },
+    { name: '5', dice: [5] },
+    { name: '6', dice: [6] },
+    { name: '1-1', dice: [1, 1] },
+    { name: '1-2', dice: [1, 2] },
+    { name: '1-3', dice: [1, 3] },
+    { name: '1-4', dice: [1, 4] },
+    { name: '1-5', dice: [1, 5] },
+    { name: '1-6', dice: [1, 6] },
+    { name: '2-2', dice: [2, 2] },
+    { name: '2-3', dice: [2, 3] },
+    { name: '2-4', dice: [2, 4] },
+    { name: '2-5', dice: [2, 5] },
+    { name: '2-6', dice: [2, 6] },
+    { name: '3-3', dice: [3, 3] },
+  ];
+
+  const twoDiceBets = [
+    [1, 1], [1, 2], [1, 3], [1, 4], [1, 5],
+    [1, 6], [2, 2], [2, 3], [2, 4], [2, 5],
+    [2, 6], [3, 3], [3, 4], [3, 5], [3, 6],
+    [4, 4], [4, 5], [4, 6], [5, 5], [5, 6],
+    [6, 6],
+  ];
+
+  const pipPositions = {
+    1: ['center'],
+    2: ['top-left', 'bottom-right'],
+    3: ['top-left', 'center', 'bottom-right'],
+    4: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+    5: ['top-left', 'top-right', 'center', 'bottom-left', 'bottom-right'],
+    6: ['top-left', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-right'],
+  };
+
+  const positionClasses = {
+    'top-left': 'top-[17%] left-[17%]',
+    'top-right': 'top-[17%] right-[17%]',
+    'middle-left': 'top-1/2 left-[17%] -translate-y-1/2',
+    'middle-right': 'top-1/2 right-[17%] -translate-y-1/2',
+    center: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+    'bottom-left': 'bottom-[17%] left-[17%]',
+    'bottom-right': 'bottom-[17%] right-[17%]',
+  };
+
+  const placeBet = (name, odds) => {
+    if (!isSuspended) {
+      openBetSlip(name, odds, 'back', isMobile);
+    }
+  };
+
+  const renderDie = (number, key, size = 'h-6 w-6') => (
+    <div
+      key={key}
+      className={`relative shrink-0 rounded-[4px] bg-[#a90032] ${size}`}
+    >
+      {pipPositions[number].map((position, index) => (
+        <span
+          key={index}
+          className={`absolute h-[4px] w-[4px] rounded-full bg-white ${
+            positionClasses[position]
+          }`}
+        />
+      ))}
+    </div>
+  );
+
+  const BetBox = ({
+    name,
+    odds,
+    children,
+    className = '',
+    onClick,
+  }) => (
+    <button
+      type="button"
+      disabled={isSuspended}
+      onClick={onClick || (() => placeBet(name, odds))}
+      className={`flex min-w-0 items-center justify-center rounded-md border border-[#c8c0bb] bg-[#bdb5af] text-center text-[#202033] transition-colors ${
+        isSuspended
+          ? 'cursor-not-allowed opacity-60'
+          : 'cursor-pointer hover:bg-[#aaa29c]'
+      } ${className}`}
+    >
+      {children || (
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[12px] font-semibold leading-tight">
+            {name}
+          </span>
+          <span className="text-[13px] font-extrabold leading-tight">
+            {isSuspended ? '-' : odds}
+          </span>
+        </div>
+      )}
+    </button>
+  );
+
   return (
-    <div className="casino-table sicbo">
-      <div className="casino-table-box">
-        <div className="sicbo-top d-flex justify-content-between mb-3 gap-2">
-          <div className="sicbo-top-box sicbo-title-box w-100">Small 4-10 (1:1) Lose to Any Triple</div>
-          <div className="sicbo-top-box sicbo-title-box w-100">Specific Triple (150:1)</div>
-          <div className="sicbo-top-box sicbo-title-box w-100">Big 11-17 (1:1) Lose to Any Triple</div>
-        </div>
-
-        <div className="sicbo-middle d-flex justify-content-between gap-3 mb-3">
-          <div
-            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Small (4-10)', '1.98', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <div className="h4 fw-bold">Small</div>
-            <div className="sicbo-box-value">4 - 10</div>
-            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+    <div className="w-full overflow-x-auto rounded-md bg-[#f7f7f7] p-1">
+      <div className="min-w-[900px]">
+        {/* TOP PAYOUT LABELS */}
+        <div className="mb-1 grid grid-cols-[66px_minmax(0,1fr)_66px] gap-1">
+          <div className="rounded-full bg-[#666] px-1.5 py-1 text-center text-[10px] font-bold leading-tight text-white">
+            1:1 Lose if Any Triple
           </div>
 
-          <div
-            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Big (11-17)', '1.98', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <div className="h4 fw-bold">Big</div>
-            <div className="sicbo-box-value">11 - 17</div>
-            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+          <div className="flex justify-center">
+            <div className="w-[76px] rounded-full bg-[#666] py-1 text-center text-[11px] font-bold text-white">
+              30:1
+            </div>
+          </div>
+
+          <div className="rounded-full bg-[#666] px-1.5 py-1 text-center text-[10px] font-bold leading-tight text-white">
+            1:1 Lose if Any Triple
           </div>
         </div>
 
-        <div className="d-flex justify-content-center gap-2">
-          <div
-            className={`sicbo-square-box p-2 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Any Triple', '31.0', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '120px' }}
+        {/* MAIN NUMBERS */}
+        <div className="grid grid-cols-[66px_minmax(0,1fr)_66px] gap-1">
+          <button
+            type="button"
+            disabled={isSuspended}
+            onClick={() => placeBet('Small (4-10)', '1.98')}
+            className="flex flex-col items-center justify-center gap-1 rounded-md border border-[#c8c0bb] bg-[#bdb5af] text-[#202033]"
           >
-            <div className="fw-bold">Any Triple</div>
-            <div className="casino-odds">{isSuspended ? '-' : '31.0'}</div>
+            <span className="text-[14px] font-extrabold">SMALL</span>
+            <span className="text-[14px] font-bold">4-10</span>
+            <span className="text-[12px] font-bold">
+              {isSuspended ? '-' : '1:1'}
+            </span>
+          </button>
+
+          <div className="grid grid-cols-[repeat(18,minmax(0,1fr))] gap-1">
+            {topBets.map((bet) => (
+              <BetBox
+                key={bet.name}
+                name={bet.name}
+                odds={bet.odds}
+                className={`h-[58px] px-0.5 ${
+                  bet.span ? 'col-span-2' : ''
+                }`}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            disabled={isSuspended}
+            onClick={() => placeBet('Big (11-17)', '1.98')}
+            className="flex flex-col items-center justify-center gap-1 rounded-md border border-[#c8c0bb] bg-[#bdb5af] text-[#202033]"
+          >
+            <span className="text-[14px] font-extrabold">BIG</span>
+            <span className="text-[14px] font-bold">11-17</span>
+            <span className="text-[12px] font-bold">
+              {isSuspended ? '-' : '1:1'}
+            </span>
+          </button>
+
+          {/* PAYOUT GROUPS */}
+          <div />
+
+          <div className="grid grid-cols-[repeat(18,minmax(0,1fr))] gap-1">
+            {[
+              { label: '1:1 on Single', span: 1 },
+              { label: '2:1 on Double', span: 1 },
+              { label: '3:1 on Triple', span: 1 },
+              { label: '8:1 Each Double', span: 6 },
+              { label: '150:1 Each Triple', span: 9 },
+            ].map((item) => (
+              <div
+                key={item.label}
+                style={{ gridColumn: `span ${item.span}` }}
+                className="flex h-[25px] items-center justify-center rounded-full bg-[#666] px-1 text-center text-[10px] font-bold text-white"
+              >
+                {item.label}
+              </div>
+            ))}
+          </div>
+
+          <div />
+
+          {/* DICE COMBINATIONS */}
+          <div />
+
+          <div className="grid grid-cols-[repeat(18,minmax(0,1fr))] gap-1">
+            {diceBets.map((bet) => (
+              <BetBox
+                key={bet.name}
+                name={bet.name}
+                odds="8:1"
+                className="h-[48px] flex-row gap-0.5 px-0.5"
+              >
+                <div className="flex items-center gap-0.5">
+                  {bet.dice.map((die, index) =>
+                    renderDie(die, index, 'h-5 w-5')
+                  )}
+                </div>
+              </BetBox>
+            ))}
+          </div>
+
+          <div />
+        </div>
+
+        {/* TWO DICE */}
+        <div className="mx-auto mt-3 max-w-[650px]">
+          <div className="mb-1 rounded-full bg-[#666] py-1 text-center text-[11px] font-bold text-white">
+            5:1 Two Dice
+          </div>
+
+          <div className="grid grid-cols-15 gap-1">
+            {twoDiceBets.map((pair, index) => (
+              <BetBox
+                key={`${pair[0]}-${pair[1]}-${index}`}
+                name={`Two Dice ${pair[0]}-${pair[1]}`}
+                odds="5:1"
+                className="min-h-[52px] flex-col gap-0.5 p-1"
+              >
+                <div className="flex flex-col gap-0.5">
+                  {renderDie(pair[0], 'first', 'h-5 w-5')}
+                  {renderDie(pair[1], 'second', 'h-5 w-5')}
+                </div>
+              </BetBox>
+            ))}
           </div>
         </div>
       </div>
@@ -2745,47 +3032,76 @@ function TableTeen33({ isMobile, isSuspended, openBetSlip, markets }) {
 // Game: Sic Bo (sicbo)
 // --------------------------------------------------------------------------
 function TableSicbo({ isMobile, isSuspended, openBetSlip, markets }) {
+  const bets = [
+    {
+      name: 'Small',
+      range: '4 - 10',
+      odds: '1.98',
+      subtitle: 'Lose to Any Triple',
+      onClick: () =>
+        openBetSlip('Small (4-10)', '1.98', 'back', isMobile),
+    },
+    {
+      name: 'Big',
+      range: '11 - 17',
+      odds: '1.98',
+      subtitle: 'Lose to Any Triple',
+      onClick: () =>
+        openBetSlip('Big (11-17)', '1.98', 'back', isMobile),
+    },
+  ];
+
   return (
-    <div className="casino-table sicbo">
-      <div className="casino-table-box">
-        <div className="sicbo-top d-flex justify-content-between mb-3 gap-2">
-          <div className="sicbo-top-box sicbo-title-box w-100">Small 4-10 (1:1) Lose to Any Triple</div>
-          <div className="sicbo-top-box sicbo-title-box w-100">Specific Triple (150:1)</div>
-          <div className="sicbo-top-box sicbo-title-box w-100">Big 11-17 (1:1) Lose to Any Triple</div>
-        </div>
-
-        <div className="sicbo-middle d-flex justify-content-between gap-3 mb-3">
-          <div
-            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Small (4-10)', '1.98', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+    <div className="w-full">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        {bets.map((bet) => (
+          <button
+            key={bet.name}
+            type="button"
+            disabled={isSuspended}
+            onClick={bet.onClick}
+            className={`min-w-0 rounded-lg border border-[#d1d5d9] bg-white p-3 text-center transition-colors ${
+              isSuspended
+                ? 'cursor-not-allowed opacity-60'
+                : 'cursor-pointer hover:border-[#72b9e8]'
+            }`}
           >
-            <div className="h4 fw-bold">Small</div>
-            <div className="sicbo-box-value">4 - 10</div>
-            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+            <div className="mb-2 text-[13px] font-bold text-[#4b5b6b] sm:text-sm">
+              {bet.name} ({bet.range})
+            </div>
+
+            <div className="mb-2 text-[11px] text-[#7b8794]">
+              {bet.subtitle}
+            </div>
+
+            <div className="rounded-md bg-[#72b9e8] px-2 py-2 text-base font-bold text-[#263746]">
+              {isSuspended ? '-' : bet.odds}
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 flex justify-center">
+        <button
+          type="button"
+          disabled={isSuspended}
+          onClick={() =>
+            openBetSlip('Any Triple', '31.0', 'back', isMobile)
+          }
+          className={`w-full max-w-[220px] rounded-lg border border-[#d1d5d9] bg-white p-3 text-center transition-colors ${
+            isSuspended
+              ? 'cursor-not-allowed opacity-60'
+              : 'cursor-pointer hover:border-[#72b9e8]'
+          }`}
+        >
+          <div className="mb-2 text-sm font-bold text-[#4b5b6b]">
+            Any Triple
           </div>
 
-          <div
-            className={`sicbo-square-box w-50 p-3 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Big (11-17)', '1.98', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <div className="h4 fw-bold">Big</div>
-            <div className="sicbo-box-value">11 - 17</div>
-            <div className="casino-odds">{isSuspended ? '-' : '1.98'}</div>
+          <div className="rounded-md bg-[#72b9e8] px-2 py-2 text-base font-bold text-[#263746]">
+            {isSuspended ? '-' : '31.0'}
           </div>
-        </div>
-
-        <div className="d-flex justify-content-center gap-2">
-          <div
-            className={`sicbo-square-box p-2 text-center rounded border ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Any Triple', '31.0', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '120px' }}
-          >
-            <div className="fw-bold">Any Triple</div>
-            <div className="casino-odds">{isSuspended ? '-' : '31.0'}</div>
-          </div>
-        </div>
+        </button>
       </div>
     </div>
   );
