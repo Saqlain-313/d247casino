@@ -11,19 +11,39 @@ import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // apna existing User model (numeric `balance` field) - path adjust kar lena
 import * as engine from '../services/casinoEngine.js';
+import axios from "axios";
+
 
 // --------------------------------------------------------------- placeBet
-const API_URL = process.env.CASINO_API_URL;
-const API_KEY = process.env.CASINO_API_KEY;
+const API_URL = process.env.API_URL;
+const API_KEY = process.env.API_KEY;
 
 // Fetch live casino data
 const fetchCasinoData = async (eventName) => {
-  const response = await axios.get(
-    `${API_URL}/diamond/casino/data/${encodeURIComponent(eventName)}?key=${API_KEY}`,
-    { timeout: 10000 }
-  );
+  try {
+    const url = `${API_URL}/diamond/casino/data/${encodeURIComponent(eventName)}?key=${API_KEY}`;
 
-  return response.data;
+    console.log("Casino API URL:", url.replace(API_KEY, "HIDDEN"));
+
+    const response = await axios.get(url, {
+      timeout: 15000,
+    });
+
+    console.log("Casino API Status:", response.status);
+    console.log("Casino API Response:", JSON.stringify(response.data, null, 2));
+
+    return response.data;
+
+  } catch (error) {
+    console.error("CASINO API ERROR:", {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      response: error.response?.data,
+    });
+
+    throw error;
+  }
 };
 
 export const placeBet = async (req, res) => {
