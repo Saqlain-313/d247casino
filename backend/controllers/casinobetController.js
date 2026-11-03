@@ -13,49 +13,193 @@ import User from '../models/subAdminModel.js'; // apna existing User model (nume
 import * as engine from '../services/casinoEngine.js';
 
 // --------------------------------------------------------------- placeBet
+const API_URL = process.env.CASINO_API_URL;
+const API_KEY = process.env.CASINO_API_KEY;
+
+// Fetch live casino data
+const fetchCasinoData = async (eventName) => {
+  const response = await axios.get(
+    `${API_URL}/diamond/casino/data/${encodeURIComponent(eventName)}?key=${API_KEY}`,
+    { timeout: 10000 }
+  );
+
+  return response.data;
+};
+
 export const placeBet = async (req, res) => {
   const { slug } = req.params;
-  const userId = req.id;                 // from your auth middleware
+  const userId = req.id;
+
   const { roundId, side, selection } = req.body;
+
   const odds = Number(req.body.odds);
   const stake = Number(req.body.stake);
 
   try {
-    if (!engine.familyOf(slug)) return res.status(400).json({ success: false, message: 'Game not supported' });
-
-    const errors = engine.validateBet(slug, { side, selection, odds, stake });
-    if (errors.length) return res.status(400).json({ success: false, message: errors.join(', ') });
-
-    const round = await Round.findOne({ slug, roundId });
-    if (!round || round.status !== 'betting' || (round.bettingEndsAt && round.bettingEndsAt < new Date())) {
-      return res.status(400).json({ success: false, message: 'Betting closed' });
+    // 1. Validate game
+    if (!engine.familyOf(slug)) {
+      return res.status(400).json({
+        success: false,
+        message: "Game not supported",
+      });
     }
 
-    // IMPORTANT: server must verify `odds` against its own odds feed here
-    // (never trust client odds): e.g. await oddsService.assertOdds(slug, roundId, selection, side, odds)
+    // 2. Validate request
+    const errors = engine.validateBet(slug, {
+      side,
+      selection,
+      odds,
+      stake,
+    });
 
-    const exposure = engine.calcExposure({ side, stake, odds });
+    if (errors.length) {
+      return res.status(400).json({
+        success: false,
+        message: errors.join(", "),
+      });
+    }
 
-    // atomic debit - fails if balance < exposure, no race condition
-    const debited = await User.findOneAndUpdate(
-      { _id: userId, balance: { $gte: exposure } },
-      { $inc: { balance: -exposure } },
-      { new: true }
-    );
-    if (!debited) return res.status(400).json({ success: false, message: 'Insufficient balance' });
+    // 3. Fetch live casino data
+    let casinoResponse;
 
-    let bet;
     try {
-      bet = await Bet.create({ userId, slug, roundId, side, selection, odds, stake, exposure });
-    } catch (e) {
-      await User.updateOne({ _id: userId }, { $inc: { balance: exposure } }); // refund
-      throw e;
+      casinoResponse = await fetchCasinoData(slug);
+    } catch (error) {
+      console.error("Casino API Error:", error.message);
+
+      return res.status(503).json({
+        success: false,
+        message: "Casino server unavailable. Please try again.",
+      });
     }
 
-    return res.json({ success: true, bet, balance: debited.balance });
-  } catch (err) {
-    console.error('placeBet error:', err);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    // 4. Check API response
+    if (!casinoResponse || casinoResponse.success === false) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to fetch casino data",
+      });
+    }
+
+    // 5. Extract live data
+    // IMPORTANT: Update these fields according to your actual API response.
+    const casinoData = casinoResponse.data;
+
+    if (!casinoData) {
+      return res.status(400).json({
+        success: false,
+        message: "Casino data not found",
+      });
+    }
+
+    // 6. Verify round ID from live API
+    const liveRoundId = String(
+      casinoData.roundId ?? casinoData.mid ?? ""
+    );
+
+    if (!liveRoundId || liveRoundId !== String(roundId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired round",
+      });
+    }
+
+    // 7. Verify betting status
+    const bettingStatus =
+      casinoData.status ??
+      casinoData.gameStatus ??
+      casinoData.betStatus;
+
+    if (
+      bettingStatus &&
+      !["open", "betting", "active"].includes(
+        String(bettingStatus).toLowerCase()
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Betting closed",
+      });
+    }
+
+    // 8. Verify odds using server-side odds feed
+    // Never trust client odds.
+    // await oddsService.assertOdds(slug, roundId, selection, side, odds);
+
+    // 9. Calculate exposure
+    const exposure = engine.calcExposure({
+      side,
+      stake,
+      odds,
+    });
+
+    if (!Number.isFinite(exposure) || exposure <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid bet exposure",
+      });
+    }
+
+    // 10. Atomic balance debit
+    const debited = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        balance: { $gte: exposure },
+      },
+      {
+        $inc: { balance: -exposure },
+      },
+      {
+        new: true,
+      }
+    );
+
+    if (!debited) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance",
+      });
+    }
+
+    // 11. Create bet
+    let bet;
+
+    try {
+      bet = await Bet.create({
+        userId,
+        slug,
+        roundId,
+        side,
+        selection,
+        odds,
+        stake,
+        exposure,
+      });
+    } catch (error) {
+      // Refund if bet creation fails
+      await User.updateOne(
+        { _id: userId },
+        { $inc: { balance: exposure } }
+      );
+
+      throw error;
+    }
+
+    // 12. Success response
+    return res.status(201).json({
+      success: true,
+      message: "Bet placed successfully",
+      bet,
+      balance: debited.balance,
+    });
+
+  } catch (error) {
+    console.error("placeBet error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };
 
