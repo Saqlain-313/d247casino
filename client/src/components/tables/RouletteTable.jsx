@@ -1,4 +1,3 @@
-import React from 'react';
 import { useCasino } from '../../context/CasinoContext';
 
 const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -83,22 +82,29 @@ export default function RouletteTable() {
     <div className="casino-table">
       {/* Transfer Board: Back/Lay Toggle + Statistics link */}
       <div className="transfer-board">
-        <div className="switch-board-icon">
-          <div
-            className={`back ${rouletteMode === 'back' ? 'active' : ''}`}
-            onClick={() => setRouletteMode('back')}
-            style={{ cursor: 'pointer' }}
-          >
-            Back
-          </div>
-          <div
-            className={`lay ${rouletteMode === 'lay' ? 'active' : ''}`}
-            onClick={() => setRouletteMode('lay')}
-            style={{ cursor: 'pointer' }}
-          >
-            Lay
-          </div>
-        </div>
+      <div className="flex w-[190px] max-w-full h-[48px] overflow-hidden rounded-full bg-[#f5f5f5] mb-2.5">
+  <div
+    onClick={() => setRouletteMode('back')}
+    className={`flex flex-1 items-center justify-center text-[18px] font-bold cursor-pointer rounded-l-full bg-[#72b9e8] text-[#344454] border-[3px] transition-colors ${
+      rouletteMode === 'back'
+        ? 'border-black'
+        : 'border-transparent'
+    }`}
+  >
+    Back
+  </div>
+
+  <div
+    onClick={() => setRouletteMode('lay')}
+    className={`flex flex-1 items-center justify-center text-[18px] font-bold cursor-pointer rounded-r-full bg-[#f5a5b8] text-[#344454] border-[3px] transition-colors ${
+      rouletteMode === 'lay'
+        ? 'border-black'
+        : 'border-transparent'
+    }`}
+  >
+    Lay
+  </div>
+</div>
         <h5 className="d-block d-lg-none m-0">
           <a
             onClick={(e) => {
