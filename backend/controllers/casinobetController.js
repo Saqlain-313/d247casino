@@ -1,662 +1,404 @@
 
-/**
- * casinoController.js
- */
-
-import axios from "axios";
-import Bet from "../models/CasinoBet.js";
-import Round from "../models/CasinoRound.js";
-import User from "../models/subAdminModel.js";
-import * as engine from "../services/casinoEngine.js";
-
-// --------------------------------------------------
-// CASINO API CONFIGURATION
-// --------------------------------------------------
+import Bet from '../models/CasinoBet.js';
+import Round from '../models/CasinoRound.js';
+import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
+import * as engine from '../services/casinoEngine.js';
+import axios from 'axios';
 
 const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
+const DEBUG = process.env.CASINO_DEBUG === '1';
 
-// --------------------------------------------------
-// FETCH LIVE CASINO DATA
-// --------------------------------------------------
+const getUid = (req) => req.id ?? req.user?._id; // placeBet used req.id, others req.user._id
 
-const fetchCasinoData = async (eventName) => {
-  if (!API_URL || !API_KEY) {
-    throw new Error("API_URL or API_KEY missing in environment");
-  }
+// ======================================================================
+// Provider API helpers
+// ======================================================================
 
-  const url = `${API_URL.replace(/\/+$/, "")}/diamond/casino/data/${encodeURIComponent(eventName)}`;
-
+// LIVE DATA API  -> used for placing bets (current round / betting status)
+export const fetchCasinoData = async (slug) => {
+  const url = `${API_URL}/diamond/casino/data/${encodeURIComponent(slug)}?key=${API_KEY}`;
   try {
-    const response = await axios.get(url, {
-      params: { key: API_KEY },
-      timeout: 15000,
-    });
-
-    console.log("Casino API Status:", response.status);
-
+    const response = await axios.get(url, { timeout: 15000 });
+    if (DEBUG) console.log('Casino DATA API:', JSON.stringify(response.data, null, 2));
     return response.data;
-
   } catch (error) {
-    console.error("CASINO API ERROR:", {
+    console.error('CASINO DATA API ERROR:', {
       message: error.message,
       code: error.code,
       status: error.response?.status,
       response: error.response?.data,
     });
-
     throw error;
   }
 };
 
-// --------------------------------------------------
-// PLACE BET
-// --------------------------------------------------
+// RESULT API -> used for settling
+// Response: { success, data: { res: [{ mid, win }, ...newest first], res1: { cname } } }
+export const fetchCasinoResult = async (slug) => {
+  const url = `${API_URL}/diamond/casino/result/${encodeURIComponent(slug)}?key=${API_KEY}`;
+  try {
+    const { data } = await axios.get(url, { timeout: 15000 });
+    if (DEBUG) console.log('Casino RESULT API:', JSON.stringify(data, null, 2));
+    if (!data || data.success === false || !Array.isArray(data.data?.res)) {
+      throw new Error('Bad result API response');
+    }
+    return data.data.res;
+  } catch (error) {
+    console.error('CASINO RESULT API ERROR:', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+};
 
+// Provider `win` code -> result object for engine.
+// lucky7: "1" = Low (A-6), "2" = High (8-K), "0" = Tie (7)   -- verify once on a known round.
+// NOTE: result API has no card, so odd/even, red/black, card-specific markets
+// can't be settled from it. Handle result.side in engine.evaluateSelection('lucky7', ...).
+const normalizeResult = (slug, win) => {
+  const fam = engine.familyOf(slug);
+  const w = String(win);
+  if (fam === 'lucky7') {
+    return { win: w, side: w === '1' ? 'low' : w === '2' ? 'high' : 'tie' };
+  }
+  // add other families once their `win` codes are known
+  throw new Error(`No win-code mapping for ${slug}`);
+};
+
+// ======================================================================
+// placeBet
+// ======================================================================
 export const placeBet = async (req, res) => {
   const { slug } = req.params;
-  const userId = req.id;
-
-  const {
-    roundId,
-    side,
-    selection,
-  } = req.body;
-
+  const userId = getUid(req);
+  const { roundId, side, selection } = req.body;
   const odds = Number(req.body.odds);
   const stake = Number(req.body.stake);
 
-  let debited = false;
-  let exposure = 0;
-
   try {
     // 1. Validate game
-
     if (!engine.familyOf(slug)) {
-      return res.status(400).json({
-        success: false,
-        message: "Game not supported",
-      });
+      return res.status(400).json({ success: false, message: 'Game not supported' });
     }
 
-    // 2. Validate user
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "User authentication required",
-      });
-    }
-
-    // 3. Validate bet input
-
-    const errors = engine.validateBet(slug, {
-      side,
-      selection,
-      odds,
-      stake,
-    });
-
+    // 2. Validate request
+    const errors = engine.validateBet(slug, { side, selection, odds, stake });
     if (errors.length) {
-      return res.status(400).json({
-        success: false,
-        message: errors.join(", "),
-      });
+      return res.status(400).json({ success: false, message: errors.join(', ') });
     }
 
-    if (!roundId) {
-      return res.status(400).json({
-        success: false,
-        message: "Round ID required",
-      });
+    // 3. Don't accept bets on an already settled round
+    const existingRound = await Round.findOne({ slug, roundId: String(roundId) }).lean();
+    if (existingRound?.status === 'settled') {
+      return res.status(400).json({ success: false, message: 'Round already finished' });
     }
 
-    // 4. FETCH LIVE CASINO DATA
-    // Round schema is NOT used here.
-
+    // 4. Live data from provider
     let casinoResponse;
-
     try {
       casinoResponse = await fetchCasinoData(slug);
-
-    } catch (error) {
-      return res.status(503).json({
-        success: false,
-        message: "Casino server unavailable",
-        error: error.response?.data || error.message,
-        code: error.code || null,
-        status: error.response?.status || null,
-      });
+    } catch {
+      return res.status(503).json({ success: false, message: 'Casino server unavailable. Please try again.' });
     }
-
-    // 5. Validate API response
 
     if (!casinoResponse || casinoResponse.success === false) {
-      return res.status(400).json({
-        success: false,
-        message: "Casino API returned unsuccessful response",
-      });
+      return res.status(400).json({ success: false, message: 'Unable to fetch casino data' });
     }
 
-    // Support common response wrappers
-
-    const casinoData =
-      casinoResponse.data?.data ??
-      casinoResponse.data ??
-      casinoResponse;
-
-    if (
-      !casinoData ||
-      typeof casinoData !== "object"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid casino API response",
-      });
+    // 5. Extract live data  (adjust field names after checking your real response)
+    const casinoData = casinoResponse.data;
+    if (!casinoData) {
+      return res.status(400).json({ success: false, message: 'Casino data not found' });
     }
 
-    // 6. VERIFY LIVE ROUND
-
+    // 6. Verify round id against live round
     const liveRoundId = String(
-      casinoData.roundId ??
-      casinoData.mid ??
-      casinoData.marketId ??
-      ""
+      casinoData.roundId ?? casinoData.mid ?? casinoData.t1?.[0]?.mid ?? casinoData.sub?.[0]?.mid ?? ''
     );
-
-    if (!liveRoundId) {
-      return res.status(503).json({
-        success: false,
-        message: "Live round ID missing from casino API",
-      });
+    if (!liveRoundId || liveRoundId !== String(roundId)) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired round' });
     }
 
-    if (liveRoundId !== String(roundId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Round expired or invalid",
-        liveRoundId,
-      });
-    }
-
-    // 7. VERIFY BETTING STATUS
-
-    const bettingStatus =
-      casinoData.status ??
-      casinoData.gameStatus ??
-      casinoData.betStatus ??
-      casinoData.bettingStatus;
-
-    // Only allow explicitly recognized open states.
+    // 7. Betting status
+    const bettingStatus = casinoData.status ?? casinoData.gameStatus ?? casinoData.betStatus;
     if (
-      !bettingStatus ||
-      !["open", "betting", "active"].includes(
-        String(bettingStatus).toLowerCase()
-      )
+      bettingStatus &&
+      !['open', 'betting', 'active'].includes(String(bettingStatus).toLowerCase())
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "Betting closed or status unavailable",
-        bettingStatus: bettingStatus ?? null,
-      });
+      return res.status(400).json({ success: false, message: 'Betting closed' });
     }
 
-    // 8. SERVER-SIDE ODDS VALIDATION
-    //
-    // IMPORTANT:
-    // Do not trust req.body.odds in production.
-    // Replace this section with your actual provider odds feed.
-    //
-    // Example:
-    // const verifiedOdds = await oddsService.getOdds({
-    //   slug, roundId, side, selection
-    // });
-    //
-    // if (verifiedOdds !== odds) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "Odds changed. Refresh and try again."
-    //   });
-    // }
+    // 8. TODO: verify odds server-side (never trust client odds)
+    // await oddsService.assertOdds(slug, roundId, selection, side, odds);
 
-    // 9. CALCULATE EXPOSURE
+    // 9. Exposure
+    const exposure = engine.calcExposure({ side, stake, odds });
+    if (!Number.isFinite(exposure) || exposure <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid bet exposure' });
+    }
 
-    exposure = Number(
-      engine.calcExposure({
-        side,
-        stake,
-        odds,
-      })
+    // 10. Make sure Round doc exists (settleRound needs it)
+    await Round.updateOne(
+      { slug, roundId: String(roundId) },
+      { $setOnInsert: { slug, roundId: String(roundId), status: 'open' } },
+      { upsert: true }
     );
 
-    if (
-      !Number.isFinite(exposure) ||
-      exposure <= 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid exposure amount",
-      });
-    }
-
-    // 10. ATOMIC BALANCE DEBIT
-
-    const debitResult = await User.findOneAndUpdate(
-      {
-        _id: userId,
-        balance: { $gte: exposure },
-      },
-      {
-        $inc: {
-          balance: -exposure,
-        },
-      },
-      {
-        new: true,
-      }
+    // 11. Atomic balance debit
+    const debited = await User.findOneAndUpdate(
+      { _id: userId, balance: { $gte: exposure } },
+      { $inc: { balance: -exposure } },
+      { new: true }
     );
-
-    if (!debitResult) {
-      return res.status(400).json({
-        success: false,
-        message: "Insufficient balance",
-      });
+    if (!debited) {
+      return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
-    debited = true;
-
-    // 11. CREATE BET
-
+    // 12. Create bet (refund if it fails)
     let bet;
-
     try {
       bet = await Bet.create({
         userId,
         slug,
-        roundId,
+        roundId: String(roundId),
         side,
         selection,
         odds,
         stake,
         exposure,
-        status: "pending",
+        status: 'pending',
       });
-
     } catch (error) {
-
-      // REFUND IF BET CREATION FAILS
-
-      await User.updateOne(
-        { _id: userId },
-        {
-          $inc: {
-            balance: exposure,
-          },
-        }
-      );
-
-      debited = false;
-
+      await User.updateOne({ _id: userId }, { $inc: { balance: exposure } });
       throw error;
     }
 
-    // 12. SUCCESS RESPONSE
-
     return res.status(201).json({
       success: true,
-      message: "Bet placed successfully",
+      message: 'Bet placed successfully',
       bet,
-      balance: debitResult.balance,
+      balance: debited.balance,
     });
-
   } catch (error) {
-
-    console.error("PLACE BET ERROR:", error);
-
-    // Safety refund for unexpected errors after debit.
-    // Bet.create failure is already refunded above.
-    if (debited) {
-      try {
-        await User.updateOne(
-          { _id: userId },
-          {
-            $inc: {
-              balance: exposure,
-            },
-          }
-        );
-      } catch (refundError) {
-        console.error("BET REFUND ERROR:", refundError);
-      }
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    console.error('placeBet error:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// --------------------------------------------------
-// SETTLE ROUND
-// --------------------------------------------------
+// ======================================================================
+// settle core (shared by manual, API and poller)
+// ======================================================================
+const settleCore = async (slug, roundId, result) => {
+  roundId = String(roundId);
 
+  // lock round so it can't be settled twice (upsert in case no bet created it)
+  let round;
+  try {
+    round = await Round.findOneAndUpdate(
+      { slug, roundId, status: { $ne: 'settled' } },
+      { $set: { status: 'settled', result }, $setOnInsert: { slug, roundId } },
+      { new: true, upsert: true }
+    );
+  } catch (e) {
+    if (e.code === 11000) return { already: true }; // unique index hit -> already settled
+    throw e;
+  }
+  if (!round) return { already: true };
+
+  const cursor = Bet.find({ slug, roundId, status: 'pending' }).cursor();
+  let settled = 0;
+  let failed = 0;
+
+  for await (const bet of cursor) {
+    try {
+      const selOutcome = engine.evaluateSelection(slug, bet.selection, result);
+      const s = engine.settleBet(bet, selOutcome);
+
+      // pending -> settled is the idempotency guard (credit only once)
+      const claimed = await Bet.findOneAndUpdate(
+        { _id: bet._id, status: 'pending' },
+        { status: 'settled', outcome: s.outcome, payout: s.payout, net: s.net, settledAt: new Date() }
+      );
+      if (claimed && s.payout > 0) {
+        await User.updateOne({ _id: bet.userId }, { $inc: { balance: s.payout } });
+      }
+      settled++;
+    } catch (e) {
+      failed++;
+      console.error(`settle failed for bet ${bet._id}:`, e.message);
+    }
+  }
+  return { settled, failed };
+};
+
+// Manual settle: body { roundId, result }
 export const settleRound = async (req, res) => {
   const { slug } = req.params;
   const { roundId, result } = req.body;
-
   try {
-    const round = await Round.findOneAndUpdate(
-      {
-        slug,
-        roundId,
-        status: { $ne: "settled" },
-      },
-      {
-        status: "settled",
-        result,
-      },
-      {
-        new: true,
-      }
-    );
-
-    if (!round) {
-      return res.status(409).json({
-        success: false,
-        message: "Round not found or already settled",
-      });
+    if (!roundId || !result) {
+      return res.status(400).json({ success: false, message: 'roundId and result required' });
     }
-
-    const bets = await Bet.find({
-      slug,
-      roundId,
-      status: "pending",
-    }).cursor();
-
-    let settled = 0;
-    let failed = 0;
-
-    for await (const bet of bets) {
-      try {
-        const selOutcome = engine.evaluateSelection(
-          slug,
-          bet.selection,
-          result
-        );
-
-        const s = engine.settleBet(
-          bet,
-          selOutcome
-        );
-
-        const claimed = await Bet.findOneAndUpdate(
-          {
-            _id: bet._id,
-            status: "pending",
-          },
-          {
-            $set: {
-              status: "settled",
-              outcome: s.outcome,
-              payout: s.payout,
-              net: s.net,
-              settledAt: new Date(),
-            },
-          },
-          { new: true }
-        );
-
-        if (claimed && s.payout > 0) {
-          await User.updateOne(
-            { _id: bet.userId },
-            {
-              $inc: {
-                balance: s.payout,
-              },
-            }
-          );
-        }
-
-        if (claimed) settled++;
-
-      } catch (error) {
-        failed++;
-
-        console.error(
-          `Settlement failed for bet ${bet._id}:`,
-          error.message
-        );
-      }
+    const out = await settleCore(slug, roundId, result);
+    if (out.already) {
+      return res.status(409).json({ success: false, message: 'Round already settled' });
     }
-
-    return res.json({
-      success: true,
-      settled,
-      failed,
-    });
-
-  } catch (error) {
-    console.error("SETTLE ROUND ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    return res.json({ success: true, ...out });
+  } catch (err) {
+    console.error('settleRound error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// --------------------------------------------------
-// VOID ROUND / REFUND
-// --------------------------------------------------
-
-export const voidRound = async (req, res) => {
+// Auto settle from RESULT API: body { roundId }
+export const settleRoundFromApi = async (req, res) => {
+  const { slug } = req.params;
+  const { roundId } = req.body;
   try {
-    const { slug } = req.params;
-    const { roundId } = req.body;
+    if (!roundId) return res.status(400).json({ success: false, message: 'roundId required' });
 
-    const bets = await Bet.find({
-      slug,
-      roundId,
-      status: "pending",
-    });
+    let list;
+    try {
+      list = await fetchCasinoResult(slug);
+    } catch {
+      return res.status(503).json({ success: false, message: 'Result API unavailable' });
+    }
 
+    const row = list.find((r) => String(r.mid) === String(roundId));
+    if (!row) {
+      return res.status(404).json({ success: false, message: 'Result not available yet' });
+    }
+
+    const out = await settleCore(slug, roundId, normalizeResult(slug, row.win));
+    if (out.already) {
+      return res.status(409).json({ success: false, message: 'Round already settled' });
+    }
+    return res.json({ success: true, ...out });
+  } catch (err) {
+    console.error('settleRoundFromApi error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Optional auto-poller. Call once at server start: startResultPoller('lucky7');
+export const startResultPoller = (slug, everyMs = 5000) => {
+  let busy = false;
+  return setInterval(async () => {
+    if (busy) return;
+    busy = true;
+    try {
+      const pending = (await Bet.distinct('roundId', { slug, status: 'pending' })).map(String);
+      if (!pending.length) return;
+
+      const list = await fetchCasinoResult(slug);
+      for (const row of list) {
+        if (!pending.includes(String(row.mid))) continue;
+        try {
+          await settleCore(slug, row.mid, normalizeResult(slug, row.win));
+        } catch (e) {
+          console.error(`poller settle ${slug}/${row.mid}:`, e.message);
+        }
+      }
+    } catch (e) {
+      console.error(`poller ${slug}:`, e.message);
+    } finally {
+      busy = false;
+    }
+  }, everyMs);
+};
+
+// ======================================================================
+// void / refund round
+// ======================================================================
+export const voidRound = async (req, res) => {
+  const { slug } = req.params;
+  const roundId = String(req.body.roundId ?? '');
+  try {
+    if (!roundId) return res.status(400).json({ success: false, message: 'roundId required' });
+
+    const bets = await Bet.find({ slug, roundId, status: 'pending' });
     let refunded = 0;
-
     for (const bet of bets) {
       const claimed = await Bet.findOneAndUpdate(
-        {
-          _id: bet._id,
-          status: "pending",
-        },
-        {
-          $set: {
-            status: "void",
-            payout: bet.exposure,
-            net: 0,
-            settledAt: new Date(),
-          },
-        },
-        { new: true }
+        { _id: bet._id, status: 'pending' },
+        { status: 'void', payout: bet.exposure, net: 0, settledAt: new Date() }
       );
-
       if (claimed) {
-        await User.updateOne(
-          { _id: bet.userId },
-          {
-            $inc: {
-              balance: bet.exposure,
-            },
-          }
-        );
-
+        await User.updateOne({ _id: bet.userId }, { $inc: { balance: bet.exposure } });
         refunded++;
       }
     }
-
     await Round.updateOne(
       { slug, roundId },
-      {
-        status: "settled",
-        result: { void: true },
-      }
+      { $set: { status: 'settled', result: { void: true } }, $setOnInsert: { slug, roundId } },
+      { upsert: true }
     );
-
-    return res.json({
-      success: true,
-      refunded,
-    });
-
-  } catch (error) {
-    console.error("VOID ROUND ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    return res.json({ success: true, refunded });
+  } catch (err) {
+    console.error('voidRound error:', err);
+    return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// --------------------------------------------------
-// NATION BOOK
-// --------------------------------------------------
-
+// ======================================================================
+// nation book / my bets / stats
+// ======================================================================
 export const getNationBook = async (req, res) => {
   try {
     const { slug, roundId } = req.params;
-
-    const bets = await Bet.find({
-      slug,
-      roundId,
-      userId: req.id || req.user?._id,
-      status: "pending",
-    }).lean();
-
-    const book = engine.nationBook(
-      slug,
-      bets,
-      engine.defaultScenarios(slug)
-    );
-
-    return res.json({
-      success: true,
-      book,
-    });
-
-  } catch (error) {
-    console.error("NATION BOOK ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    const bets = await Bet.find({ slug, roundId: String(roundId), userId: getUid(req), status: 'pending' }).lean();
+    const book = engine.nationBook(slug, bets, engine.defaultScenarios(slug));
+    res.json({ success: true, book });
+  } catch (err) {
+    console.error('getNationBook error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// --------------------------------------------------
-// MY BETS
-// --------------------------------------------------
 
 export const myBets = async (req, res) => {
   try {
     const { slug } = req.params;
-
-    const bets = await Bet.find({
-      userId: req.id || req.user?._id,
-      slug,
-    })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .lean();
-
-    return res.json({
-      success: true,
-      bets,
-    });
-
-  } catch (error) {
-    console.error("MY BETS ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    const bets = await Bet.find({ userId: getUid(req), slug }).sort({ createdAt: -1 }).limit(50).lean();
+    res.json({ success: true, bets });
+  } catch (err) {
+    console.error('myBets error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// --------------------------------------------------
-// GAME STATS
-// --------------------------------------------------
 
 export const getStats = async (req, res) => {
   try {
     const { slug } = req.params;
-
-    const rounds = await Round.find({
-      slug,
-      status: "settled",
-      "result.void": { $ne: true },
-    })
+    const rounds = await Round.find({ slug, status: 'settled', 'result.void': { $ne: true } })
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
-
     const fam = engine.familyOf(slug);
-
     const rs = rounds.map((r) => r.result);
 
-    if (fam === "baccarat") {
+    if (fam === 'baccarat') {
       return res.json(
-        engine.baccaratStats(
-          rs.map((r) =>
-            r.playerPoints > r.bankerPoints
-              ? "p"
-              : r.playerPoints < r.bankerPoints
-              ? "b"
-              : "t"
-          )
-        )
+        engine.baccaratStats(rs.map((r) => (r.playerPoints > r.bankerPoints ? 'p' : r.playerPoints < r.bankerPoints ? 'b' : 't')))
       );
     }
-
-    if (fam === "dt") {
+    if (fam === 'dt') {
       return res.json(
         engine.dragonTigerStats(
-          rs.reverse().map((r) =>
-            r.dragon.rank > r.tiger.rank
-              ? "D"
-              : r.dragon.rank < r.tiger.rank
-              ? "T"
-              : "TIE"
-          )
+          rs.reverse().map((r) => (r.dragon.rank > r.tiger.rank ? 'D' : r.dragon.rank < r.tiger.rank ? 'T' : 'TIE'))
         )
       );
     }
-
-    if (fam === "lucky7") {
-      return res.json(
-        engine.lucky7Stats(
-          rs.map((r) => r.card.rank)
-        )
-      );
+    if (fam === 'lucky7') {
+      // result API gives win codes (no card) -> use side if rank missing
+      return res.json(engine.lucky7Stats(rs.map((r) => r.card?.rank ?? r.side)));
     }
-
-    if (fam === "roulette") {
-      return res.json(
-        engine.rouletteStats(
-          rs.map((r) => r.number)
-        )
-      );
-    }
-
-    return res.json({});
-
-  } catch (error) {
-    console.error("GET STATS ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+    if (fam === 'roulette') return res.json(engine.rouletteStats(rs.map((r) => r.number)));
+    res.json({});
+  } catch (err) {
+    console.error('getStats error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
