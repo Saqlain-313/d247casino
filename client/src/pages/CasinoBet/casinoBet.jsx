@@ -2,70 +2,85 @@ import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 
-// Redux actions
 import { getUser } from '../../redux/reducer/authReducer';
+
 import {
   clearPendingBetAmounts,
   getBetHistory,
   getPendingBet,
   getPendingBetAmo,
 } from '../../redux/reducer/betReducer';
+
 import {
   clearCasinoBettingData,
   clearCasinoResultData,
   fetchCasinoBatingData,
 } from '../../redux/reducer/casinoSlice';
 
-// Components
 import MatchedBet from '../gamedetails/MatchedBet';
 import ResultPopup from './components/CasinoResult1';
 import RecentResults from './components/RecentResults';
 import Spinner2 from './components/Spinner2';
 import VideoStream from './components/VideoStream';
+
 import DesktopBetSlip from '../../components/betting/DesktopBetSlip';
 import NewMobileBetDrawer from '../../components/betting/MobileBetDrawer';
 
-// Hooks
 import useBetting from './hooks/useBetting';
 import useCasinoResults from './hooks/useCasinoResults';
 import useCasinoWebSocket from './hooks/useCasinoWebSocket';
 
-// Utils & Constants
 import { TWO_PLAYER_GAMES, getWinnerMap } from './constants';
+
 import {
   filterPlayersForTwoPlayerGames,
   groupBettingData,
 } from './utils/bettingUtils';
-import { renderGameUI } from './utils/gameRendererFactory';
+
 import { createMockCasinoMarkets } from './utils/mockCasinoMarkets';
+
 import GameMarketTable from '../../components/tables/GameMarketTable';
 import { CasinoUiProvider } from '../../context/CasinoContext';
 
 export default function CasinoBet() {
   const dispatch = useDispatch();
-  const { gameid, match } = useParams() || {};
 
-  // Local state
+  // URL parameters
+  const { gameid, match, eventName } = useParams() || {};
+
+  // States
   const [bettingData, setBettingData] = useState(null);
-  // Desktop shows the bet slip + My Bet in a side column, mobile shows them inline
+
   const [isDesktop, setIsDesktop] = useState(
     () => window.matchMedia('(min-width: 1024px)').matches
   );
-  // const [videoPageLoader, setVideoPageLoader] = useState(true);
 
   // Refs
   const previousMidRef = useRef(null);
   const hasInitializedRef = useRef(false);
 
-  // Redux selectors
-  const { battingData, loader, error } = useSelector((state) => state.casino);
+  // Redux
+  const { battingData, loader, error } = useSelector(
+    (state) => state.casino
+  );
+
   const { userInfo } = useSelector((state) => state.auth);
 
   // Custom hooks
   const betting = useBetting({ gameid, bettingData });
+
   const results = useCasinoResults({ gameid });
 
-  // WebSocket connection
+  // Resolve actual event name for video stream
+  const casinoEventName =
+    eventName ||
+    bettingData?.eventName ||
+    bettingData?.eventname ||
+    bettingData?.event_name ||
+    bettingData?.gtype ||
+    gameid;
+
+  // WebSocket
   const { isConnected } = useCasinoWebSocket({
     gameid,
     userId: userInfo?._id,
@@ -73,62 +88,83 @@ export default function CasinoBet() {
     onBettingDataUpdate: setBettingData,
   });
 
-  // Winner map for result display
   const winnerMap = getWinnerMap(gameid);
 
-  // ============== EFFECTS ==============
-
+  // Responsive
   useEffect(() => {
     const query = window.matchMedia('(min-width: 1024px)');
+
     const onChange = (e) => setIsDesktop(e.matches);
+
     query.addEventListener('change', onChange);
+
     return () => query.removeEventListener('change', onChange);
   }, []);
 
-  // Fetch betting data when game changes
+  // Fetch betting data
   useEffect(() => {
-    if (gameid) {
-      dispatch(clearCasinoResultData());
-      dispatch(clearCasinoBettingData());
-      dispatch(clearPendingBetAmounts());
-      dispatch(fetchCasinoBatingData(gameid));
-      dispatch(getPendingBet());
-      // Pending amounts will be fetched with roundId when bettingData loads
-    }
+    if (!gameid) return;
+
+    previousMidRef.current = null;
+    hasInitializedRef.current = false;
+
+    dispatch(clearCasinoResultData());
+    dispatch(clearCasinoBettingData());
+    dispatch(clearPendingBetAmounts());
+
+    dispatch(fetchCasinoBatingData(gameid));
+    dispatch(getPendingBet());
   }, [gameid, dispatch]);
 
-  // Sync betting data from Redux
+  // Sync Redux data
   useEffect(() => {
     setBettingData(battingData?.data);
   }, [battingData]);
 
-  // Reset betting state when game becomes suspended
+  // Reset betting when suspended
   useEffect(() => {
     if (!betting.betControl?.sid || !bettingData?.sub) return;
+
     const selectedSub = bettingData.sub.find(
       (s) => s.sid === betting.betControl.sid
     );
+
     if (selectedSub?.gstatus === 'SUSPENDED') {
       betting.resetBettingState();
     }
-  }, [bettingData?.sub, betting.betControl?.sid, betting.resetBettingState]);
+  }, [
+    bettingData?.sub,
+    betting.betControl?.sid,
+    betting.resetBettingState,
+  ]);
 
-  // Handle round: fetch pending bets with roundId, clear on round change
+  // Round management
   useEffect(() => {
     if (!bettingData?.mid || !gameid) return;
 
     const currentMid = bettingData.mid;
     const previousMid = previousMidRef.current;
 
-    if (hasInitializedRef.current && previousMid !== currentMid) {
-      // Round changed - clear Redux and refetch for current round only
+    if (
+      hasInitializedRef.current &&
+      previousMid !== currentMid
+    ) {
       console.log('🔄 Round changed, clearing pending bets');
+
       betting.resetAllBettingState();
+
       dispatch(clearPendingBetAmounts());
 
       setTimeout(() => {
         dispatch(getUser());
-        dispatch(getPendingBetAmo({ gameId: gameid, roundId: currentMid }));
+
+        dispatch(
+          getPendingBetAmo({
+            gameId: gameid,
+            roundId: currentMid,
+          })
+        );
+
         dispatch(
           getBetHistory({
             gameid,
@@ -139,22 +175,31 @@ export default function CasinoBet() {
         );
       }, 100);
     } else if (!hasInitializedRef.current) {
-      // First load - fetch pending bets for current round
-      dispatch(getPendingBetAmo({ gameId: gameid, roundId: currentMid }));
+      dispatch(
+        getPendingBetAmo({
+          gameId: gameid,
+          roundId: currentMid,
+        })
+      );
     }
 
     previousMidRef.current = currentMid;
     hasInitializedRef.current = true;
-  }, [bettingData?.mid, gameid, dispatch, betting.resetAllBettingState]);
+  }, [
+    bettingData?.mid,
+    gameid,
+    dispatch,
+    betting.resetAllBettingState,
+  ]);
 
-  // Fetch user data when game changes
+  // Fetch user
   useEffect(() => {
     if (gameid) {
       dispatch(getUser());
     }
   }, [gameid, dispatch]);
 
-  // Fallback polling when WebSocket disconnected
+  // Fallback polling
   useEffect(() => {
     if (!gameid || isConnected) return;
 
@@ -165,71 +210,70 @@ export default function CasinoBet() {
     return () => clearInterval(pollInterval);
   }, [gameid, dispatch, isConnected]);
 
-  // ============== DATA PROCESSING ==============
-
-  // Group and filter betting data
-  // UI-only mock markets: the dedicated renderer for each game keeps its
-  // own layout (Baccarat, Poker, Dragon/Tiger, Card 32, etc.).
+  // Mock betting data
   const mockBettingData = {
     ...(bettingData || {}),
     gtype: bettingData?.gtype || gameid,
     mid: bettingData?.mid || 'MOCK-ROUND-001',
     sub: createMockCasinoMarkets(gameid),
   };
-  const groupedData = groupBettingData(mockBettingData.sub, gameid);
+
+  // Group and filter
+  const groupedData = groupBettingData(
+    mockBettingData.sub,
+    gameid
+  );
+
   const displayData = filterPlayersForTwoPlayerGames(
     groupedData,
     gameid,
     mockBettingData.sub,
     TWO_PLAYER_GAMES
   );
-  // ============== RENDER ==============
 
   return (
     <>
-      {/* Page Loader */}
-      {/* {videoPageLoader && (
-        <div className='fixed inset-0 z-50 w-full bg-black'>
-          <img
-            src='/loader.gif'
-            alt='Loading'
-            onLoad={() => setVideoPageLoader(false)}
-            className='fixed inset-0 z-50 w-full bg-black'
-            style={{ display: videoPageLoader ? 'none' : 'block' }}
-          />
-        </div>
-      )} */}
-
-      {/* Bet Placement Loader */}
+      {/* Bet Loader */}
       {betting.loader && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center'>
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
           <Spinner2 />
         </div>
       )}
 
-      <div className='mt-0.5 flex gap-px'>
-        {/* Left: table, odds, results */}
-        <div className='ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]'>
-          <div className='bg-secondary text-secondary flex items-center justify-between gap-2 p-1 text-[12px] font-bold lg:text-[15px]'>
-            <span className='truncate uppercase'>{match || gameid}</span>
-            {bettingData?.mid && <span>Round ID: {bettingData.mid}</span>}
+      <div className="mt-0.5 flex gap-px">
+
+        {/* Left Section */}
+        <div className="ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]">
+
+          {/* Header */}
+          <div className="bg-secondary text-secondary flex items-center justify-between gap-2 p-1 text-[12px] font-bold lg:text-[15px]">
+            <span className="truncate uppercase">
+              {match || gameid}
+            </span>
+
+            {bettingData?.mid && (
+              <span>Round ID: {bettingData.mid}</span>
+            )}
           </div>
 
-          {/* Video Stream with Cards and Timer */}
+          {/* Casino Video Stream */}
           <VideoStream
-            gameid={gameid}
+            eventName={casinoEventName}
             bettingData={bettingData}
             showWinner={results.showWinner}
-            winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+            winnerLabel={
+              winnerMap[results.resultData?.res?.[0]?.win]
+            }
           />
 
+          {/* API Error */}
           {!bettingData && !loader.betting && error.betting && (
-            <div className='bg-white p-6 text-center text-[14px] font-semibold text-[#b3001b]'>
+            <div className="bg-white p-6 text-center text-[14px] font-semibold text-[#b3001b]">
               {error.betting}
             </div>
           )}
 
-          {/* Game-specific betting UI: exact dedicated renderers from new-zip */}
+          {/* Betting Markets */}
           <CasinoUiProvider
             gameid={gameid}
             bettingData={mockBettingData}
@@ -239,18 +283,20 @@ export default function CasinoBet() {
             <GameMarketTable />
           </CasinoUiProvider>
 
+          {/* Remark */}
           {bettingData?.remark && (
-            <div className='bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]'>
+            <div className="bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]">
               {bettingData.remark}
             </div>
           )}
 
-          {/* My Bet - mobile (desktop has it in the right column) */}
+          {/* Mobile My Bets */}
           {!isDesktop && (
             <div>
-              <div className='bg-secondary text-secondary p-1'>
-                <span className='font-bold'>My Bet</span>
+              <div className="bg-secondary text-secondary p-1">
+                <span className="font-bold">My Bet</span>
               </div>
+
               <MatchedBet gameid={gameid} />
             </div>
           )}
@@ -264,29 +310,43 @@ export default function CasinoBet() {
           />
         </div>
 
-        {/* Right: bet slip + my bets (desktop) */}
+        {/* Desktop Sidebar */}
         {isDesktop && (
-          <div className='sticky top-0 h-fit'>
-            <div className='w-[350px]'>
-              <CasinoUiProvider gameid={gameid} bettingData={mockBettingData} betting={betting} isMobile={false}>
+          <div className="sticky top-0 h-fit">
+            <div className="w-[350px]">
+
+              <CasinoUiProvider
+                gameid={gameid}
+                bettingData={mockBettingData}
+                betting={betting}
+                isMobile={false}
+              >
                 <DesktopBetSlip />
               </CasinoUiProvider>
-              <div className='bg-secondary text-secondary p-1'>
-                <span className='font-bold'>My Bet</span>
+
+              <div className="bg-secondary text-secondary p-1">
+                <span className="font-bold">My Bet</span>
               </div>
+
               <MatchedBet gameid={gameid} />
             </div>
           </div>
         )}
       </div>
 
+      {/* Mobile Bet Drawer */}
       {!isDesktop && (
-        <CasinoUiProvider gameid={gameid} bettingData={mockBettingData} betting={betting} isMobile={true}>
+        <CasinoUiProvider
+          gameid={gameid}
+          bettingData={mockBettingData}
+          betting={betting}
+          isMobile={true}
+        >
           <NewMobileBetDrawer />
         </CasinoUiProvider>
       )}
 
-      {/* Result Detail Popup */}
+      {/* Result Popup */}
       {results.selectedItem && (
         <ResultPopup
           mid={bettingData?.mid}
