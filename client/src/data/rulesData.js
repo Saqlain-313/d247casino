@@ -14526,8 +14526,8 @@ export const CASINO_TITLES = {
   queen: "Queen Rules",
 };
 
-export function getCasinoRulesModalTitle(gameId, defaultName) {
-  return CASINO_TITLES[gameId] || `${defaultName || "Casino"} Rules`;
+export function getCasinoRulesModalTitle(eventName, defaultName) {
+  return CASINO_TITLES[eventName] || `${defaultName || "Casino"} Rules`;
 }
 
 export function getCasinoRulesModalHtml(slug, name) {
