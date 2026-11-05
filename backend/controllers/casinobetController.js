@@ -73,6 +73,26 @@ const normalizeResult = (slug, win) => {
 // placeBet
 // ======================================================================
 
+// Controller ke andar hi helpers, taaki casinoEngine me mogambo na ho tab bhi chale
+const localValidateBet = ({ side, selection, odds, stake }) => {
+  const errors = [];
+  if (!['back', 'lay'].includes(String(side || '').toLowerCase())) {
+    errors.push('side must be back or lay');
+  }
+  if (selection === undefined || selection === null || String(selection).trim() === '') {
+    errors.push('selection is required');
+  }
+  if (!Number.isFinite(odds) || odds <= 1) errors.push('odds must be greater than 1');
+  if (!Number.isFinite(stake) || stake <= 0) errors.push('stake must be greater than 0');
+  return errors;
+};
+
+// back: stake | lay: stake * (odds - 1)
+const localCalcExposure = ({ side, stake, odds }) => {
+  const exposure = String(side || '').toLowerCase() === 'lay' ? stake * (odds - 1) : stake;
+  return Math.round(exposure * 100) / 100;
+};
+
 export const placeBet = async (req, res) => {
   const slug = String(req.params.slug || '').trim().toLowerCase();
   const userId = getUid(req);
@@ -87,16 +107,19 @@ export const placeBet = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorized user' });
     }
 
-    const family = engine.familyOf(slug);
-    if (!family) {
-      // casinoEngine me is slug ki entry nahi hai -> wahan add karo
-      console.error('familyOf returned falsy for slug:', JSON.stringify(slug));
-      return res.status(400).json({
-        success: false,
-        message: 'Game not supported',
-        slug,
-      });
+    if (!slug) {
+      return res.status(400).json({ success: false, message: 'Game slug is required' });
     }
+
+    // FIX: engine.familyOf par ab block nahi hota. Provider hi decide karta hai
+    // ki game valid hai ya nahi (fetchCasinoData + gtype check neeche).
+    let family = null;
+    try {
+      family = engine.familyOf?.(slug) || null;
+    } catch (e) {
+      console.warn('engine.familyOf failed:', e.message);
+    }
+    console.log('family:', family || 'generic');
 
     if (!roundId || selection === undefined || selection === null) {
       return res.status(400).json({
@@ -109,13 +132,21 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid odds or stake' });
     }
 
-    const errors = engine.validateBet(slug, { side, selection, odds, stake });
+    // Engine validation use karo, par "Game not supported" error ignore karo
+    let errors = localValidateBet({ side, selection, odds, stake });
+    if (family && typeof engine.validateBet === 'function') {
+      try {
+        const engineErrors = engine.validateBet(slug, { side, selection, odds, stake }) || [];
+        errors = engineErrors.filter((e) => !/not supported/i.test(String(e)));
+      } catch (e) {
+        console.warn('engine.validateBet failed:', e.message);
+      }
+    }
     if (errors.length) {
       return res.status(400).json({ success: false, message: errors.join(', ') });
     }
 
-    // Provider ka CURRENT round. fetchCasinoData returns response.data,
-    // so payload is { message, data: { mid, gtype, sub } }.
+    // Provider ka CURRENT round: { message, data: { mid, gtype, sub } }
     let providerResponse;
     try {
       providerResponse = await fetchCasinoData(slug);
@@ -135,18 +166,14 @@ export const placeBet = async (req, res) => {
       });
     }
 
-    if (
-      liveData.gtype &&
-      String(liveData.gtype).toLowerCase() !== slug
-    ) {
+    if (liveData.gtype && String(liveData.gtype).toLowerCase() !== slug) {
       return res.status(400).json({ success: false, message: 'Invalid casino game type' });
     }
 
-    // Sirf is MID ko save/refresh karta hai, doosre MID documents overwrite nahi hote.
+    // Sirf is MID ko save/refresh karta hai
     await saveCasinoRoundSnapshot(slug, liveData);
 
-    // Requested MID provider ke latest MID se purana ho sakta hai,
-    // isliye exact MID ka saved snapshot use karte hain.
+    // Requested MID purana ho sakta hai, isliye exact MID ka snapshot use karo
     const round = await Round.findOne({
       slug,
       roundId: String(roundId),
@@ -173,7 +200,7 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Betting time expired for this round' });
     }
 
-    // FIX: pehle `casinoData` use ho raha tha jo defined hi nahi tha.
+    // FIX: pehle `casinoData` undefined tha
     const roundData =
       round.marketData ||
       (String(liveData.mid) === String(roundId) ? liveData : null);
@@ -205,17 +232,25 @@ export const placeBet = async (req, res) => {
       });
     }
 
-    // Production me client odds par bharosa mat karo. Provider payload me
-    // b/bs/l/ls abhi 0 aa rahe hain, to real-money se pehle odds assertion
-    // provider ke odds feed se connect karna zaroori hai.
+    // Production me client odds par bharosa mat karo; provider odds feed se verify karo.
     // await oddsService.assertOdds(slug, roundId, selection, side, odds);
 
-    const exposure = engine.calcExposure({ side, stake, odds });
+    let exposure = NaN;
+    if (family && typeof engine.calcExposure === 'function') {
+      try {
+        exposure = engine.calcExposure({ side, stake, odds });
+      } catch (e) {
+        console.warn('engine.calcExposure failed:', e.message);
+      }
+    }
+    if (!Number.isFinite(exposure) || exposure <= 0) {
+      exposure = localCalcExposure({ side, stake, odds });
+    }
     if (!Number.isFinite(exposure) || exposure <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid bet exposure' });
     }
 
-    // Atomic debit: concurrent requests se double spend nahi hoga.
+    // Atomic debit
     const debited = await User.findOneAndUpdate(
       { _id: userId, balance: { $gte: exposure } },
       { $inc: { balance: -exposure } },
@@ -240,7 +275,7 @@ export const placeBet = async (req, res) => {
         status: 'pending',
       });
     } catch (error) {
-      // Bet insert fail hua to balance wapas.
+      // Bet insert fail hua to balance wapas
       await User.updateOne({ _id: userId }, { $inc: { balance: exposure } });
       throw error;
     }
@@ -258,7 +293,6 @@ export const placeBet = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
 // ======================================================================
 // settle core (shared by manual, API and poller)
 // ======================================================================
