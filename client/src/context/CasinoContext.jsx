@@ -23,6 +23,26 @@ const normalizeSelection = (value) =>
     .replace(/^roulette\s*:\s*/, '')
     .replace(/[^a-z0-9]/g, '');
 
+// Some providers omit `visible` for open markets.
+// Treat missing visibility as allowed; explicit 0 remains hidden.
+const isMarketVisible = (market) => {
+  const visible = market?.visible;
+
+  if (visible === undefined || visible === null || visible === '') {
+    return true;
+  }
+
+  return Number(visible) === 1;
+};
+
+const isMarketOpen = (market) => {
+  const status = String(
+    market?.gstatus ?? market?.status ?? ''
+  ).trim().toUpperCase();
+
+  return ['OPEN', 'ACTIVE'].includes(status);
+};
+
 export function CasinoUiProvider({
   children,
   gameid,
@@ -98,17 +118,29 @@ export function CasinoUiProvider({
   // SUSPENDED CHECK
   // =========================================
 
-  const isSuspended = Boolean(
-    String(casinoData?.gstatus || '').toUpperCase() === 'SUSPENDED' ||
-    String(casinoData?.status || '').toUpperCase() === 'SUSPENDED' ||
-    (
-      marketList.length > 0 &&
-      marketList.every(
-        (item) =>
-          String(item?.gstatus || '').toUpperCase() !== 'ACTIVE'
-      )
-    )
-  );
+  // Game-level suspension only. Individual market status/visibility/odds
+  // are validated independently in openBetSlip.
+  const gameStatusSuspended = [
+    casinoData?.gstatus,
+    casinoData?.status,
+  ].some((status) => String(status || '').toUpperCase() === 'SUSPENDED');
+
+  const hasAnyOpenMarket = marketList.some((item) => {
+    const visible = isMarketVisible(item);
+    const open = isMarketOpen(item);
+    const back = Number(item?.b ?? item?.back ?? item?.odds);
+    const lay = Number(item?.l ?? item?.lay);
+    return (
+      visible &&
+      open &&
+      ((Number.isFinite(back) && back > 1) ||
+        (Number.isFinite(lay) && lay > 1))
+    );
+  });
+
+  const isSuspended =
+    gameStatusSuspended ||
+    (marketList.length > 0 && !hasAnyOpenMarket);
 
   // =========================================
   // MARKET MAPPING
@@ -121,29 +153,18 @@ export function CasinoUiProvider({
       const providerId = item?.sid ?? item?.i;
 
       const entry = {
-        back: String(
-          item?.b ?? item?.back ?? item?.odds ?? ''
-        ),
-
-        lay: String(
-          item?.l ?? item?.lay ?? ''
-        ),
-
+        back: String(item?.b ?? item?.back ?? item?.odds ?? ''),
+        lay: String(item?.l ?? item?.lay ?? ''),
         nat:
           item?.nat ??
           item?.n ??
           item?.name ??
           item?.label ??
           '',
-
-        sid: providerId != null
-          ? String(providerId)
-          : '',
-
-        gstatus: item?.gstatus,
-
+        sid: providerId != null ? String(providerId) : '',
+        gstatus: item?.gstatus ?? item?.status ?? '',
+        visible: Number(item?.visible) === 1,
         min: Number(item?.min ?? 100),
-
         max: Number(item?.max ?? 100000),
       };
 
@@ -267,25 +288,33 @@ export function CasinoUiProvider({
         return;
       }
 
-      // Market status
-      if (
-        String(selectedMarket.gstatus || '').toUpperCase() !== 'ACTIVE'
-      ) {
-        window.alert(
-          'This selection is suspended by the provider.'
-        );
+      // Missing `visible` is accepted; only explicit visible=0 is locked.
+      if (!isMarketVisible(selectedMarket)) {
+        window.alert('This market is hidden by the provider.');
         return;
       }
 
-      // Odds validation
-      const numericOdds = Number.parseFloat(odds);
+      // Providers may send OPEN or ACTIVE for an open market.
+      const marketStatus = String(
+        selectedMarket.gstatus ?? selectedMarket.status ?? ''
+      ).toUpperCase();
 
-      if (
-        !Number.isFinite(numericOdds) ||
-        numericOdds <= 1
-      ) {
+      if (!['OPEN', 'ACTIVE'].includes(marketStatus)) {
+        window.alert('This selection is not open for betting.');
+        return;
+      }
+
+      // Always use the latest odds from the matched provider market.
+      // Never trust hardcoded/fallback odds passed by a table component.
+      const requestedSide = type === 'lay' ? 'lay' : 'back';
+      const rawOdds = requestedSide === 'lay'
+        ? (selectedMarket.l ?? selectedMarket.lay)
+        : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
+      const numericOdds = Number(rawOdds);
+
+      if (!Number.isFinite(numericOdds) || numericOdds <= 1) {
         window.alert(
-          'Valid odds are not available for this selection.'
+          `Valid ${requestedSide} odds are not available for this selection.`
         );
         return;
       }
@@ -312,6 +341,9 @@ export function CasinoUiProvider({
         min: Number(selectedMarket.min ?? 100),
 
         max: Number(selectedMarket.max ?? 100000),
+
+        visible: isMarketVisible(selectedMarket),
+        gstatus: marketStatus,
 
         slug: String(gameid || ''),
 
@@ -423,6 +455,34 @@ export function CasinoUiProvider({
       return;
     }
 
+    // Re-check the selected market immediately before submitting.
+    // This prevents a stale slip from placing a bet after the provider closes it.
+    const latestMarket = marketList.find((item) =>
+      String(item?.sid ?? item?.i ?? '') === String(control.selection)
+    );
+    const latestStatus = String(
+      latestMarket?.gstatus ?? latestMarket?.status ?? ''
+    ).trim().toUpperCase();
+    const latestVisible = isMarketVisible(latestMarket);
+    const latestRawOdds = control.type === 'lay'
+      ? (latestMarket?.l ?? latestMarket?.lay)
+      : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
+    const latestOdds = Number(latestRawOdds);
+
+    if (
+      isSuspended ||
+      !latestMarket ||
+      !latestVisible ||
+      !['OPEN', 'ACTIVE'].includes(latestStatus) ||
+      !Number.isFinite(latestOdds) ||
+      latestOdds <= 1 ||
+      latestOdds !== oddsValue
+    ) {
+      window.alert('Market changed or is no longer available. Please select it again.');
+      betting.resetBettingState();
+      return;
+    }
+
     try {
       console.log('SUBMITTING CASINO BET:', {
         slug: control.slug,
@@ -464,7 +524,7 @@ export function CasinoUiProvider({
           : error?.message || 'Unable to place bet.'
       );
     }
-  }, [dispatch, betting]);
+  }, [dispatch, betting, marketList, isSuspended]);
 
   // =========================================
   // ROULETTE BET
