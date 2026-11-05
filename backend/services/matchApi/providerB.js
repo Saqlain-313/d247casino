@@ -180,7 +180,6 @@ export function createProviderB() {
         `${API_URL}/casino/data?key=${API_KEY}&type=${eventName}`
       );
 
-      console.log(response,"malik")
       return response.data;
     },
 

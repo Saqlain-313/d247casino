@@ -4,6 +4,7 @@ import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
 import * as engine from '../services/casinoEngine.js';
 import axios from 'axios';
+import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
 
 const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
@@ -71,93 +72,143 @@ const normalizeResult = (slug, win) => {
 // ======================================================================
 // placeBet
 // ======================================================================
+
 export const placeBet = async (req, res) => {
   const { slug } = req.params;
   const userId = getUid(req);
-  const { roundId, side, selection } = req.body;
-  const odds = Number(req.body.odds);
-  const stake = Number(req.body.stake);
+  const { roundId, side, selection } = req.body || {};
+  const odds = Number(req.body?.odds);
+  const stake = Number(req.body?.stake);
 
   try {
-    // 1. Validate game
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized user' });
+    }
+
     if (!engine.familyOf(slug)) {
       return res.status(400).json({ success: false, message: 'Game not supported' });
     }
 
-    // 2. Validate request
+    if (!roundId || selection === undefined || selection === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'roundId and selection are required',
+      });
+    }
+
     const errors = engine.validateBet(slug, { side, selection, odds, stake });
     if (errors.length) {
       return res.status(400).json({ success: false, message: errors.join(', ') });
     }
 
-    // 3. Don't accept bets on an already settled round
-    const existingRound = await Round.findOne({ slug, roundId: String(roundId) }).lean();
-    if (existingRound?.status === 'settled') {
-      return res.status(400).json({ success: false, message: 'Round already finished' });
-    }
-
-    // 4. Live data from provider
-    let casinoResponse;
+    // Fetch provider's CURRENT round. fetchCasinoData returns response.data,
+    // so provider payload is { message, data: { mid, gtype, sub } }.
+    let providerResponse;
     try {
-      casinoResponse = await fetchCasinoData(slug);
-    } catch {
-      return res.status(503).json({ success: false, message: 'Casino server unavailable. Please try again.' });
+      providerResponse = await fetchCasinoData(slug);
+    } catch (error) {
+      console.error('Casino API error:', error);
+      return res.status(503).json({
+        success: false,
+        message: 'Casino server unavailable. Please try again.',
+      });
     }
 
-    if (!casinoResponse || casinoResponse.success === false) {
-      return res.status(400).json({ success: false, message: 'Unable to fetch casino data' });
+    const liveData = providerResponse?.data;
+    if (!liveData || liveData.mid === undefined || liveData.mid === null) {
+      return res.status(503).json({
+        success: false,
+        message: 'Provider returned invalid casino data',
+      });
     }
 
-    // 5. Extract live data  (adjust field names after checking your real response)
-    const casinoData = casinoResponse.data;
-    if (!casinoData) {
-      return res.status(400).json({ success: false, message: 'Casino data not found' });
-    }
-
-    // 6. Verify round id against live round
-    const liveRoundId = String(
-      casinoData.roundId ?? casinoData.mid ?? casinoData.t1?.[0]?.mid ?? casinoData.sub?.[0]?.mid ?? ''
-    );
-    if (!liveRoundId || liveRoundId !== String(roundId)) {
-      return res.status(400).json({ success: false, message: 'Invalid or expired round' });
-    }
-
-    // 7. Betting status
-    const bettingStatus = casinoData.status ?? casinoData.gameStatus ?? casinoData.betStatus;
     if (
-      bettingStatus &&
-      !['open', 'betting', 'active'].includes(String(bettingStatus).toLowerCase())
+      liveData.gtype &&
+      String(liveData.gtype).toLowerCase() !== String(slug).toLowerCase()
     ) {
-      return res.status(400).json({ success: false, message: 'Betting closed' });
+      return res.status(400).json({ success: false, message: 'Invalid casino game type' });
     }
 
-    // 8. TODO: verify odds server-side (never trust client odds)
+    // Save/refresh only this MID. It does not overwrite other MID documents.
+    await saveCasinoRoundSnapshot(slug, liveData);
+
+    // IMPORTANT: requested MID may be older than provider's latest MID.
+    // Use the saved snapshot for that exact MID instead of comparing it to live MID.
+    const round = await Round.findOne({
+      slug,
+      roundId: String(roundId),
+    });
+
+    if (!round) {
+      return res.status(400).json({
+        success: false,
+        message: 'Round snapshot not found. It must be captured while provider is serving that MID.',
+        requestedRoundId: String(roundId),
+        latestProviderRoundId: String(liveData.mid),
+      });
+    }
+
+    if (round.status === 'settled') {
+      return res.status(400).json({ success: false, message: 'Round already settled' });
+    }
+
+    if (round.status !== 'betting' || round.providerClosed === true) {
+      return res.status(400).json({ success: false, message: 'Betting closed for this round' });
+    }
+
+    if (round.bettingEndsAt && new Date(round.bettingEndsAt) <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Betting time expired for this round' });
+    }
+
+    const roundData = round.marketData;
+    const selectedMarket = roundData?.sub?.find(
+      (item) => String(item.sid) === String(selection)
+    );
+
+    if (!selectedMarket) {
+      return res.status(400).json({ success: false, message: 'Invalid selection for this round' });
+    }
+
+    if (String(selectedMarket.gstatus || '').toUpperCase() !== 'ACTIVE') {
+      return res.status(400).json({
+        success: false,
+        message: 'This selection is suspended',
+        selection: selectedMarket.nat || selectedMarket.sid,
+        status: selectedMarket.gstatus || 'UNKNOWN',
+      });
+    }
+
+    const minStake = Number(selectedMarket.min ?? 0);
+    const maxStake = Number(selectedMarket.max ?? Infinity);
+
+    if (stake < minStake || stake > maxStake) {
+      return res.status(400).json({
+        success: false,
+        message: `Stake must be between ${minStake} and ${maxStake}`,
+      });
+    }
+
+    // Do not trust client odds in production. The supplied provider payload
+    // currently shows b/bs/l/ls as 0, so a real odds assertion must be connected
+    // to the provider's documented odds feed before enabling real-money betting.
     // await oddsService.assertOdds(slug, roundId, selection, side, odds);
 
-    // 9. Exposure
     const exposure = engine.calcExposure({ side, stake, odds });
     if (!Number.isFinite(exposure) || exposure <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid bet exposure' });
     }
 
-    // 10. Make sure Round doc exists (settleRound needs it)
-    await Round.updateOne(
-      { slug, roundId: String(roundId) },
-      { $setOnInsert: { slug, roundId: String(roundId), status: 'open' } },
-      { upsert: true }
-    );
-
-    // 11. Atomic balance debit
+    // Atomic debit prevents two concurrent requests overspending the same balance.
     const debited = await User.findOneAndUpdate(
       { _id: userId, balance: { $gte: exposure } },
       { $inc: { balance: -exposure } },
       { new: true }
     );
+
     if (!debited) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
-    // 12. Create bet (refund if it fails)
     let bet;
     try {
       bet = await Bet.create({
@@ -172,6 +223,7 @@ export const placeBet = async (req, res) => {
         status: 'pending',
       });
     } catch (error) {
+      // Compensating refund if bet insert fails.
       await User.updateOne({ _id: userId }, { $inc: { balance: exposure } });
       throw error;
     }
@@ -181,6 +233,8 @@ export const placeBet = async (req, res) => {
       message: 'Bet placed successfully',
       bet,
       balance: debited.balance,
+      roundId: String(roundId),
+      latestProviderRoundId: String(liveData.mid),
     });
   } catch (error) {
     console.error('placeBet error:', error);

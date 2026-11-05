@@ -1,13 +1,33 @@
 import mongoose from 'mongoose';
 
-const roundSchema = new mongoose.Schema({
-  slug: { type: String, required: true },
-  roundId: { type: String, required: true },
-  status: { type: String, enum: ['betting', 'suspended', 'settled'], default: 'betting' },
-  bettingEndsAt: Date,
-  result: mongoose.Schema.Types.Mixed,
-}, { timestamps: true });
+const casinoRoundSchema = new mongoose.Schema(
+  {
+    slug: { type: String, required: true, trim: true },
+    roundId: { type: String, required: true, trim: true },
 
-roundSchema.index({ slug: 1, roundId: 1 }, { unique: true });
+    // Only 'betting' rounds can receive new bets.
+    status: {
+      type: String,
+      enum: ['betting', 'closed', 'settled'],
+      default: 'closed',
+      index: true,
+    },
 
-export default mongoose.models.CasinoRound || mongoose.model('CasinoRound', roundSchema);
+    // Immutable-by-round snapshot of provider data for this MID.
+    marketData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    providerClosed: { type: Boolean, default: false },
+    bettingEndsAt: { type: Date, default: null },
+    lastSyncedAt: { type: Date, default: null },
+    result: { type: mongoose.Schema.Types.Mixed, default: null },
+  },
+  { timestamps: true }
+);
+
+casinoRoundSchema.index({ slug: 1, roundId: 1 }, { unique: true });
+
+export default mongoose.models.CasinoRound ||
+  mongoose.model('CasinoRound', casinoRoundSchema);
