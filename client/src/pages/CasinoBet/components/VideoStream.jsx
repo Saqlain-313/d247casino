@@ -59,11 +59,7 @@ const VideoStream = memo(function VideoStream({
       )}
 
       {/* Loading */}
-      {videoload && !failed && streamUrl && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white">
-          Loading stream...
-        </div>
-      )}
+    
 
       {/* Cards Overlay */}
       <div className="absolute top-0 left-0 flex items-start rounded-md">
