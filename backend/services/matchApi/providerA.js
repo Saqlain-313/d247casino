@@ -141,7 +141,6 @@ export function createProviderA() {
         { timeout: 10000 }
       );
 
-      console.log(response,"malik2222")
 
       // The provider wraps the table as { fetchedAt, eventName, data: { success, data } }.
       // Everything downstream (socket polling, bet validation, the API) expects

@@ -80,6 +80,8 @@ export const placeBet = async (req, res) => {
   const odds = Number(req.body?.odds);
   const stake = Number(req.body?.stake);
 
+  console.log('placeBet request:', { slug, userId, roundId, side, selection, odds, stake });
+
   try {
     if (!userId) {
       return res.status(401).json({ success: false, message: 'Unauthorized user' });
