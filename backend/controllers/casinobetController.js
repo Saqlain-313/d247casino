@@ -74,7 +74,7 @@ const normalizeResult = (slug, win) => {
 // ======================================================================
 
 export const placeBet = async (req, res) => {
-  const { slug } = req.params;
+  const slug = String(req.params.slug || '').trim().toLowerCase();
   const userId = getUid(req);
   const { roundId, side, selection } = req.body || {};
   const odds = Number(req.body?.odds);
@@ -87,8 +87,15 @@ export const placeBet = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Unauthorized user' });
     }
 
-    if (!engine.familyOf(slug)) {
-      return res.status(400).json({ success: false, message: 'Game not supported' });
+    const family = engine.familyOf(slug);
+    if (!family) {
+      // casinoEngine me is slug ki entry nahi hai -> wahan add karo
+      console.error('familyOf returned falsy for slug:', JSON.stringify(slug));
+      return res.status(400).json({
+        success: false,
+        message: 'Game not supported',
+        slug,
+      });
     }
 
     if (!roundId || selection === undefined || selection === null) {
@@ -98,13 +105,17 @@ export const placeBet = async (req, res) => {
       });
     }
 
+    if (!Number.isFinite(odds) || !Number.isFinite(stake) || stake <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid odds or stake' });
+    }
+
     const errors = engine.validateBet(slug, { side, selection, odds, stake });
     if (errors.length) {
       return res.status(400).json({ success: false, message: errors.join(', ') });
     }
 
-    // Fetch provider's CURRENT round. fetchCasinoData returns response.data,
-    // so provider payload is { message, data: { mid, gtype, sub } }.
+    // Provider ka CURRENT round. fetchCasinoData returns response.data,
+    // so payload is { message, data: { mid, gtype, sub } }.
     let providerResponse;
     try {
       providerResponse = await fetchCasinoData(slug);
@@ -126,16 +137,16 @@ export const placeBet = async (req, res) => {
 
     if (
       liveData.gtype &&
-      String(liveData.gtype).toLowerCase() !== String(slug).toLowerCase()
+      String(liveData.gtype).toLowerCase() !== slug
     ) {
       return res.status(400).json({ success: false, message: 'Invalid casino game type' });
     }
 
-    // Save/refresh only this MID. It does not overwrite other MID documents.
+    // Sirf is MID ko save/refresh karta hai, doosre MID documents overwrite nahi hote.
     await saveCasinoRoundSnapshot(slug, liveData);
 
-    // IMPORTANT: requested MID may be older than provider's latest MID.
-    // Use the saved snapshot for that exact MID instead of comparing it to live MID.
+    // Requested MID provider ke latest MID se purana ho sakta hai,
+    // isliye exact MID ka saved snapshot use karte hain.
     const round = await Round.findOne({
       slug,
       roundId: String(roundId),
@@ -162,11 +173,14 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Betting time expired for this round' });
     }
 
-    const roundData = round.marketData;
-  const selectedMarket = casinoData.sub?.find(
-  (item) =>
-    String(item.sid ?? item.i) === String(selection)
-);
+    // FIX: pehle `casinoData` use ho raha tha jo defined hi nahi tha.
+    const roundData =
+      round.marketData ||
+      (String(liveData.mid) === String(roundId) ? liveData : null);
+
+    const selectedMarket = roundData?.sub?.find(
+      (item) => String(item.sid ?? item.i) === String(selection)
+    );
 
     if (!selectedMarket) {
       return res.status(400).json({ success: false, message: 'Invalid selection for this round' });
@@ -191,9 +205,9 @@ export const placeBet = async (req, res) => {
       });
     }
 
-    // Do not trust client odds in production. The supplied provider payload
-    // currently shows b/bs/l/ls as 0, so a real odds assertion must be connected
-    // to the provider's documented odds feed before enabling real-money betting.
+    // Production me client odds par bharosa mat karo. Provider payload me
+    // b/bs/l/ls abhi 0 aa rahe hain, to real-money se pehle odds assertion
+    // provider ke odds feed se connect karna zaroori hai.
     // await oddsService.assertOdds(slug, roundId, selection, side, odds);
 
     const exposure = engine.calcExposure({ side, stake, odds });
@@ -201,7 +215,7 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid bet exposure' });
     }
 
-    // Atomic debit prevents two concurrent requests overspending the same balance.
+    // Atomic debit: concurrent requests se double spend nahi hoga.
     const debited = await User.findOneAndUpdate(
       { _id: userId, balance: { $gte: exposure } },
       { $inc: { balance: -exposure } },
@@ -226,7 +240,7 @@ export const placeBet = async (req, res) => {
         status: 'pending',
       });
     } catch (error) {
-      // Compensating refund if bet insert fails.
+      // Bet insert fail hua to balance wapas.
       await User.updateOne({ _id: userId }, { $inc: { balance: exposure } });
       throw error;
     }
