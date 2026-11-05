@@ -24,46 +24,55 @@ export const fetchCasinoData = createAsyncThunk(
 );
 
 // Async thunk to fetch casino betting data
+
 export const fetchCasinoBatingData = createAsyncThunk(
   'casino/fetchCasinoBatingData',
   async (eventName, { rejectWithValue }) => {
     try {
-      // Cancel previous request if it exists
+      if (!eventName) {
+        return rejectWithValue('Event name is required');
+      }
+
+      // Cancel previous request
       if (bettingAbortController) {
-        console.log(' [ABORT] Cancelling previous betting request');
         bettingAbortController.abort();
       }
 
-      // Create new AbortController for this request
       bettingAbortController = new AbortController();
 
-      console.log('[FETCH] Starting betting fetch for eventName:', eventName);
-      const response = await api.get(`/casino-betting-data?eventName=${eventName}`, {
+      console.log('[FETCH] Casino betting data:', eventName);
+
+      // Existing backend route
+      const response = await api.get('/casino-betting-data', {
+        params: {
+          eventName: eventName,
+        },
         signal: bettingAbortController.signal,
       });
 
-      console.log(' [SUCCESS] Betting fetch completed for eventName:', eventName);
-      return response.data.data;
+      console.log('[SUCCESS] Casino data:', response.data);
+
+      return response.data?.data;
+
     } catch (error) {
-      // Ignore aborted requests
       if (
         error.name === 'AbortError' ||
         error.name === 'CanceledError' ||
         error.code === 'ERR_CANCELED'
       ) {
-        console.log(
-          ' [ABORT] Betting request was cancelled for eventName:',
-          eventName
-        );
         return rejectWithValue('Request cancelled');
       }
-      console.error(' [ERROR] Error fetching betting data:', error);
+
+      console.error('[CASINO ERROR]', error);
+
       return rejectWithValue(
-        error.response?.data?.message || 'Failed to fetch betting data'
+        error.response?.data?.message ||
+        'Failed to fetch betting data'
       );
     }
   }
 );
+
 
 // Async thunk to fetch casino result
 

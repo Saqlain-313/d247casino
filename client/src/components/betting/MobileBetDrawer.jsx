@@ -99,7 +99,12 @@ export default function MobileBetDrawer() {
             <button type="button" className="btn btn-secondary flex-fill" onClick={closeBetSlip}>
               Cancel
             </button>
-            <button type="button" className="btn btn-success flex-fill fw-bold" onClick={submitBet}>
+            <button
+              type="button"
+              className="btn btn-success flex-fill fw-bold"
+              onClick={submitBet}
+              disabled={!betSlip.roundId || !betSlip.selection || betSlip.stake <= 0}
+            >
               Place Bet
             </button>
           </div>

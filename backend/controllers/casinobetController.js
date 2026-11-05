@@ -1,9 +1,9 @@
 
+import axios from 'axios';
 import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
 import * as engine from '../services/casinoEngine.js';
-import axios from 'axios';
 import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
 
 const API_URL = process.env.API_URL;
@@ -161,9 +161,10 @@ export const placeBet = async (req, res) => {
     }
 
     const roundData = round.marketData;
-    const selectedMarket = roundData?.sub?.find(
-      (item) => String(item.sid) === String(selection)
-    );
+  const selectedMarket = casinoData.sub?.find(
+  (item) =>
+    String(item.sid ?? item.i) === String(selection)
+);
 
     if (!selectedMarket) {
       return res.status(400).json({ success: false, message: 'Invalid selection for this round' });

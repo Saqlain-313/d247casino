@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
 
@@ -37,41 +44,127 @@ import {
   groupBettingData,
 } from './utils/bettingUtils';
 
-import { createMockCasinoMarkets } from './utils/mockCasinoMarkets';
-
 import GameMarketTable from '../../components/tables/GameMarketTable';
 import { CasinoUiProvider } from '../../context/CasinoContext';
+
+// =============================================
+// NORMALIZE CASINO API RESPONSE
+// Handles:
+// { message, data: { mid, sub } }
+// { data: { message, data: { mid, sub } } }
+// { mid, sub }
+// =============================================
+
+const normalizeCasinoData = (payload) => {
+  let current = payload;
+
+  for (let i = 0; i < 4; i++) {
+    if (!current || typeof current !== 'object') {
+      return null;
+    }
+
+    // Actual provider game data found
+    if (
+      current.mid !== undefined &&
+      current.mid !== null &&
+      Array.isArray(current.sub)
+    ) {
+      return current;
+    }
+
+    // Extract nested response
+    if (
+      current.data &&
+      typeof current.data === 'object'
+    ) {
+      current = current.data;
+      continue;
+    }
+
+    return null;
+  }
+
+  return null;
+};
 
 export default function CasinoBet() {
   const dispatch = useDispatch();
 
-  // URL parameters
+  // =============================================
+  // URL PARAMETERS
+  // =============================================
+
   const { gameid, match, eventName } = useParams() || {};
 
-  // States
+  // =============================================
+  // STATES
+  // =============================================
+
   const [bettingData, setBettingData] = useState(null);
 
   const [isDesktop, setIsDesktop] = useState(
     () => window.matchMedia('(min-width: 1024px)').matches
   );
 
-  // Refs
+  // =============================================
+  // REFS
+  // =============================================
+
   const previousMidRef = useRef(null);
+
   const hasInitializedRef = useRef(false);
 
-  // Redux
-  const { battingData, loader, error } = useSelector(
-    (state) => state.casino
+  // =============================================
+  // REDUX
+  // =============================================
+
+  const {
+    battingData,
+    loader,
+    error,
+  } = useSelector((state) => state.casino);
+
+  const { userInfo } = useSelector(
+    (state) => state.auth
   );
 
-  const { userInfo } = useSelector((state) => state.auth);
+  // =============================================
+  // CUSTOM HOOKS
+  // =============================================
 
-  // Custom hooks
-  const betting = useBetting({ gameid, bettingData });
+  const betting = useBetting({
+    gameid,
+    bettingData,
+  });
 
   const results = useCasinoResults({ gameid });
 
-  // Resolve actual event name for video stream
+  // =============================================
+  // WEBSOCKET DATA NORMALIZER
+  // =============================================
+
+  const handleBettingDataUpdate = useCallback((payload) => {
+    console.log('WEBSOCKET RAW DATA:', payload);
+
+    const actualData = normalizeCasinoData(payload);
+
+    if (!actualData) {
+      console.warn(
+        'WebSocket casino data could not be normalized:',
+        payload
+      );
+      return;
+    }
+
+    console.log('WEBSOCKET NORMALIZED DATA:', actualData);
+
+    setBettingData(actualData);
+  }, []);
+
+  // =============================================
+  // VIDEO EVENT NAME
+  // =============================================
+
   const casinoEventName =
     eventName ||
     bettingData?.eventName ||
@@ -80,82 +173,170 @@ export default function CasinoBet() {
     bettingData?.gtype ||
     gameid;
 
-  // WebSocket
+  // =============================================
+  // WEBSOCKET
+  // =============================================
+
   const { isConnected } = useCasinoWebSocket({
     gameid,
     userId: userInfo?._id,
     bettingDataMid: bettingData?.mid,
-    onBettingDataUpdate: setBettingData,
+    onBettingDataUpdate: handleBettingDataUpdate,
   });
 
   const winnerMap = getWinnerMap(gameid);
 
-  // Responsive
-  useEffect(() => {
-    const query = window.matchMedia('(min-width: 1024px)');
+  // =============================================
+  // RESPONSIVE
+  // =============================================
 
-    const onChange = (e) => setIsDesktop(e.matches);
+  useEffect(() => {
+    const query = window.matchMedia(
+      '(min-width: 1024px)'
+    );
+
+    const onChange = (e) => {
+      setIsDesktop(e.matches);
+    };
 
     query.addEventListener('change', onChange);
 
-    return () => query.removeEventListener('change', onChange);
+    return () => {
+      query.removeEventListener('change', onChange);
+    };
   }, []);
 
-  // Fetch betting data
+  // =============================================
+  // FETCH BETTING DATA
+  // =============================================
+
   useEffect(() => {
     if (!gameid) return;
 
+    console.log('FETCH CASINO GAME:', gameid);
+
     previousMidRef.current = null;
+
     hasInitializedRef.current = false;
 
+    setBettingData(null);
+
     dispatch(clearCasinoResultData());
+
     dispatch(clearCasinoBettingData());
+
     dispatch(clearPendingBetAmounts());
 
     dispatch(fetchCasinoBatingData(gameid));
+
     dispatch(getPendingBet());
+
   }, [gameid, dispatch]);
 
-  // Sync Redux data
-  useEffect(() => {
-    setBettingData(battingData?.data);
-  }, [battingData]);
+  // =============================================
+  // SYNC REDUX DATA
+  // MAIN FIX
+  // =============================================
 
-  // Reset betting when suspended
   useEffect(() => {
-    if (!betting.betControl?.sid || !bettingData?.sub) return;
+    if (!battingData) return;
 
-    const selectedSub = bettingData.sub.find(
-      (s) => s.sid === betting.betControl.sid
+    console.log(
+      'REDUX RAW CASINO RESPONSE:',
+      battingData
     );
 
-    if (selectedSub?.gstatus === 'SUSPENDED') {
+    const actualData = normalizeCasinoData(battingData);
+
+    if (!actualData) {
+      console.warn(
+        'Casino Redux data normalization failed:',
+        battingData
+      );
+      return;
+    }
+
+    console.log(
+      'REDUX NORMALIZED CASINO DATA:',
+      actualData
+    );
+
+    console.log('REDUX MID:', actualData.mid);
+
+    console.log('REDUX MARKETS:', actualData.sub);
+
+    setBettingData(actualData);
+
+  }, [battingData]);
+
+  // =============================================
+  // RESET BETTING WHEN MARKET SUSPENDED
+  // =============================================
+
+  useEffect(() => {
+    if (
+      !betting.betControl?.sid ||
+      !Array.isArray(bettingData?.sub)
+    ) {
+      return;
+    }
+
+    // Do not invalidate a slip belonging to another MID.
+    if (
+      String(betting.betControl.roundId) !==
+      String(bettingData.mid)
+    ) {
+      return;
+    }
+
+    const selectedSub = bettingData.sub.find(
+      (item) =>
+        String(item.sid ?? item.i) ===
+        String(betting.betControl.sid)
+    );
+
+    if (
+      !selectedSub ||
+      String(selectedSub.gstatus || '').toUpperCase() !==
+        'ACTIVE'
+    ) {
       betting.resetBettingState();
     }
+
   }, [
     bettingData?.sub,
+    bettingData?.mid,
     betting.betControl?.sid,
+    betting.betControl?.roundId,
     betting.resetBettingState,
   ]);
 
-  // Round management
+  // =============================================
+  // ROUND MANAGEMENT
+  // =============================================
+
   useEffect(() => {
     if (!bettingData?.mid || !gameid) return;
 
-    const currentMid = bettingData.mid;
+    const currentMid = String(bettingData.mid);
+
     const previousMid = previousMidRef.current;
 
     if (
       hasInitializedRef.current &&
       previousMid !== currentMid
     ) {
-      console.log('🔄 Round changed, clearing pending bets');
+      console.log(
+        'Provider MID changed:',
+        previousMid,
+        '=>',
+        currentMid
+      );
 
-      betting.resetAllBettingState();
-
+      // Preserve the existing bet slip's captured MID.
       dispatch(clearPendingBetAmounts());
 
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         dispatch(getUser());
 
         dispatch(
@@ -173,8 +354,15 @@ export default function CasinoBet() {
             selectedVoid: 'unsettel',
           })
         );
+
       }, 100);
+
+      previousMidRef.current = currentMid;
+
+      return () => clearTimeout(timer);
+
     } else if (!hasInitializedRef.current) {
+
       dispatch(
         getPendingBetAmo({
           gameId: gameid,
@@ -184,22 +372,29 @@ export default function CasinoBet() {
     }
 
     previousMidRef.current = currentMid;
+
     hasInitializedRef.current = true;
+
   }, [
     bettingData?.mid,
     gameid,
     dispatch,
-    betting.resetAllBettingState,
   ]);
 
-  // Fetch user
+  // =============================================
+  // FETCH USER
+  // =============================================
+
   useEffect(() => {
     if (gameid) {
       dispatch(getUser());
     }
   }, [gameid, dispatch]);
 
-  // Fallback polling
+  // =============================================
+  // FALLBACK POLLING
+  // =============================================
+
   useEffect(() => {
     if (!gameid || isConnected) return;
 
@@ -208,17 +403,52 @@ export default function CasinoBet() {
     }, 5000);
 
     return () => clearInterval(pollInterval);
-  }, [gameid, dispatch, isConnected]);
 
-  // Mock betting data
-  const mockBettingData = {
-    ...(bettingData || {}),
-    gtype: bettingData?.gtype || gameid,
-    mid: bettingData?.mid || 'MOCK-ROUND-001',
-    sub: createMockCasinoMarkets(gameid),
-  };
+  }, [
+    gameid,
+    dispatch,
+    isConnected,
+  ]);
 
-  // Group and filter
+  // =============================================
+  // PROVIDER BETTING DATA
+  // =============================================
+
+  const mockBettingData = bettingData
+    ? {
+        ...bettingData,
+
+        gtype: bettingData.gtype || gameid,
+
+        mid: bettingData.mid
+          ? String(bettingData.mid)
+          : '',
+
+        sub: Array.isArray(bettingData.sub)
+          ? bettingData.sub
+          : [],
+      }
+    : {
+        gtype: gameid,
+        mid: '',
+        sub: [],
+      };
+
+  // =============================================
+  // MARKET DEBUG
+  // =============================================
+
+  console.log('CASINO BET PAGE:', {
+    game: gameid,
+    mid: mockBettingData.mid,
+    gtype: mockBettingData.gtype,
+    marketCount: mockBettingData.sub.length,
+  });
+
+  // =============================================
+  // GROUP AND FILTER
+  // =============================================
+
   const groupedData = groupBettingData(
     mockBettingData.sub,
     gameid
@@ -230,6 +460,13 @@ export default function CasinoBet() {
     mockBettingData.sub,
     TWO_PLAYER_GAMES
   );
+
+  // Keep this variable available if used by your UI.
+  void displayData;
+
+  // =============================================
+  // RENDER
+  // =============================================
 
   return (
     <>
@@ -251,15 +488,17 @@ export default function CasinoBet() {
               {match || gameid}
             </span>
 
-            {bettingData?.mid && (
-              <span>Round ID: {bettingData.mid}</span>
+            {mockBettingData.mid && (
+              <span>
+                Round ID: {mockBettingData.mid}
+              </span>
             )}
           </div>
 
           {/* Casino Video Stream */}
           <VideoStream
             eventName={casinoEventName}
-            bettingData={bettingData}
+            bettingData={mockBettingData}
             showWinner={results.showWinner}
             winnerLabel={
               winnerMap[results.resultData?.res?.[0]?.win]
@@ -284,9 +523,9 @@ export default function CasinoBet() {
           </CasinoUiProvider>
 
           {/* Remark */}
-          {bettingData?.remark && (
+          {mockBettingData.remark && (
             <div className="bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]">
-              {bettingData.remark}
+              {mockBettingData.remark}
             </div>
           )}
 
@@ -294,7 +533,9 @@ export default function CasinoBet() {
           {!isDesktop && (
             <div>
               <div className="bg-secondary text-secondary p-1">
-                <span className="font-bold">My Bet</span>
+                <span className="font-bold">
+                  My Bet
+                </span>
               </div>
 
               <MatchedBet gameid={gameid} />
@@ -308,6 +549,7 @@ export default function CasinoBet() {
             results={results.resultData?.res}
             onItemClick={results.setSelectedItem}
           />
+
         </div>
 
         {/* Desktop Sidebar */}
@@ -325,13 +567,17 @@ export default function CasinoBet() {
               </CasinoUiProvider>
 
               <div className="bg-secondary text-secondary p-1">
-                <span className="font-bold">My Bet</span>
+                <span className="font-bold">
+                  My Bet
+                </span>
               </div>
 
               <MatchedBet gameid={gameid} />
+
             </div>
           </div>
         )}
+
       </div>
 
       {/* Mobile Bet Drawer */}
@@ -349,13 +595,14 @@ export default function CasinoBet() {
       {/* Result Popup */}
       {results.selectedItem && (
         <ResultPopup
-          mid={bettingData?.mid}
+          mid={mockBettingData.mid}
           gameId={gameid}
           item={results.selectedItem}
           onClose={() => results.setSelectedItem(null)}
           showSideBets={true}
         />
       )}
+
     </>
   );
 }

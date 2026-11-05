@@ -10,7 +10,12 @@ import {
 const router = express.Router();
 
 router.get('/casino-data', getCasinoData);
+
 router.get('/casino-betting-data', getCasinoBettingData);
+
+// Frontend compatibility
+router.get('/casino/data', getCasinoBettingData);
+
 router.get('/casino-betting-result', getCasinoResultData);
 router.get('/casino-betting-result-detail', getCasinoResultDetailData);
 

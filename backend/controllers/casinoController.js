@@ -1,12 +1,13 @@
 import dotenv from 'dotenv';
 
-import {
-  fetchCasinoTables,
-  fetchCasinoResult as fetchCasinoResultApi,
-  fetchCasinoDetailResult as fetchCasinoDetailResultApi,
-} from '../services/matchApi/index.js';
-import { getCasinoTable } from '../services/casinoTableCache.js';
 import redis, { connectRedis } from '../config/redis.js';
+import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
+import { getCasinoTable } from '../services/casinoTableCache.js';
+import {
+  fetchCasinoDetailResult as fetchCasinoDetailResultApi,
+  fetchCasinoResult as fetchCasinoResultApi,
+  fetchCasinoTables,
+} from '../services/matchApi/index.js';
 
 dotenv.config();
 
@@ -176,8 +177,10 @@ export const getCasinoData = async (req, res) => {
   }
 };
 
+
 export const getCasinoBettingData = async (req, res) => {
-  const { eventName } = req.query;
+  // Support both frontend query formats
+  const eventName = req.query.eventName || req.query.type;
 
   if (!eventName) {
     return res.status(400).json({
@@ -186,7 +189,10 @@ export const getCasinoBettingData = async (req, res) => {
     });
   }
 
-  if (typeof eventName !== 'string' || !EVENT_NAME_PATTERN.test(eventName)) {
+  if (
+    typeof eventName !== 'string' ||
+    !EVENT_NAME_PATTERN.test(eventName)
+  ) {
     return res.status(400).json({
       success: false,
       message: 'Invalid event name',
@@ -194,17 +200,31 @@ export const getCasinoBettingData = async (req, res) => {
   }
 
   try {
+    // 1. Fetch casino data using existing Redis cache
     const data = await getWithCache(
       `${CACHE.betting.prefix}:${eventName}`,
-      // 0 pass kiya taaki getCasinoTable ka apna cache bypass ho, Redis hi cache control kare.
       () => getCasinoTable(eventName, 0),
       CACHE.betting.ttl
     );
 
+    // 2. Validate provider MID
+    if (!data || data.mid === undefined || data.mid === null) {
+      return res.status(502).json({
+        success: false,
+        message: 'Casino round data not found',
+      });
+    }
+
+    // 3. Automatically save MID-wise snapshot
+    // Existing MID update hoga, new MID separate document banayega.
+    await saveCasinoRoundSnapshot(eventName, data);
+
+    // 4. Return original response to frontend
     return res.status(200).json({
       message: 'Casino Betting data fetched Successfully',
       data,
     });
+
   } catch (error) {
     if (error?.response?.status === 404) {
       return res.status(404).json({
@@ -213,13 +233,18 @@ export const getCasinoBettingData = async (req, res) => {
       });
     }
 
-    console.error('getCasinoBettingData error:', error?.message || error);
+    console.error(
+      'getCasinoBettingData error:',
+      error?.message || error
+    );
+
     return res.status(503).json({
       success: false,
       message: 'Casino provider temporarily unavailable',
     });
   }
 };
+
 
 export const getCasinoResultData = async (req, res) => {
   const { eventName } = req.query;

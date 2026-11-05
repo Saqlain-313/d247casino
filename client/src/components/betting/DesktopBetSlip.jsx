@@ -40,14 +40,16 @@ export default function DesktopBetSlip() {
   const handleSubmitBet = async () => {
     const slug = betSlip.slug;
     const roundId = betSlip.roundId;
+    const selection = betSlip.selection;
     const stake = Number(betSlip.stake);
     const odds = Number(betSlip.odds);
 
-    if (!slug || !roundId) {
+    if (!slug || !roundId || !selection) {
       alert('Game or round information is missing');
       console.error('Missing casino data:', {
         slug,
         roundId,
+        selection,
         betSlip,
       });
       return;
@@ -71,7 +73,7 @@ export default function DesktopBetSlip() {
           slug,
           roundId,
           side: betSlip.type,
-          selection: betSlip.selection,
+          selection,
           odds,
           stake,
         })
