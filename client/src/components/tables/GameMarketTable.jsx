@@ -9371,61 +9371,147 @@ function TableDum10({ isMobile, isSuspended, openBetSlip }) {
 // --------------------------------------------------------------------------
 // Game: Card Meter 1 (cmeter1)
 // --------------------------------------------------------------------------
-function TableCmeter1({ isMobile, isSuspended, openBetSlip }) {
-  return (
-    <div className="casino-table cmeter1">
-      <div className="casino-table-box p-3 border rounded text-center">
-        <h5 className="fw-bold mb-3">Card Meter 1 (1-Card Meter Battle)</h5>
-        <div className="row g-3 mb-3">
-          <div className="col-6">
-            <div
-              className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Fighter 1', '1.95', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              <div className="fw-bold fs-5">Fighter 1</div>
-              <div className="casino-odds text-primary fs-4">{isSuspended ? '-' : '1.95'}</div>
-            </div>
-          </div>
-          <div className="col-6">
-            <div
-              className={`card-odd-box p-3 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Fighter 2', '1.95', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              <div className="fw-bold fs-5">Fighter 2</div>
-              <div className="casino-odds text-primary fs-4">{isSuspended ? '-' : '1.95'}</div>
-            </div>
-          </div>
-        </div>
 
-        {/* Meter Over / Under 10.5 */}
-        <div className="row g-2 justify-content-center">
-          <div className="col-6 col-md-4">
-            <div
-              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Meter Under 10.5', '1.95', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+
+function TableCmeter1({ isMobile, isSuspended, openBetSlip, markets }) {
+  // API response se markets extract karo
+  const rawMarkets = Array.isArray(markets?.data?.sub)
+    ? markets.data.sub
+    : Array.isArray(markets?.sub)
+      ? markets.sub
+      : Array.isArray(markets)
+        ? markets
+        : markets && typeof markets === 'object'
+          ? Object.values(markets).filter(
+              (item) =>
+                item &&
+                typeof item === 'object' &&
+                item.sid != null &&
+                item.nat
+            )
+          : [];
+
+  // Duplicate SID remove
+  const uniqueMarkets = [
+    ...new Map(
+      rawMarkets
+        .filter((market) => market?.sid != null)
+        .map((market) => [String(market.sid), market])
+    ).values(),
+  ];
+
+  const fighters = uniqueMarkets
+    .filter((market) => ['1', '2'].includes(String(market.sid)))
+    .sort((a, b) => Number(a.sid) - Number(b.sid));
+
+  const BoxingGlove = ({ reverse = false }) => (
+    <svg
+      width="42"
+      height="42"
+      viewBox="0 0 48 48"
+      fill="white"
+      className={`shrink-0 ${reverse ? 'scale-x-[-1]' : ''}`}
+    >
+      <path d="M14 22V12a3.5 3.5 0 0 1 7 0v7-11a3.5 3.5 0 0 1 7 0v11-9a3.5 3.5 0 0 1 7 0v11-5a3.5 3.5 0 0 1 7 0v15c0 10-6 15-16 15h-5c-6 0-10-3-13-9l-5-10a4 4 0 0 1 7-4l4 6v-7Z" />
+      <path d="M10 36h27v7H14a8 8 0 0 1-4-7Z" fill="white" opacity=".8" />
+    </svg>
+  );
+
+  const placeBet = (market) => {
+    const status = String(market.gstatus || '').toUpperCase();
+    const suspended = status
+      ? status !== 'OPEN'
+      : Boolean(isSuspended);
+
+    const odds = Number(market.b);
+
+    if (
+      suspended ||
+      market.b === undefined ||
+      market.b === null ||
+      market.b === '' ||
+      !Number.isFinite(odds) ||
+      odds <= 0
+    ) {
+      return;
+    }
+
+    openBetSlip(
+      market.nat,
+      String(market.b),
+      'back',
+      isMobile
+    );
+  };
+
+  return (
+    <div className="w-full bg-[#f1f1f1] p-1">
+      <div className="grid grid-cols-2 gap-1.5">
+        {fighters.map((market, index) => {
+          const status = String(market.gstatus || '').toUpperCase();
+
+          const suspended = status
+            ? status !== 'OPEN'
+            : Boolean(isSuspended);
+
+          const hasOdds =
+            market.b !== undefined &&
+            market.b !== null &&
+            market.b !== '';
+
+          const disabled =
+            suspended || !hasOdds || Number(market.b) <= 0;
+
+          return (
+            <button
+              key={market.sid}
+              type="button"
+              disabled={disabled}
+              onClick={() => placeBet(market)}
+              className={`relative flex min-h-[76px] items-center justify-center gap-2 border-[3px] px-2 py-3 text-[#263746] shadow-sm transition-colors ${
+                index === 0
+                  ? 'border-[#ff3b43]'
+                  : 'border-[#ffdc00]'
+              } ${
+                suspended
+                  ? 'cursor-not-allowed bg-[#414c55]'
+                  : 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+              }`}
             >
-              <div className="fw-bold">Meter Under 10.5</div>
-              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
-            </div>
-          </div>
-          <div className="col-6 col-md-4">
-            <div
-              className={`card-odd-box p-2 border rounded bg-white ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Meter Over 10.5', '1.95', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              <div className="fw-bold">Meter Over 10.5</div>
-              <div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
-            </div>
-          </div>
-        </div>
+              {suspended && (
+                <span className="absolute inset-0 z-10 flex items-center justify-center bg-[#414c55]/20">
+                  <svg
+                    width="27"
+                    height="29"
+                    viewBox="0 0 24 24"
+                    fill="white"
+                  >
+                    <path d="M18 9h-1V7a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2ZM9 7a3 3 0 0 1 6 0v2H9V7Z" />
+                  </svg>
+                </span>
+              )}
+
+              {index === 0 && <BoxingGlove />}
+
+              <span className="text-lg font-extrabold sm:text-2xl">
+                {market.nat}
+              </span>
+
+              {index === 1 && <BoxingGlove reverse />}
+            </button>
+          );
+        })}
       </div>
+
+      {fighters.length === 0 && (
+        <div className="py-4 text-center text-sm font-semibold text-gray-500">
+          No markets available
+        </div>
+      )}
     </div>
   );
 }
+
 
 // --------------------------------------------------------------------------
 // Game: Premium Teenpatti 1Day (pteen)
