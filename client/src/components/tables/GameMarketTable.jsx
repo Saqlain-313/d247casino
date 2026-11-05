@@ -460,89 +460,181 @@ function TableDolidana({ isMobile, isSuspended, openBetSlip, markets }) {
 // --------------------------------------------------------------------------
 // Game: Mogambo (mogambo)
 // --------------------------------------------------------------------------
-function TableMogambo({ isMobile, isSuspended, openBetSlip }) {
-  const characters = [
-    { key: 'A', name: 'Mogambo', odds: '2.85' },
-    { key: 'B', name: 'Mr. India', odds: '2.85' },
-    { key: 'C', name: 'Seema', odds: '2.85' },
-  ];
 
-  const otherMarkets = [
-    { name: 'Red', odds: '1.95', color: 'text-red-600' },
-    { name: 'Black', odds: '1.95', color: 'text-[#263746]' },
-    { name: 'Odd', odds: '1.95', color: 'text-[#263746]' },
-    { name: 'Even', odds: '1.95', color: 'text-[#263746]' },
-  ];
 
-  const placeBet = (name, odds) => {
-    if (!isSuspended) {
-      openBetSlip(name, odds, 'back', isMobile);
+
+
+
+function TableMogambo({ isMobile, isSuspended, openBetSlip, markets }) {
+  const rawMarkets = Array.isArray(markets)
+    ? markets
+    : markets?.data?.sub || markets?.sub ||
+      (markets && typeof markets === 'object'
+        ? Object.values(markets).filter(
+            (item) => item && typeof item === 'object' && item.sid != null
+          )
+        : []);
+
+  // Remove duplicate SID entries
+  const marketMap = new Map();
+
+  rawMarkets.forEach((market) => {
+    if (market?.sid != null) {
+      marketMap.set(String(market.sid), market);
     }
+  });
+
+  const marketList = [...marketMap.values()];
+
+  // Find markets by API SID
+  const dagaMarket = marketList.find(
+    (market) => String(market.sid) === '2'
+  );
+
+  const mogamboMarket = marketList.find(
+    (market) => String(market.sid) === '1'
+  );
+
+  const totalMarket = marketList.find(
+    (market) => String(market.sid) === '3'
+  );
+
+  const LockIcon = () => (
+    <svg
+      width="22"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="white"
+      className="absolute z-20"
+    >
+      <path d="M18 9h-1V7a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2ZM9 7a3 3 0 0 1 6 0v2H9V7Zm4 9v2a1 1 0 0 1-2 0v-2a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  const getSuspended = (market) => {
+    if (!market) return true;
+
+    const status = String(
+      market.gstatus ?? market.status ?? ''
+    ).toUpperCase();
+
+    return status
+      ? status !== 'OPEN'
+      : Boolean(isSuspended);
   };
 
-  const OddsButton = ({ name, odds, className = '' }) => (
-    <button
-      type="button"
-      disabled={isSuspended}
-      onClick={() => placeBet(name, odds)}
-      className={`flex min-w-0 items-center justify-center rounded-sm bg-[#72b9e8] font-bold text-[#263746] transition-colors ${
-        isSuspended
-          ? 'cursor-not-allowed opacity-50'
-          : 'cursor-pointer hover:bg-[#5da9dc]'
-      } ${className}`}
-    >
-      {isSuspended ? '-' : odds}
-    </button>
+  const OddsBox = ({ market, type }) => {
+    if (!market) {
+      return (
+        <div className="relative flex min-h-[82px] items-center justify-center bg-[#414c55]">
+          <LockIcon />
+        </div>
+      );
+    }
+
+    const suspended = getSuspended(market);
+
+    const odds = type === 'back'
+      ? market.back ?? market.b
+      : market.lay ?? market.l;
+
+    const stake = type === 'back'
+      ? market.bs ?? market.bhav
+      : market.ls ?? market.lbhav;
+
+    const hasOdds =
+      odds !== undefined && odds !== null && odds !== '';
+
+    const disabled =
+      suspended || !hasOdds || Number(odds) <= 0;
+
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            openBetSlip(
+              market.nat,
+              String(odds),
+              type,
+              isMobile
+            );
+          }
+        }}
+        className={`relative flex min-h-[82px] w-full flex-col items-center justify-center overflow-hidden transition-colors ${
+          suspended
+            ? 'cursor-not-allowed bg-[#414c55]'
+            : type === 'lay'
+              ? 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
+              : 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
+        }`}
+      >
+        {/* Odds remain faintly visible behind lock */}
+        <span
+          className={`relative z-0 text-[23px] font-extrabold text-[#263746] ${
+            suspended ? 'opacity-30' : ''
+          }`}
+        >
+          {hasOdds ? odds : '-'}
+        </span>
+
+        {stake !== undefined && stake !== null && (
+          <span
+            className={`relative z-0 text-sm text-[#263746] ${
+              suspended ? 'opacity-25' : ''
+            }`}
+          >
+            {stake}
+          </span>
+        )}
+
+        {suspended && (
+          <>
+            <span className="absolute inset-0 z-10 bg-[#414c55]/15" />
+            <LockIcon />
+          </>
+        )}
+      </button>
+    );
+  };
+
+  const MarketName = ({ market, fallback }) => (
+    <div className="flex min-w-0 items-center bg-[#f1f0f0] px-2">
+      <span className="truncate text-base font-extrabold text-[#333]">
+        {market?.nat || fallback}
+      </span>
+    </div>
   );
 
   return (
-    <div className="w-full space-y-2 bg-white">
+    <div className="w-full overflow-hidden bg-[#f5f5f5]">
 
-      {/* CHARACTER MARKETS */}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {characters.map((char) => (
-          <div
-            key={char.key}
-            className="grid min-h-[58px] grid-cols-[minmax(0,1fr)_100px] overflow-hidden border border-[#c9c9c9] bg-[#f2f2f2]"
-          >
-            <div className="flex items-center px-3">
-              <div className="text-base font-extrabold text-[#333]">
-                {char.key}. {char.name}
-              </div>
-            </div>
+      {/* FIRST ROW: DAGA / TEJA + MOGAMBO */}
+      <div className="grid grid-cols-2 gap-0 border border-[#c9c9c9]">
+        <div className="grid min-w-0 grid-cols-[60%_40%] border-r border-[#c9c9c9]">
+          <MarketName market={dagaMarket} fallback="Daga / Teja" />
+          <OddsBox market={dagaMarket} type="back" />
+        </div>
 
-            <OddsButton
-              name={`${char.key}. ${char.name}`}
-              odds={char.odds}
-              className="text-xl"
-            />
-          </div>
-        ))}
+        <div className="grid min-w-0 grid-cols-[60%_40%]">
+          <MarketName market={mogamboMarket} fallback="Mogambo" />
+          <OddsBox market={mogamboMarket} type="back" />
+        </div>
       </div>
 
-      {/* RED / BLACK / ODD / EVEN */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {otherMarkets.map((market) => (
-          <div
-            key={market.name}
-            className="rounded-md bg-[#eeeeee] p-2"
-          >
-            <div className={`mb-2 text-center text-sm font-extrabold ${market.color}`}>
-              {market.name}
-            </div>
+      {/* SECOND ROW: 3 CARD TOTAL */}
+      <div className="mx-auto mt-2 grid w-[75%] grid-cols-[minmax(0,1fr)_180px_180px] overflow-hidden border border-[#c9c9c9] max-sm:w-full max-sm:grid-cols-[minmax(0,1fr)_90px_90px]">
+        <MarketName market={totalMarket} fallback="3 Card Total" />
 
-            <OddsButton
-              name={market.name}
-              odds={market.odds}
-              className="min-h-[52px] w-full text-xl"
-            />
-          </div>
-        ))}
+        <OddsBox market={totalMarket} type="lay" />
+        <OddsBox market={totalMarket} type="back" />
       </div>
 
     </div>
   );
 }
+
 
 // --------------------------------------------------------------------------
 // Game: Lucky 6 / Lucky 5 (lucky5)
@@ -1396,23 +1488,15 @@ function TableJoker120({ isMobile, isSuspended, openBetSlip, markets }) {
 
 function TableJoker20({ isMobile, isSuspended, openBetSlip, markets }) {
   const players = [
-    {
-      name: 'Player A',
-      back: markets?.playerA?.back || '1.98',
-      lay: markets?.playerA?.lay || '2.02',
-    },
-    {
-      name: 'Player B',
-      back: markets?.playerB?.back || '1.98',
-      lay: markets?.playerB?.lay || '2.02',
-    },
+    { name: 'Player A', market: markets?.playera },
+    { name: 'Player B', market: markets?.playerb },
   ];
 
   const sideMarkets = [
-    { name: 'Pair Plus A', odds: '2.0' },
-    { name: 'Pair Plus B', odds: '2.0' },
-    { name: '3 Baccarat A', odds: '1.95' },
-    { name: '3 Baccarat B', odds: '1.95' },
+    { name: 'Pair Plus A', market: markets?.pairplusa },
+    { name: 'Pair Plus B', market: markets?.pairplusb },
+    { name: '3 Baccarat A', market: markets?.['3baccarata'] },
+    { name: '3 Baccarat B', market: markets?.['3baccaratb'] },
   ];
 
   const LockIcon = () => (
@@ -1425,31 +1509,39 @@ function TableJoker20({ isMobile, isSuspended, openBetSlip, markets }) {
     </svg>
   );
 
-  const OddsButton = ({ nation, odds, type }) => {
+  const OddsButton = ({ nation, market, type }) => {
     const isBack = type === 'back';
+    const rawOdds = type === 'lay' ? market?.lay : market?.back;
+    const numericOdds = Number(rawOdds);
+    const status = String(market?.gstatus || '').toUpperCase();
+    const available =
+      !isSuspended &&
+      market?.visible === true &&
+      ['OPEN', 'ACTIVE'].includes(status) &&
+      Number.isFinite(numericOdds) &&
+      numericOdds > 1;
+    const shownOdds = available ? numericOdds : null;
 
     return (
       <button
         type="button"
-        disabled={isSuspended}
+        disabled={!available}
         onClick={() => {
-          if (!isSuspended) {
-            openBetSlip(nation, odds, type, isMobile);
-          }
+          if (available) openBetSlip(nation, shownOdds, type, isMobile);
         }}
         className={`flex min-h-[58px] w-full items-center justify-center border-l border-white/50 transition-colors ${
-          isSuspended
+          !available
             ? 'cursor-not-allowed bg-[#414c56]'
             : isBack
               ? 'cursor-pointer bg-[#72b9e8] hover:bg-[#5da9dc]'
               : 'cursor-pointer bg-[#f5a5b8] hover:bg-[#ed91a7]'
         }`}
       >
-        {isSuspended ? (
+        {!available ? (
           <LockIcon />
         ) : (
           <span className="text-lg font-bold text-[#303b45]">
-            {odds}
+            {shownOdds.toFixed(2)}
           </span>
         )}
       </button>
@@ -1458,31 +1550,22 @@ function TableJoker20({ isMobile, isSuspended, openBetSlip, markets }) {
 
   return (
     <div className="w-full min-w-0 bg-white p-1">
-
       {/* MAIN BETTING LAYOUT */}
       <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[1.4fr_1fr]">
-
         {/* PLAYER MARKETS */}
         <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
-
-          {/* Header */}
           <div className="grid grid-cols-[minmax(0,1fr)_85px_85px] bg-[#4b5b6b] text-white">
-
             <div className="flex items-center px-3 py-3">
               <span className="text-sm font-bold">Nation</span>
             </div>
-
             <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
               Back
             </div>
-
             <div className="flex items-center justify-center bg-[#f5a5b8] py-3 text-sm font-bold text-[#303b45]">
               Lay
             </div>
-
           </div>
 
-          {/* Player Rows */}
           {players.map((player, index) => (
             <div
               key={player.name}
@@ -1490,47 +1573,28 @@ function TableJoker20({ isMobile, isSuspended, openBetSlip, markets }) {
                 index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
               }`}
             >
-
               <div className="flex items-center px-3 py-3">
                 <span className="text-base font-semibold text-[#333333]">
                   {player.name}
                 </span>
               </div>
-
-              <OddsButton
-                nation={player.name}
-                odds={player.back}
-                type="back"
-              />
-
-              <OddsButton
-                nation={player.name}
-                odds={player.lay}
-                type="lay"
-              />
-
+              <OddsButton nation={player.name} market={player.market} type="back" />
+              <OddsButton nation={player.name} market={player.market} type="lay" />
             </div>
           ))}
-
         </section>
 
         {/* SIDE BETS */}
         <section className="min-w-0 overflow-hidden rounded-md border border-[#d1d1d1] bg-[#f1f1f1]">
-
-          {/* Header */}
           <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] text-white">
-
             <div className="flex items-center px-3 py-3">
               <span className="text-sm font-bold">Side Bets</span>
             </div>
-
             <div className="flex items-center justify-center bg-[#72b9e8] py-3 text-sm font-bold text-[#303b45]">
               Back
             </div>
-
           </div>
 
-          {/* Side Bet Rows */}
           {sideMarkets.map((item, index) => (
             <div
               key={item.name}
@@ -1538,30 +1602,19 @@ function TableJoker20({ isMobile, isSuspended, openBetSlip, markets }) {
                 index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'
               }`}
             >
-
               <div className="flex items-center px-3 py-3">
                 <span className="text-sm font-medium text-[#333333] sm:text-base">
                   {item.name}
                 </span>
               </div>
-
-              <OddsButton
-                nation={item.name}
-                odds={item.odds}
-                type="back"
-              />
-
+              <OddsButton nation={item.name} market={item.market} type="back" />
             </div>
           ))}
-
         </section>
-
       </div>
-
     </div>
   );
 }
-
 
 // --------------------------------------------------------------------------
 // Game: Unlimited Joker Oneday (joker1)

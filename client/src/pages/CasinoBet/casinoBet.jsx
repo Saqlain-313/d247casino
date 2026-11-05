@@ -295,10 +295,20 @@ export default function CasinoBet() {
         String(betting.betControl.sid)
     );
 
+    // Do not close the slip if the provider feed temporarily omits
+    // this market. Close it only when the market explicitly reports
+    // a non-open status. Mogambo commonly sends OPEN, not ACTIVE.
+    if (!selectedSub) {
+      return;
+    }
+
+    const selectedStatus = String(
+      selectedSub.gstatus ?? selectedSub.status ?? ''
+    ).trim().toUpperCase();
+
     if (
-      !selectedSub ||
-      String(selectedSub.gstatus || '').toUpperCase() !==
-        'ACTIVE'
+      selectedStatus &&
+      !['OPEN', 'ACTIVE'].includes(selectedStatus)
     ) {
       betting.resetBettingState();
     }
