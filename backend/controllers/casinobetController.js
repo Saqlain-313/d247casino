@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
@@ -11,6 +10,9 @@ const API_KEY = process.env.API_KEY;
 const DEBUG = process.env.CASINO_DEBUG === '1';
 
 const getUid = (req) => req.id ?? req.user?._id; // placeBet used req.id, others req.user._id
+
+// Provider kabhi ACTIVE bhejta hai, kabhi OPEN
+const isActive = (s) => ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
 
 // ======================================================================
 // Provider API helpers
@@ -111,7 +113,7 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Game slug is required' });
     }
 
-    // FIX: engine.familyOf par ab block nahi hota. Provider hi decide karta hai
+    // engine.familyOf par block nahi karte. Provider hi decide karta hai
     // ki game valid hai ya nahi (fetchCasinoData + gtype check neeche).
     let family = null;
     try {
@@ -170,42 +172,23 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid casino game type' });
     }
 
-    // Sirf is MID ko save/refresh karta hai
-    await saveCasinoRoundSnapshot(slug, liveData);
+    // Snapshot background me save hota hai (stats ke liye). Bet iske result par depend nahi karta.
+    saveCasinoRoundSnapshot(slug, liveData).catch((e) =>
+      console.warn('saveCasinoRoundSnapshot failed:', e.message)
+    );
 
-    // Requested MID purana ho sakta hai, isliye exact MID ka snapshot use karo
-    const round = await Round.findOne({
-      slug,
-      roundId: String(roundId),
-    });
-
-    if (!round) {
-      return res.status(400).json({
+    // Sirf current provider round par bet allowed
+    if (String(roundId) !== String(liveData.mid)) {
+      return res.status(409).json({
         success: false,
-        message: 'Round snapshot not found. It must be captured while provider is serving that MID.',
+        message: 'Round changed, please retry',
         requestedRoundId: String(roundId),
         latestProviderRoundId: String(liveData.mid),
       });
     }
 
-    if (round.status === 'settled') {
-      return res.status(400).json({ success: false, message: 'Round already settled' });
-    }
-
-    if (round.status !== 'betting' || round.providerClosed === true) {
-      return res.status(400).json({ success: false, message: 'Betting closed for this round' });
-    }
-
-    if (round.bettingEndsAt && new Date(round.bettingEndsAt) <= new Date()) {
-      return res.status(400).json({ success: false, message: 'Betting time expired for this round' });
-    }
-
-    // FIX: pehle `casinoData` undefined tha
-    const roundData =
-      round.marketData ||
-      (String(liveData.mid) === String(roundId) ? liveData : null);
-
-    const selectedMarket = roundData?.sub?.find(
+    // Market live data se hi lo (Round collection ki zarurat nahi)
+    const selectedMarket = liveData.sub?.find(
       (item) => String(item.sid ?? item.i) === String(selection)
     );
 
@@ -213,7 +196,7 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid selection for this round' });
     }
 
-    if (String(selectedMarket.gstatus || '').toUpperCase() !== 'ACTIVE') {
+    if (!isActive(selectedMarket.gstatus)) {
       return res.status(400).json({
         success: false,
         message: 'This selection is suspended',
@@ -293,6 +276,7 @@ export const placeBet = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
 // ======================================================================
 // settle core (shared by manual, API and poller)
 // ======================================================================
