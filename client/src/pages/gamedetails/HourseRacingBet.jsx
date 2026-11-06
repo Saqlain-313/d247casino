@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { FaHorse, FaTv } from 'react-icons/fa';
+import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { getUser } from '../../redux/reducer/authReducer';
+import {
+    getPendingBet,
+    getPendingBetAmo,
+    messageClear,
+} from '../../redux/reducer/betReducer';
+import {
+    fetchHorseRacingBettingData,
+} from '../../redux/reducer/horseRacingSlice';
 import HorseRacingMarkets from './HorseRacingMarkets';
 import MatchedBet from './MatchedBet';
 import PlaceBet from './PlaceBet';
-import { getUser } from '../../redux/reducer/authReducer';
-import {
-  fetchHorseRacingBettingData,
-} from '../../redux/reducer/horseRacingSlice';
-import {
-  getPendingBet,
-  getPendingBetAmo,
-  messageClear,
-} from '../../redux/reducer/betReducer';
 
 function HourseRacingBet() {
   const { game, id: gameid } = useParams();
@@ -179,7 +179,7 @@ function HourseRacingBet() {
           />
         ) : (
           <div className='block lg:hidden'>
-            <MatchedBet gameid={gameid} />
+            <MatchedBet eventName={eventName} />
           </div>
         )}
       </main>

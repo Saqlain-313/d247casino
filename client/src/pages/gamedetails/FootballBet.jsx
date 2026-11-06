@@ -1,27 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { FaTv } from 'react-icons/fa6';
 import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { host } from '../../redux/api';
+import {
+    getPendingBet,
+    getPendingBetAmo,
+    messageClear
+} from '../../redux/reducer/betReducer';
 import { fetchSoccerBatingData } from '../../redux/reducer/soccerSlice';
+import { getLiveTvUrl } from '../../utils/liveTvUrl';
+import { getFootballScorecardUrl } from '../../utils/scorecardUrl';
+import MatchedBet from './MatchedBet';
 import MatchOdds from './MatchOdds';
-import Bookmaker from './Bookmaker';
 import OverUnder_05 from './OverUnder_05';
 import OverUnder_15 from './OverUnder_15';
 import OverUnder_25 from './OverUnder_25';
 import OverUnder_35 from './OverUnder_35';
-import MatchedBet from './MatchedBet';
 import PlaceBet from './PlaceBet';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import {
-  createBet,
-  createfancyBet,
-  getPendingBetAmo,
-  getPendingBet,
-  messageClear,
-} from '../../redux/reducer/betReducer';
-import { toast } from 'react-toastify';
-import { host } from '../../redux/api';
-import { FaTv } from 'react-icons/fa6';
-import { getLiveTvUrl } from '../../utils/liveTvUrl';
-import { getFootballScorecardUrl } from '../../utils/scorecardUrl';
 function FootballBet() {
   const { game, id } = useParams();
   const location = useLocation();
@@ -299,7 +296,7 @@ function FootballBet() {
         )}
         {!showodds && (
           <div className='block lg:hidden'>
-            <MatchedBet gameid={gameid} />
+            <MatchedBet eventName={eventName} />
           </div>
         )}
       </div>
@@ -353,7 +350,7 @@ function FootballBet() {
           <div className='bg-secondary text-secondary p-1'>
             <span className='font-bold'>My Bet</span>
           </div>
-          <MatchedBet gameid={gameid} />
+          <MatchedBet eventName={eventName} />
         </div>
       </div>
 

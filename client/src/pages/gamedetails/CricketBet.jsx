@@ -1,31 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { fetchCricketBatingData } from '../../redux/reducer/cricketSlice';
-import MatchOdds from './MatchOdds';
-import Bookmaker from './Bookmaker';
-import TiedMatch from './TiedMatch';
-import Normal from './Normal';
-import Fancy1 from './Fancy1';
-import Khado from './Khado';
-import OddEven from './OddEven';
-import CricketMarket from './CricketMarket';
-import MatchedBet from './MatchedBet';
-import PlaceBet from './PlaceBet';
-import { getUser } from '../../redux/reducer/authReducer';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { FaTv } from 'react-icons/fa6';
-import {
-  createBet,
-  createfancyBet,
-  getPendingBet,
-  getPendingBetAmo,
-  messageClear,
-} from '../../redux/reducer/betReducer';
+import { useDispatch, useSelector } from 'react-redux';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { host } from '../../redux/api';
+import { getUser } from '../../redux/reducer/authReducer';
+import {
+    getPendingBet,
+    getPendingBetAmo,
+    messageClear
+} from '../../redux/reducer/betReducer';
+import { fetchCricketBatingData } from '../../redux/reducer/cricketSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
 import { getCricketScorecardUrl } from '../../utils/scorecardUrl';
+import Bookmaker from './Bookmaker';
+import CricketMarket from './CricketMarket';
+import Fancy1 from './Fancy1';
+import Khado from './Khado';
 import LiveScoreCard from './LiveScoreCard';
+import MatchedBet from './MatchedBet';
+import MatchOdds from './MatchOdds';
+import Normal from './Normal';
+import OddEven from './OddEven';
+import PlaceBet from './PlaceBet';
+import TiedMatch from './TiedMatch';
 function CricketBet() {
   const { game, id } = useParams();
   const location = useLocation();
@@ -509,7 +507,7 @@ function CricketBet() {
    )}
         {!showodds && (
           <div className='block'>
-            <MatchedBet gameid={gameid} />
+            <MatchedBet eventName={eventName} />
           </div>
         )}
       </div>
@@ -564,7 +562,7 @@ function CricketBet() {
           <div className='bg-secondary text-secondary p-1'>
             <span className='font-bold'>My Bet</span>
           </div>
-          <MatchedBet gameid={gameid} />
+          <MatchedBet eventName={eventName} />
         </div>
       </div>
 

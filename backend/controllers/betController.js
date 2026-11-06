@@ -4,12 +4,11 @@ import mongoose from 'mongoose';
 import {
   fetchCasinoDetailResult as apiFetchCasinoDetailResult,
   fetchCasinoResult as apiFetchCasinoResult,
-  fetchCricketFancyByEvent as apiFetchCricketFancyByEvent,
   fetchCricketFancyResult as apiFetchCricketFancyResult,
   fetchMatchList as apiFetchMatchList,
-  getProviderName,
   getResult as apiGetResult,
   sendBetIncoming as apiSendBetIncoming,
+  getProviderName
 } from '../services/matchApi/index.js';
 
 dotenv.config();
@@ -36,26 +35,25 @@ import betHistoryModel from '../models/betHistoryModel.js';
 import betModel from '../models/betModel.js';
 import SubAdmin from '../models/subAdminModel.js';
 import TransactionHistory from '../models/transtionHistoryModel.js';
-import { getDateRangeUTC } from '../utils/dateUtils.js';
-import { isCasinoGame } from './casinoController.js';
-const { updateAllUplines } = await import('./admin/subAdminController.js');
 import {
+  cachedData, clients,
   sendBalanceUpdates,
   sendExposureUpdates,
   sendOpenBetsUpdates,
 } from '../socket/bettingSocket.js';
-import { cachedData, clients } from '../socket/bettingSocket.js';
+import { getDateRangeUTC } from '../utils/dateUtils.js';
+import {
+  calculateAllExposure,
+  FANCY_GAME_TYPES,
+  validateFancyBetBalance
+} from '../utils/exposureUtils.js';
+import { validateBetWithNewBetOffset } from '../utils/marketCalculationUtils.js';
+import { isCasinoGame } from './casinoController.js';
+const { updateAllUplines } = await import('./admin/subAdminController.js');
 const sportsSettlementService =
   await import('../services/sportsSettlementService.js');
 const fancyBetSettlementService =
   await import('../services/fancyBetSettlementService.js');
-import {
-  calculateAllExposure,
-  calculateFancyExposure,
-  FANCY_GAME_TYPES,
-  validateFancyBetBalance,
-} from '../utils/exposureUtils.js';
-import { validateBetWithNewBetOffset } from '../utils/marketCalculationUtils.js';
 // ─── SERVER-SIDE MARKET VALIDATION ───
 // Imported from utils/marketValidation.js — always fetches fresh from API (fail-closed).
 import {

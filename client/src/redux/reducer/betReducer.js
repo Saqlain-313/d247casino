@@ -183,38 +183,75 @@ export const getFancyMasterBook = createAsyncThunk(
   }
 );
 
+
+
 export const getBetHistory = createAsyncThunk(
   'bet/getBetHistory',
   async (
-    { page = 1, limit, startDate, endDate, selectedGame, selectedVoid },
+    {
+      page = 1,
+      limit = 10,
+      startDate,
+      endDate,
+      selectedGame,
+      selectedVoid,
+      eventName,
+    },
     { rejectWithValue }
   ) => {
     try {
-      let query = `?page=${page}&limit=${limit}`;
+      const params = new URLSearchParams();
 
-      // if (startDate && endDate) {
-      //   query += `&startDate=${startDate}&endDate=${endDate}&selectedGame=${selectedGame}&selectedVoid=${selectedVoid}`;
-      // }
-      if (startDate && endDate) {
-        query += `&startDate=${startDate}&endDate=${endDate}`;
-        if (selectedGame != null && selectedGame !== '')
-          query += `&selectedGame=${selectedGame}`;
-        if (selectedVoid != null && selectedVoid !== '')
-          query += `&selectedVoid=${selectedVoid}`;
+      params.append('page', String(page));
+      params.append('limit', String(limit));
+
+      // Event name filter
+      if (eventName) {
+        params.append('eventName', eventName);
       }
 
-      const response = await api.get(`/user/bet/history${query}`, {
-        withCredentials: true,
-      });
+      // Date filter
+      if (startDate && endDate) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+
+      // Game filter
+      if (selectedGame) {
+        params.append('selectedGame', selectedGame);
+      }
+
+      // Settlement filter
+      if (selectedVoid) {
+        params.append('selectedVoid', selectedVoid);
+      }
+
+      const response = await api.get(
+        `/user/bet/history?${params.toString()}`,
+        {
+          withCredentials: true,
+        }
+      );
+
+      console.log('Bet History Response:', response.data);
 
       return response.data;
     } catch (error) {
+      console.error(
+        'Bet History Error:',
+        error.response?.data || error.message
+      );
+
       return rejectWithValue(
-        error.response?.data || { message: 'Something went wrong' }
+        error.response?.data || {
+          message: 'Something went wrong',
+        }
       );
     }
   }
 );
+
+
 export const getTransactionHistory = createAsyncThunk(
   'bet/getTransHistory',
   async ({ startDate, endDate, page, limit }, { rejectWithValue }) => {
@@ -329,21 +366,31 @@ const betSlice = createSlice({
         state.loading = false;
         state.errorMessage = payload?.message || 'Something went wrong';
       })
-      .addCase(getBetHistory.pending, (state) => {
-        state.loading = true;
-        state.errorMessage = '';
-        state.successMessage = '';
-      })
-      .addCase(getBetHistory.fulfilled, (state, { payload }) => {
-        state.loading = false;
-        state.betHistory = payload?.data;
-        state.pagination = payload?.pagination;
-        state.successMessage = payload?.message;
-      })
-      .addCase(getBetHistory.rejected, (state, { payload }) => {
-        state.loading = false;
-        state.errorMessage = payload?.message || 'Something went wrong';
-      })
+    
+.addCase(getBetHistory.pending, (state) => {
+  state.loading = true;
+  state.errorMessage = '';
+  state.successMessage = '';
+})
+
+.addCase(getBetHistory.fulfilled, (state, { payload }) => {
+  state.loading = false;
+
+  state.betHistory = Array.isArray(payload?.data)
+    ? payload.data
+    : [];
+
+  state.pagination = payload?.pagination || {};
+  state.successMessage = payload?.message || '';
+})
+
+.addCase(getBetHistory.rejected, (state, { payload }) => {
+  state.loading = false;
+  state.betHistory = [];
+  state.errorMessage =
+    payload?.message || 'Something went wrong';
+})
+
       .addCase(getTransactionHistory.pending, (state) => {
         state.loading = true;
         state.errorMessage = '';

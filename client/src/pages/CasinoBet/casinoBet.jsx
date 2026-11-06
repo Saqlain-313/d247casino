@@ -1,9 +1,9 @@
 
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useRef,
+    useState,
 } from 'react';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,16 +12,16 @@ import { useParams } from 'react-router-dom';
 import { getUser } from '../../redux/reducer/authReducer';
 
 import {
-  clearPendingBetAmounts,
-  getBetHistory,
-  getPendingBet,
-  getPendingBetAmo,
+    clearPendingBetAmounts,
+    getBetHistory,
+    getPendingBet,
+    getPendingBetAmo,
 } from '../../redux/reducer/betReducer';
 
 import {
-  clearCasinoBettingData,
-  clearCasinoResultData,
-  fetchCasinoBatingData,
+    clearCasinoBettingData,
+    clearCasinoResultData,
+    fetchCasinoBatingData,
 } from '../../redux/reducer/casinoSlice';
 
 import MatchedBet from '../gamedetails/MatchedBet';
@@ -40,8 +40,8 @@ import useCasinoWebSocket from './hooks/useCasinoWebSocket';
 import { TWO_PLAYER_GAMES, getWinnerMap } from './constants';
 
 import {
-  filterPlayersForTwoPlayerGames,
-  groupBettingData,
+    filterPlayersForTwoPlayerGames,
+    groupBettingData,
 } from './utils/bettingUtils';
 
 import GameMarketTable from '../../components/tables/GameMarketTable';
@@ -548,7 +548,7 @@ export default function CasinoBet() {
                 </span>
               </div>
 
-              <MatchedBet gameid={gameid} />
+              <MatchedBet eventName={eventName} />
             </div>
           )}
 
@@ -582,7 +582,7 @@ export default function CasinoBet() {
                 </span>
               </div>
 
-              <MatchedBet gameid={gameid} />
+              <MatchedBet eventName={eventName} />
 
             </div>
           </div>
