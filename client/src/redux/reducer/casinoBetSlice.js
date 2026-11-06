@@ -1,4 +1,3 @@
-
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import api from '../api';
 
@@ -17,19 +16,40 @@ const getErrorMessage = (error) => {
 // --------------------------------------------------
 // 1. PLACE CASINO BET
 // POST /casino/:slug/bet
+//
+// payload: { slug, roundId, selection, side, odds, stake, autoRetry? }
+// roundId = latest poll ka data.mid (state.casinoBet.latestRoundId)
+//
+// Server 409 "Round changed" bheje to latestProviderRoundId par ek baar retry.
+// Odds round ke saath badalte hain to autoRetry: false pass karo.
 // --------------------------------------------------
 export const placeCasinoBet = createAsyncThunk(
   'casinoBet/placeBet',
-  async ({ slug, ...formData }, { rejectWithValue }) => {
-    try {
-      const response = await api.post(
-        `/casino/${slug}/bet`,
-        formData,
-        { withCredentials: true }
-      );
+  async ({ slug, autoRetry = true, ...formData }, { rejectWithValue, dispatch }) => {
+    const send = (body) =>
+      api.post(`/casino/${slug}/bet`, body, { withCredentials: true });
 
+    try {
+      const response = await send(formData);
       return response.data;
     } catch (error) {
+      const status = error.response?.status;
+      const latest = error.response?.data?.latestProviderRoundId;
+
+      // Round badal gaya: latest mid save karo (bet slip isi se agla roundId lega)
+      if (status === 409 && latest) {
+        dispatch(setLatestRoundId(latest));
+
+        if (autoRetry) {
+          try {
+            const retry = await send({ ...formData, roundId: String(latest) });
+            return retry.data;
+          } catch (retryError) {
+            return rejectWithValue(getErrorMessage(retryError));
+          }
+        }
+      }
+
       return rejectWithValue(getErrorMessage(error));
     }
   }
@@ -141,6 +161,9 @@ export const getCasinoStats = createAsyncThunk(
 // INITIAL STATE
 // --------------------------------------------------
 const initialState = {
+  // Latest provider round id (poll se set hota hai, bet slip yahin se roundId leta hai)
+  latestRoundId: null,
+
   // Place bet
   currentBet: null,
   balance: null,
@@ -181,6 +204,11 @@ const betSlice = createSlice({
   initialState,
 
   reducers: {
+    setLatestRoundId: (state, action) => {
+      const mid = action.payload;
+      state.latestRoundId = mid === undefined || mid === null ? null : String(mid);
+    },
+
     clearCasinoBetError: (state) => {
       state.placeBetError = null;
       state.settleError = null;
@@ -224,6 +252,10 @@ const betSlice = createSlice({
           state.balance = action.payload.balance;
         }
 
+        if (action.payload.latestProviderRoundId) {
+          state.latestRoundId = String(action.payload.latestProviderRoundId);
+        }
+
         // Refresh local bets list
         if (action.payload.bet) {
           state.myBets.unshift(action.payload.bet);
@@ -232,7 +264,7 @@ const betSlice = createSlice({
 
       .addCase(placeCasinoBet.rejected, (state, action) => {
         state.placeBetLoading = false;
-        state.placeBetError = action.payload;
+        state.placeBetError = action.payload || action.error?.message || 'Bet failed';
       })
 
       // ------------------------------------------
@@ -331,6 +363,7 @@ const betSlice = createSlice({
 // EXPORTS
 // --------------------------------------------------
 export const {
+  setLatestRoundId,
   clearCasinoBetError,
   clearCasinoBook,
   clearMyCasinoBets,
