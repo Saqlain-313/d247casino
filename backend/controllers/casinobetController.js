@@ -495,3 +495,149 @@ export const getStats = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// ======================================================================
+// GET ALL BETS (ADMIN)
+// ======================================================================
+
+export const getAllBets = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      slug,
+      status,
+      roundId,
+      userId,
+      side,
+      search,
+      startDate,
+      endDate,
+    } = req.query;
+
+    const currentPage = Math.max(1, Number(page) || 1);
+    const perPage = Math.min(100, Math.max(1, Number(limit) || 20));
+    const skip = (currentPage - 1) * perPage;
+
+    // Dynamic filters
+    const filter = {};
+
+    if (slug) {
+      filter.slug = String(slug).trim().toLowerCase();
+    }
+
+    if (status) {
+      filter.status = String(status).trim().toLowerCase();
+    }
+
+    if (roundId) {
+      filter.roundId = String(roundId);
+    }
+
+    if (userId) {
+      filter.userId = userId;
+    }
+
+    if (side) {
+      filter.side = String(side).toLowerCase();
+    }
+
+    // Date filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    // Search by bet ID, round ID, user ID or selection
+    if (search) {
+      const searchRegex = new RegExp(
+        String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+        'i'
+      );
+
+      filter.$or = [
+        { roundId: searchRegex },
+        { slug: searchRegex },
+        { selection: searchRegex },
+      ];
+
+      if (/^[a-f\d]{24}$/i.test(String(search))) {
+        filter.$or.push({
+          _id: search,
+        });
+
+        filter.$or.push({
+          userId: search,
+        });
+      }
+    }
+
+    const [bets, totalBets, summary] = await Promise.all([
+      Bet.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(perPage)
+        .lean(),
+
+      Bet.countDocuments(filter),
+
+      Bet.aggregate([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            totalStake: { $sum: '$stake' },
+            totalExposure: { $sum: '$exposure' },
+            totalPayout: { $sum: '$payout' },
+            totalNet: { $sum: '$net' },
+            totalBets: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
+
+    const stats = summary[0] || {
+      totalStake: 0,
+      totalExposure: 0,
+      totalPayout: 0,
+      totalNet: 0,
+      totalBets: 0,
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'All bets fetched successfully',
+
+      data: bets,
+
+      pagination: {
+        totalBets,
+        currentPage,
+        limit: perPage,
+        totalPages: Math.ceil(totalBets / perPage),
+        hasNextPage: currentPage < Math.ceil(totalBets / perPage),
+        hasPrevPage: currentPage > 1,
+      },
+
+      summary: stats,
+    });
+
+  } catch (error) {
+    console.error('getAllBets error:', error);
+
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bets',
+      error: error.message,
+    });
+  }
+};
