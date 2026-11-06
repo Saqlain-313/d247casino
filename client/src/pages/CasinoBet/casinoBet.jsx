@@ -1,9 +1,9 @@
 
 import {
-    useCallback,
-    useEffect,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,16 +12,17 @@ import { useParams } from 'react-router-dom';
 import { getUser } from '../../redux/reducer/authReducer';
 
 import {
-    clearPendingBetAmounts,
-    getBetHistory,
-    getPendingBet,
-    getPendingBetAmo,
+  clearPendingBetAmounts,
+  getPendingBet,
+  getPendingBetAmo,
 } from '../../redux/reducer/betReducer';
 
+import { getMyCasinoBets } from '../../redux/reducer/casinoBetSlice';
+
 import {
-    clearCasinoBettingData,
-    clearCasinoResultData,
-    fetchCasinoBatingData,
+  clearCasinoBettingData,
+  clearCasinoResultData,
+  fetchCasinoBatingData,
 } from '../../redux/reducer/casinoSlice';
 
 import MatchedBet from '../gamedetails/MatchedBet';
@@ -40,8 +41,8 @@ import useCasinoWebSocket from './hooks/useCasinoWebSocket';
 import { TWO_PLAYER_GAMES, getWinnerMap } from './constants';
 
 import {
-    filterPlayersForTwoPlayerGames,
-    groupBettingData,
+  filterPlayersForTwoPlayerGames,
+  groupBettingData,
 } from './utils/bettingUtils';
 
 import GameMarketTable from '../../components/tables/GameMarketTable';
@@ -49,10 +50,6 @@ import { CasinoUiProvider } from '../../context/CasinoContext';
 
 // =============================================
 // NORMALIZE CASINO API RESPONSE
-// Handles:
-// { message, data: { mid, sub } }
-// { data: { message, data: { mid, sub } } }
-// { mid, sub }
 // =============================================
 
 const normalizeCasinoData = (payload) => {
@@ -63,7 +60,6 @@ const normalizeCasinoData = (payload) => {
       return null;
     }
 
-    // Actual provider game data found
     if (
       current.mid !== undefined &&
       current.mid !== null &&
@@ -72,7 +68,6 @@ const normalizeCasinoData = (payload) => {
       return current;
     }
 
-    // Extract nested response
     if (
       current.data &&
       typeof current.data === 'object'
@@ -111,7 +106,6 @@ export default function CasinoBet() {
   // =============================================
 
   const previousMidRef = useRef(null);
-
   const hasInitializedRef = useRef(false);
 
   // =============================================
@@ -207,35 +201,43 @@ export default function CasinoBet() {
   }, []);
 
   // =============================================
-  // FETCH BETTING DATA
+  // FETCH BETTING DATA + INITIAL MY BETS
   // =============================================
 
   useEffect(() => {
     if (!gameid) return;
 
     console.log('FETCH CASINO GAME:', gameid);
+    console.log('MY BET EVENT:', eventName);
+    console.log('MY BET SLUG:', gameid);
 
     previousMidRef.current = null;
-
     hasInitializedRef.current = false;
 
     setBettingData(null);
 
     dispatch(clearCasinoResultData());
-
     dispatch(clearCasinoBettingData());
-
     dispatch(clearPendingBetAmounts());
 
     dispatch(fetchCasinoBatingData(gameid));
 
     dispatch(getPendingBet());
 
-  }, [gameid, dispatch]);
+    // Fetch My Bets using slug and eventName
+    if (eventName) {
+      dispatch(
+        getMyCasinoBets({
+          slug: gameid,
+          eventName,
+        })
+      );
+    }
+
+  }, [gameid, eventName, dispatch]);
 
   // =============================================
   // SYNC REDUX DATA
-  // MAIN FIX
   // =============================================
 
   useEffect(() => {
@@ -262,7 +264,6 @@ export default function CasinoBet() {
     );
 
     console.log('REDUX MID:', actualData.mid);
-
     console.log('REDUX MARKETS:', actualData.sub);
 
     setBettingData(actualData);
@@ -281,7 +282,6 @@ export default function CasinoBet() {
       return;
     }
 
-    // Do not invalidate a slip belonging to another MID.
     if (
       String(betting.betControl.roundId) !==
       String(bettingData.mid)
@@ -295,9 +295,6 @@ export default function CasinoBet() {
         String(betting.betControl.sid)
     );
 
-    // Do not close the slip if the provider feed temporarily omits
-    // this market. Close it only when the market explicitly reports
-    // a non-open status. Mogambo commonly sends OPEN, not ACTIVE.
     if (!selectedSub) {
       return;
     }
@@ -329,7 +326,6 @@ export default function CasinoBet() {
     if (!bettingData?.mid || !gameid) return;
 
     const currentMid = String(bettingData.mid);
-
     const previousMid = previousMidRef.current;
 
     if (
@@ -343,7 +339,7 @@ export default function CasinoBet() {
         currentMid
       );
 
-      // Preserve the existing bet slip's captured MID.
+      // Preserve existing bet slip's captured MID
       dispatch(clearPendingBetAmounts());
 
       const timer = setTimeout(() => {
@@ -356,14 +352,15 @@ export default function CasinoBet() {
           })
         );
 
-        dispatch(
-          getBetHistory({
-            gameid,
-            page: 1,
-            limit: 10,
-            selectedVoid: 'unsettel',
-          })
-        );
+        // Refresh My Bets on round change
+        if (eventName) {
+          dispatch(
+            getMyCasinoBets({
+              slug: gameid,
+              eventName,
+            })
+          );
+        }
 
       }, 100);
 
@@ -382,12 +379,12 @@ export default function CasinoBet() {
     }
 
     previousMidRef.current = currentMid;
-
     hasInitializedRef.current = true;
 
   }, [
     bettingData?.mid,
     gameid,
+    eventName,
     dispatch,
   ]);
 
@@ -450,6 +447,7 @@ export default function CasinoBet() {
 
   console.log('CASINO BET PAGE:', {
     game: gameid,
+    eventName,
     mid: mockBettingData.mid,
     gtype: mockBettingData.gtype,
     marketCount: mockBettingData.sub.length,
@@ -471,7 +469,6 @@ export default function CasinoBet() {
     TWO_PLAYER_GAMES
   );
 
-  // Keep this variable available if used by your UI.
   void displayData;
 
   // =============================================
@@ -548,7 +545,10 @@ export default function CasinoBet() {
                 </span>
               </div>
 
-              <MatchedBet eventName={eventName} />
+              <MatchedBet
+                eventName={eventName}
+                slug={gameid}
+              />
             </div>
           )}
 
@@ -582,7 +582,10 @@ export default function CasinoBet() {
                 </span>
               </div>
 
-              <MatchedBet eventName={eventName} />
+              <MatchedBet
+                eventName={eventName}
+                slug={gameid}
+              />
 
             </div>
           </div>

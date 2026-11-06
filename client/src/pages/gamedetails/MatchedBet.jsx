@@ -1,42 +1,51 @@
 
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { getBetHistory } from '../../redux/reducer/betReducer';
+import { getMyCasinoBets } from '../../redux/reducer/casinoBetSlice';
 
-function MatchedBet({ eventName: eventNameProp, gameid }) {
+function MatchedBet({ eventName, slug }) {
   const dispatch = useDispatch();
 
-  // Supports both old gameid prop and new eventName prop
-  const currentEventName = eventNameProp || gameid;
+  const {
+    myBets = [],
+    myBetsLoading,
+    myBetsError,
+  } = useSelector((state) => state.casinoBet);
 
-  const { betHistory = [], loading } = useSelector(
-    (state) => state.bet
-  );
+  console.log("Slug:", slug);
+  console.log("Event Name:", eventName);
 
+  // Fetch casino bets
   useEffect(() => {
-    if (!currentEventName) return;
+    const casinoSlug = slug || eventName;
 
-    dispatch(
-      getBetHistory({
-        eventName: currentEventName,
-        page: 1,
-        limit: 10,
-        selectedVoid: 'unsettel',
-      })
-    );
-  }, [dispatch, currentEventName]);
+    if (!casinoSlug) return;
 
-  // Filter by eventName
+
+
+    dispatch(getMyCasinoBets(casinoSlug));
+  }, [dispatch, eventName, slug]);
+
+  // Filter bets for current casino
   const filteredBetHistory = useMemo(() => {
-    if (!Array.isArray(betHistory)) return [];
+    if (!Array.isArray(myBets)) return [];
 
-    return betHistory.filter((bet) => {
-      return (
-        String(bet?.eventName || '').trim() ===
-        String(currentEventName || '').trim()
-      );
+    return myBets.filter((bet) => {
+      const betSlug =
+        bet?.slug ||
+        bet?.gameSlug ||
+        bet?.casinoSlug;
+
+      // If API returns slug, match it
+      if (betSlug) {
+        return String(betSlug) === String(slug || eventName);
+      }
+
+      // If API already returns bets for requested slug,
+      // don't filter using unrelated eventName.
+      return true;
     });
-  }, [betHistory, currentEventName]);
+  }, [myBets, eventName, slug]);
 
   const getMatchedBetLabel = (item) => {
     if (!item) return 'N/A';
@@ -48,7 +57,12 @@ function MatchedBet({ eventName: eventNameProp, gameid }) {
       return [market, team].filter(Boolean).join(' / ') || 'N/A';
     }
 
-    return item.teamName || item.marketName || 'N/A';
+    return (
+      item.teamName ||
+      item.marketName ||
+      item.selection ||
+      'N/A'
+    );
   };
 
   const formatNumber = (num) => {
@@ -84,17 +98,23 @@ function MatchedBet({ eventName: eventNameProp, gameid }) {
         </div>
       </div>
 
-      {/* Table Rows */}
-      {loading && filteredBetHistory.length === 0 ? (
-        <div className="flex h-8 items-center justify-center bg-white px-2 py-1 text-xs text-gray-500">
+      {/* Loading */}
+      {myBetsLoading && filteredBetHistory.length === 0 ? (
+        <div className="flex h-8 items-center justify-center bg-white text-xs text-gray-500">
           Loading...
+        </div>
+      ) : myBetsError ? (
+        <div className="flex h-8 items-center justify-center bg-white text-xs text-red-500">
+          {typeof myBetsError === 'string'
+            ? myBetsError
+            : 'Unable to load bets'}
         </div>
       ) : filteredBetHistory.length > 0 ? (
         filteredBetHistory.map((item, index) => (
           <div
             key={item?._id || item?.betId || index}
             className={`grid grid-cols-4 border-b border-gray-200 ${
-              item?.otype === 'back'
+              item?.side === 'back' || item?.otype === 'back'
                 ? 'bg-[#72bbef]'
                 : 'bg-[#faa9ba]'
             }`}
@@ -105,14 +125,15 @@ function MatchedBet({ eventName: eventNameProp, gameid }) {
             </div>
 
             <div className="flex h-8 items-center px-2 py-1 text-right text-sm font-semibold text-gray-800">
-              {item?.fancyScore || item?.xValue || '0'}
+              {item?.odds || item?.price || item?.fancyScore || item?.xValue || '0'}
             </div>
 
             <div className="flex h-8 items-center px-2 py-1 text-right text-sm font-semibold text-gray-800">
               {formatNumber(
-                item?.otype === 'back'
-                  ? item?.price
-                  : item?.betAmount
+                item?.stake ??
+                item?.amount ??
+                item?.betAmount ??
+                0
               )}
             </div>
           </div>
