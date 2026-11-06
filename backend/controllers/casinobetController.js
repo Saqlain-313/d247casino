@@ -123,10 +123,10 @@ export const placeBet = async (req, res) => {
     }
     console.log('family:', family || 'generic');
 
-    if (!roundId || selection === undefined || selection === null) {
+    if (selection === undefined || selection === null) {
       return res.status(400).json({
         success: false,
-        message: 'roundId and selection are required',
+        message: 'selection is required',
       });
     }
 
@@ -177,13 +177,13 @@ export const placeBet = async (req, res) => {
       console.warn('saveCasinoRoundSnapshot failed:', e.message)
     );
 
-    // Sirf current provider round par bet allowed
-    if (String(roundId) !== String(liveData.mid)) {
-      return res.status(409).json({
-        success: false,
-        message: 'Round changed, please retry',
-        requestedRoundId: String(roundId),
-        latestProviderRoundId: String(liveData.mid),
+    // Bet hamesha provider ke CURRENT round par store hoti hai.
+    // Client ka roundId ignore hota hai, isliye stale roundId se error nahi aata.
+    const currentRoundId = String(liveData.mid);
+    if (roundId && String(roundId) !== currentRoundId) {
+      console.log('placeBet: client roundId stale, using live mid', {
+        clientRoundId: String(roundId),
+        currentRoundId,
       });
     }
 
@@ -196,7 +196,11 @@ export const placeBet = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid selection for this round' });
     }
 
-    if (!isActive(selectedMarket.gstatus)) {
+    // Sirf explicit band status reject hota hai. Unknown/missing gstatus allow hai.
+    // Testing ke liye .env mein ALLOW_SUSPENDED_BETS=1 se ye check skip ho jata hai.
+    const gs = String(selectedMarket.gstatus ?? '').trim().toUpperCase();
+    const BLOCKED = ['SUSPENDED', 'CLOSED', 'INACTIVE', 'BALL RUNNING'];
+    if (process.env.ALLOW_SUSPENDED_BETS !== '1' && BLOCKED.includes(gs)) {
       return res.status(400).json({
         success: false,
         message: 'This selection is suspended',
@@ -249,7 +253,7 @@ export const placeBet = async (req, res) => {
       bet = await Bet.create({
         userId,
         slug,
-        roundId: String(roundId),
+        roundId: currentRoundId,
         side,
         selection,
         odds,
@@ -268,8 +272,8 @@ export const placeBet = async (req, res) => {
       message: 'Bet placed successfully',
       bet,
       balance: debited.balance,
-      roundId: String(roundId),
-      latestProviderRoundId: String(liveData.mid),
+      roundId: currentRoundId,
+      latestProviderRoundId: currentRoundId,
     });
   } catch (error) {
     console.error('placeBet error:', error);
