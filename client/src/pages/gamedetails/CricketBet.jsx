@@ -6,9 +6,9 @@ import { toast } from 'react-toastify';
 import { host } from '../../redux/api';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
-    getPendingBet,
-    getPendingBetAmo,
-    messageClear
+  getPendingBet,
+  getPendingBetAmo,
+  messageClear
 } from '../../redux/reducer/betReducer';
 import { fetchCricketBatingData } from '../../redux/reducer/cricketSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
@@ -29,7 +29,7 @@ function CricketBet() {
   const location = useLocation();
   const time = location.state?.time;
   const beventId = location.state?.beventId;
-  const gameid = id;
+  const eventName = id;
   const match = game;
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -45,7 +45,7 @@ function CricketBet() {
   );
   const { userInfo } = useSelector((state) => state.auth);
   const [formData, setFormData] = useState({
-    gameId: gameid,
+    eventName: eventName,
     sid: 4,
     otype: '',
     price: null,
@@ -55,12 +55,12 @@ function CricketBet() {
     teamName: '',
   });
 
-  console.log('gameId', gameid);
+  console.log('eventName', eventName);
   const [activeSubTab, setActiveSubTab] = useState('Normal');
   const [item, setitem] = useState(null);
   const [showLive, setShowLive] = useState(false);
   const [showlivetv, setshowlivetv] = useState(false);
-  const streamGmid = beventId || gameid;
+  const streamGmid = beventId || eventName;
   const liveTvUrl = getLiveTvUrl(4, streamGmid);
   const scorecardUrl = getCricketScorecardUrl(streamGmid);
   const [scoreData, setScoreData] = useState(null);
@@ -111,22 +111,22 @@ function CricketBet() {
 
   // ✅ Fetch once before using socket (optional)
   useEffect(() => {
-    if (gameid) {
+    if (eventName) {
       setLoader(true);
-      dispatch(fetchCricketBatingData(gameid)).finally(() => {
+      dispatch(fetchCricketBatingData(eventName)).finally(() => {
         setLoader(false);
       });
     }
-  }, [dispatch, gameid]);
+  }, [dispatch, eventName]);
 
   useEffect(() => {
-    if (!gameid) return;
+    if (!eventName) return;
     const socket = new WebSocket(host);
     socket.onopen = () => {
       socket.send(
         JSON.stringify({
           type: 'subscribe',
-          gameid,
+          eventName,
           apitype: 'cricket',
           userId: userInfo?._id,
           scoreEventId: String(streamGmid),
@@ -143,7 +143,7 @@ function CricketBet() {
           }
           return;
         }
-        if (message.gameid === gameid) {
+        if (message.eventName === eventName) {
           setBettingData(message.data);
         }
       } catch (err) {
@@ -160,16 +160,16 @@ function CricketBet() {
     };
 
     return () => socket.close();
-  }, [gameid, streamGmid, userInfo?._id]);
+  }, [eventName, streamGmid, userInfo?._id]);
 
   useEffect(() => {
     let intervalId;
 
-    if (gameid) {
+    if (eventName) {
       setLoader(true);
 
       const fetchData = async () => {
-        await dispatch(fetchCricketBatingData(gameid));
+        await dispatch(fetchCricketBatingData(eventName));
         setLoader(false);
       };
       fetchData();
@@ -178,7 +178,7 @@ function CricketBet() {
     return () => {
       clearInterval(intervalId);
     };
-  }, [gameid, dispatch]);
+  }, [eventName, dispatch]);
 
   useEffect(() => {
     setBettingData(battingData);
@@ -189,11 +189,11 @@ function CricketBet() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (gameid) {
-      dispatch(getPendingBetAmo(gameid));
-      dispatch(getPendingBet(gameid));
+    if (eventName) {
+      dispatch(getPendingBetAmo(eventName));
+      dispatch(getPendingBet(eventName));
     }
-  }, [dispatch, gameid]);
+  }, [dispatch, eventName]);
 
   // Show toast messages for success/error (centralized to prevent duplicates)
   useEffect(() => {
@@ -201,16 +201,16 @@ function CricketBet() {
       toast.success(successMessage);
       dispatch(messageClear());
       setSelectedBet(null);
-      if (gameid) {
-        dispatch(getPendingBetAmo(gameid));
-        dispatch(getPendingBet(gameid));
+      if (eventName) {
+        dispatch(getPendingBetAmo(eventName));
+        dispatch(getPendingBet(eventName));
       }
     }
     if (errorMessage) {
       toast.error(errorMessage);
       dispatch(messageClear());
     }
-  }, [successMessage, errorMessage, dispatch, gameid]);
+  }, [successMessage, errorMessage, dispatch, eventName]);
 
   console.log('bettting data111', bettingData);
 
@@ -415,7 +415,7 @@ function CricketBet() {
             {/** Match Odds */}
             {matchOddsList.length > 0 && (
               <MatchOdds
-                gameid={gameid}
+                eventName={eventName}
                 onBetSelect={handleBetSelect}
                 matchOddsList={matchOddsList}
                 setitem={setitem}
@@ -427,7 +427,7 @@ function CricketBet() {
             {/** Bookmaker */}
             {BookmakerList.length > 0 && (
               <Bookmaker
-                gameid={gameid}
+                eventName={eventName}
                 onBetSelect={handleBetSelect}
                 BookmakerList={BookmakerList}
                 pendingBetAmounts={pendingBetAmounts}
@@ -438,7 +438,7 @@ function CricketBet() {
             {/** Tied Match */}
             {tiedMatchList.length > 0 && (
               <TiedMatch
-                gameid={gameid}
+                eventName={eventName}
                 onBetSelect={handleBetSelect}
                 tiedMatchList={tiedMatchList}
                 pendingBetAmounts={pendingBetAmounts}
@@ -488,7 +488,7 @@ function CricketBet() {
 
             {otherMarkets.map((market) => (
               <CricketMarket
-                key={`${market.gmid || gameid}-${market.mid || market.mname}`}
+                key={`${market.gmid || eventName}-${market.mid || market.mname}`}
                 market={market}
                 onBetSelect={handleBetSelect}
               />
@@ -549,7 +549,7 @@ function CricketBet() {
               team1={team1}
               team2={team2}
               item={item}
-              gameId={gameid}
+              eventName={eventName}
               eventName={match}
               sid={4}
               marketName={selectedBet?.marketName}
@@ -583,7 +583,7 @@ function CricketBet() {
               isMobile={true}
               team1={team1}
               team2={team2}
-              gameId={gameid}
+              eventName={eventName}
               eventName={match}
               sid={4}
               marketName={selectedBet?.marketName}
