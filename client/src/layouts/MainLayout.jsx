@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import Footer from '../components/footer/Footer';
 import Header from '../components/header/Header';
 import Navbar from '../components/header/Navbar';
-import MobileNav from '../components/header/MobileNav';
 import Sidebar from '../components/sidebar/Sidebar';
-import Footer from '../components/footer/Footer';
+import LoginBannerPopup from '../pages/CasinoBet/components/LoginBannerPopup';
+
 function MainLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -18,6 +19,9 @@ function MainLayout() {
 
   return (
     <div className='bg-body min-h-screen'>
+      {/* Har login pe banner popup */}
+      <LoginBannerPopup />
+
       <Header onMenuToggle={toggleSidebar} isSidebarOpen={isSidebarOpen} />
       <div className='hidden lg:block'>
         <Navbar />
