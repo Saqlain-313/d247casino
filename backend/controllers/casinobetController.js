@@ -9,6 +9,10 @@ const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
 const DEBUG = process.env.CASINO_DEBUG === '1';
 
+// Itni der (minutes) se pending bet ko auto-refund kar diya jayega
+// (result API sirf latest rounds deta hai, purane round ka result nahi milta). 0 = band.
+const STALE_BET_MINUTES = Number(process.env.STALE_BET_MINUTES ?? 30);
+
 const getUid = (req) => req.id ?? req.user?._id; // placeBet used req.id, others req.user._id
 
 // Provider kabhi ACTIVE bhejta hai, kabhi OPEN
@@ -69,6 +73,15 @@ const normalizeResult = (slug, win) => {
   }
   // add other families once their `win` codes are known
   throw new Error(`No win-code mapping for ${slug}`);
+};
+
+// Bet ka user-facing result label: win / lose / push / void / pending
+const betResult = (b) => {
+  if (b.status === 'pending') return 'pending';
+  if (b.status === 'void') return 'void';
+  if (b.net > 0) return 'win';
+  if (b.net < 0) return 'lose';
+  return 'push';
 };
 
 // ======================================================================
@@ -283,23 +296,22 @@ export const placeBet = async (req, res) => {
 
 // ======================================================================
 // settle core (shared by manual, API and poller)
+//
+// Round pe koi "settled" lock nahi hai. Double-credit se bachav per-bet hai:
+// pending -> settled claim sirf ek baar succeed hota hai. Isse agar crash ya
+// kisi bet ka settle fail ho, to agli poll me wo bet dobara try hoti hai.
 // ======================================================================
 const settleCore = async (slug, roundId, result) => {
   roundId = String(roundId);
 
-  // lock round so it can't be settled twice (upsert in case no bet created it)
-  let round;
-  try {
-    round = await Round.findOneAndUpdate(
-      { slug, roundId, status: { $ne: 'settled' } },
-      { $set: { status: 'settled', result }, $setOnInsert: { slug, roundId } },
-      { new: true, upsert: true }
-    );
-  } catch (e) {
-    if (e.code === 11000) return { already: true }; // unique index hit -> already settled
-    throw e;
-  }
-  if (!round) return { already: true };
+  // Round ka result save karo (void round ko overwrite nahi karte)
+  await Round.updateOne(
+    { slug, roundId, 'result.void': { $ne: true } },
+    { $set: { status: 'settled', result }, $setOnInsert: { slug, roundId } },
+    { upsert: true }
+  ).catch((e) => {
+    if (e.code !== 11000) throw e; // duplicate (void round already exists) -> ignore
+  });
 
   const cursor = Bet.find({ slug, roundId, status: 'pending' }).cursor();
   let settled = 0;
@@ -327,6 +339,19 @@ const settleCore = async (slug, roundId, result) => {
   return { settled, failed };
 };
 
+// Ek bet ko void karke exposure refund (voidRound aur stale refund dono use karte hain)
+const voidBet = async (bet) => {
+  const claimed = await Bet.findOneAndUpdate(
+    { _id: bet._id, status: 'pending' },
+    { status: 'void', payout: bet.exposure, net: 0, settledAt: new Date() }
+  );
+  if (claimed) {
+    await User.updateOne({ _id: bet.userId }, { $inc: { balance: bet.exposure } });
+    return true;
+  }
+  return false;
+};
+
 // Manual settle: body { roundId, result }
 export const settleRound = async (req, res) => {
   const { slug } = req.params;
@@ -336,9 +361,6 @@ export const settleRound = async (req, res) => {
       return res.status(400).json({ success: false, message: 'roundId and result required' });
     }
     const out = await settleCore(slug, roundId, result);
-    if (out.already) {
-      return res.status(409).json({ success: false, message: 'Round already settled' });
-    }
     return res.json({ success: true, ...out });
   } catch (err) {
     console.error('settleRound error:', err);
@@ -366,9 +388,6 @@ export const settleRoundFromApi = async (req, res) => {
     }
 
     const out = await settleCore(slug, roundId, normalizeResult(slug, row.win));
-    if (out.already) {
-      return res.status(409).json({ success: false, message: 'Round already settled' });
-    }
     return res.json({ success: true, ...out });
   } catch (err) {
     console.error('settleRoundFromApi error:', err);
@@ -376,31 +395,58 @@ export const settleRoundFromApi = async (req, res) => {
   }
 };
 
-// Optional auto-poller. Call once at server start: startResultPoller('lucky7');
-export const startResultPoller = (slug, everyMs = 5000) => {
+// ======================================================================
+// Auto poller: har 1 minute, saare games (slugs) jinki pending bets hain.
+// Server start par ek baar call karo: startResultPoller();
+// ======================================================================
+export const startResultPoller = (everyMs = 60 * 1000) => {
   let busy = false;
-  return setInterval(async () => {
+
+  const tick = async () => {
     if (busy) return;
     busy = true;
     try {
-      const pending = (await Bet.distinct('roundId', { slug, status: 'pending' })).map(String);
-      if (!pending.length) return;
+      const slugs = await Bet.distinct('slug', { status: 'pending' });
 
-      const list = await fetchCasinoResult(slug);
-      for (const row of list) {
-        if (!pending.includes(String(row.mid))) continue;
+      for (const slug of slugs) {
         try {
-          await settleCore(slug, row.mid, normalizeResult(slug, row.win));
+          const pending = (await Bet.distinct('roundId', { slug, status: 'pending' })).map(String);
+          if (!pending.length) continue;
+
+          const list = await fetchCasinoResult(slug); // newest first
+          for (const row of list) {
+            if (!pending.includes(String(row.mid))) continue;
+            try {
+              await settleCore(slug, row.mid, normalizeResult(slug, row.win));
+            } catch (e) {
+              console.error(`poller settle ${slug}/${row.mid}:`, e.message);
+            }
+          }
         } catch (e) {
-          console.error(`poller settle ${slug}/${row.mid}:`, e.message);
+          // ek slug fail ho to baaki chalte rahein
+          console.error(`poller ${slug}:`, e.message);
         }
       }
+
+      // Result API me jo round ab nahi dikhta uski purani pending bets refund
+      if (STALE_BET_MINUTES > 0) {
+        const cutoff = new Date(Date.now() - STALE_BET_MINUTES * 60 * 1000);
+        const stale = await Bet.find({ status: 'pending', createdAt: { $lt: cutoff } });
+        let refunded = 0;
+        for (const bet of stale) {
+          if (await voidBet(bet)) refunded++;
+        }
+        if (refunded) console.log(`poller: auto-refunded ${refunded} stale bets`);
+      }
     } catch (e) {
-      console.error(`poller ${slug}:`, e.message);
+      console.error('poller error:', e.message);
     } finally {
       busy = false;
     }
-  }, everyMs);
+  };
+
+  tick(); // start par ek baar turant
+  return setInterval(tick, everyMs);
 };
 
 // ======================================================================
@@ -415,14 +461,7 @@ export const voidRound = async (req, res) => {
     const bets = await Bet.find({ slug, roundId, status: 'pending' });
     let refunded = 0;
     for (const bet of bets) {
-      const claimed = await Bet.findOneAndUpdate(
-        { _id: bet._id, status: 'pending' },
-        { status: 'void', payout: bet.exposure, net: 0, settledAt: new Date() }
-      );
-      if (claimed) {
-        await User.updateOne({ _id: bet.userId }, { $inc: { balance: bet.exposure } });
-        refunded++;
-      }
+      if (await voidBet(bet)) refunded++;
     }
     await Round.updateOne(
       { slug, roundId },
@@ -451,11 +490,16 @@ export const getNationBook = async (req, res) => {
   }
 };
 
+// Frontend isko har 30-60 sec me poll kare. Har bet me `result` aata hai:
+// pending | win | lose | push | void
 export const myBets = async (req, res) => {
   try {
     const { slug } = req.params;
     const bets = await Bet.find({ userId: getUid(req), slug }).sort({ createdAt: -1 }).limit(50).lean();
-    res.json({ success: true, bets });
+    res.json({
+      success: true,
+      bets: bets.map((b) => ({ ...b, result: betResult(b) })),
+    });
   } catch (err) {
     console.error('myBets error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -571,22 +615,13 @@ export const getAllBets = async (req, res) => {
       ];
 
       if (/^[a-f\d]{24}$/i.test(String(search))) {
-        filter.$or.push({
-          _id: search,
-        });
-
-        filter.$or.push({
-          userId: search,
-        });
+        filter.$or.push({ _id: search });
+        filter.$or.push({ userId: search });
       }
     }
 
     const [bets, totalBets, summary] = await Promise.all([
-      Bet.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(perPage)
-        .lean(),
+      Bet.find(filter).sort({ createdAt: -1 }).skip(skip).limit(perPage).lean(),
 
       Bet.countDocuments(filter),
 
@@ -616,9 +651,7 @@ export const getAllBets = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: 'All bets fetched successfully',
-
-      data: bets,
-
+      data: bets.map((b) => ({ ...b, result: betResult(b) })),
       pagination: {
         totalBets,
         currentPage,
@@ -627,10 +660,8 @@ export const getAllBets = async (req, res) => {
         hasNextPage: currentPage < Math.ceil(totalBets / perPage),
         hasPrevPage: currentPage > 1,
       },
-
       summary: stats,
     });
-
   } catch (error) {
     console.error('getAllBets error:', error);
 
