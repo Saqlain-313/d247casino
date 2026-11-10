@@ -1,18 +1,12 @@
-import React, { useState } from 'react';
-import logo from '../../assets/Alllogo.png';
-import shivaylogo from '../../assets/shivaylogo.png';
-import newshivalogo from '../../assets/newshivalogo.png';
-import clublogo from '../../assets/81club.png';
+import { useState } from 'react';
 import { BiSolidHandDown } from 'react-icons/bi';
-import { FiUser, FiLock } from 'react-icons/fi';
-import { FaArrowRight } from 'react-icons/fa';
+import { FaArrowRight, FaKey, FaUser } from 'react-icons/fa';
 import { IoLogoAndroid } from 'react-icons/io';
-import { useNavigate } from 'react-router-dom';
-import { FaUser } from 'react-icons/fa';
-import { FaKey } from 'react-icons/fa';
 import { useDispatch } from 'react-redux';
-import { loginUser } from '../../redux/reducer/authReducer';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import clublogo from '../../assets/81club.png';
+import { loginUser } from '../../redux/reducer/authReducer';
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -27,14 +21,21 @@ function Login() {
     try {
       const response = await dispatch(loginUser(formData));
       console.log(response);
-      if (response.payload.success) {
+
+      if (response.payload?.success) {
         toast.success(response.payload.message);
+
+        // Login banner popup trigger (sirf success pe)
+        sessionStorage.setItem('showLoginBanner', '1');
+        window.dispatchEvent(new Event('login-success'));
+
         navigate('/');
       } else {
-        toast.error(response.payload.message);
+        toast.error(response.payload?.message || 'Login failed');
       }
     } catch (error) {
       console.log(error);
+      toast.error('Something went wrong, please try again');
     }
   };
 
