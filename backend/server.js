@@ -1,4 +1,4 @@
-
+import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -10,18 +10,15 @@ import { fileURLToPath } from 'url';
 import dns from 'dns';
 
 import connectDB from './config/db.js';
-import { connectRedis } from './config/redis.js';
 
 import { cronJobGame1p } from './controllers/cronJobs.js';
 
-// Admin Routes
 import downlineRoutes from './routes/admin/downlineRoutes.js';
 import manualResultRoutes from './routes/admin/manualResultRoutes.js';
 import marketAnalizeRoutes from './routes/admin/marketAnalizeRoutes.js';
 import matchSettingsRoutes from './routes/admin/matchSettingsRoute.js';
 import subRouteRoutes from './routes/admin/subAdminRoutes.js';
 
-// Application Routes
 import betRoute from './routes/betRoute.js';
 import casinoRoutes from './routes/casinoRoutes.js';
 import crickeRoute from './routes/cricketRoutes.js';
@@ -31,81 +28,44 @@ import tennisRoutes from './routes/tennisRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cashoutRoute from './routes/cashoutRoute.js';
 import nonDeclaredRoutes from './routes/nonDeclaredRoutes.js';
-import casinobetRoutes from './routes/casinobetRoutes.js';
+import casinobetRoutes from './routes/casinobetRoutes.js'
 
-// WebSocket
 import { setupWebSocket } from './socket/bettingSocket.js';
+import { connectRedis } from './config/redis.js';
 
-// --------------------------------------------------
-// ENVIRONMENT
-// --------------------------------------------------
-
+// Environment
 dotenv.config();
 
+// DNS
 dns.setServers(['1.1.1.1', '8.8.8.8']);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const NODE_ENV = process.env.NODE_ENV || 'development';
-
-const API_PORT = Number(process.env.PORT || 3000);
-const CLIENT_PORT = Number(process.env.CLIENT_PORT || 8000);
-const DASHBOARD_PORT = Number(process.env.DASHBOARD_PORT || 8001);
-
-// --------------------------------------------------
-// MAIN API APPLICATION
-// --------------------------------------------------
 
 const app = express();
 const server = http.createServer(app);
 
-// --------------------------------------------------
-// CORS CONFIGURATION
-// --------------------------------------------------
+const APP_TYPE = process.env.APP_TYPE || 'dashboard';
 
-const allowedOrigins = [
-  'http://localhost:8000',
-  'http://localhost:8001',
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  'http://localhost:5176',
-
-  'https://reddy-777.site',
-  'https://www.reddy-777.site',
-  'https://dashboard.reddy-777.site',
-];
-
+// Middleware
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow server-to-server and Postman requests
-      if (!origin || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error(`CORS blocked: ${origin}`));
-    },
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:5176',
+      'https://reddy-777.site',
+      'https://www.reddy-777.site',
+      'https://dashboard.reddy-777.site',
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-    ],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
-// --------------------------------------------------
-// MIDDLEWARE
-// --------------------------------------------------
-
-app.set('trust proxy', true);
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(bodyParser.json());
 app.use(cookieParser());
-
+app.set('trust proxy', true);
 app.use(
   morgan('dev', {
     skip: (req, res) =>
@@ -115,15 +75,12 @@ app.use(
   })
 );
 
-// Settlement tracking middleware
+// Additional settlement tracking middleware
 app.use((req, res, next) => {
   next();
 });
 
-// --------------------------------------------------
-// API ROUTES
-// --------------------------------------------------
-
+// Routes
 app.use('/api', subRouteRoutes);
 app.use('/api', downlineRoutes);
 app.use('/api', userRoutes);
@@ -138,114 +95,46 @@ app.use('/api', matchSettingsRoutes);
 app.use('/api', manualResultRoutes);
 app.use('/api', cashoutRoute);
 app.use('/api', casinobetRoutes);
-
 app.use(nonDeclaredRoutes);
 
-// API fallback
-app.use('/api', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'API endpoint not found',
+// Static files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+if (APP_TYPE === 'dashboard') {
+  app.use(express.static(path.join(__dirname, '../dashboard/dist')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(
+      path.join(__dirname, '../dashboard/dist/index.html')
+    );
   });
-});
+} else {
+  app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// --------------------------------------------------
-// CLIENT APPLICATION
-// --------------------------------------------------
-
-const clientApp = express();
-
-const clientDist = path.resolve(
-  __dirname,
-  '../client/dist'
-);
-
-clientApp.use(
-  express.static(clientDist)
-);
-
-clientApp.get('*', (req, res) => {
-  res.sendFile(
-    path.join(clientDist, 'index.html'),
-    (error) => {
-      if (error && !res.headersSent) {
-        res.status(500).send('Client build not found. Run npm run build.');
-      }
-    }
-  );
-});
-
-// --------------------------------------------------
-// DASHBOARD APPLICATION
-// --------------------------------------------------
-
-const dashboardApp = express();
-
-const dashboardDist = path.resolve(
-  __dirname,
-  '../dashboard/dist'
-);
-
-dashboardApp.use(
-  express.static(dashboardDist)
-);
-
-dashboardApp.get('*', (req, res) => {
-  res.sendFile(
-    path.join(dashboardDist, 'index.html'),
-    (error) => {
-      if (error && !res.headersSent) {
-        res.status(500).send('Dashboard build not found. Run npm run build.');
-      }
-    }
-  );
-});
-
-// --------------------------------------------------
-// SEPARATE HTTP SERVERS
-// --------------------------------------------------
-
-const clientServer = http.createServer(clientApp);
-const dashboardServer = http.createServer(dashboardApp);
-
-// --------------------------------------------------
-// SERVER STARTUP
-// --------------------------------------------------
-
-const listen = (httpServer, port, name) => {
-  return new Promise((resolve, reject) => {
-    const onError = (error) => {
-      httpServer.off('listening', onListening);
-      reject(error);
-    };
-
-    const onListening = () => {
-      httpServer.off('error', onError);
-      console.log(`[${name}] Running on port ${port}`);
-      resolve();
-    };
-
-    httpServer.once('error', onError);
-    httpServer.once('listening', onListening);
-
-    httpServer.listen(port, '0.0.0.0');
+  app.get('*', (req, res) => {
+    res.sendFile(
+      path.join(__dirname, '../client/dist/index.html')
+    );
   });
-};
+}
 
-// --------------------------------------------------
-// START APPLICATION
-// --------------------------------------------------
+// Port configuration
+const isLocal = process.env.NODE_ENV !== 'production';
 
+const PORT = isLocal
+  ? process.env.PORT || (APP_TYPE === 'dashboard' ? 8101 : 8100)
+  : APP_TYPE === 'dashboard'
+    ? process.env.DASHBOARD_PORT
+    : process.env.CLIENT_PORT;
+
+// Start server
 const startServer = async () => {
   try {
-    console.log('====================================');
-    console.log('        APPLICATION STARTING        ');
-    console.log('====================================');
-
     // 1. MongoDB connection
     console.log('[DB] Connecting MongoDB...');
     await connectDB();
-    console.log('[DB] MongoDB connected successfully');
+    console.log('[DB] MongoDB connected');
 
     // 2. Redis connection
     console.log('[REDIS] Connecting Redis...');
@@ -254,60 +143,26 @@ const startServer = async () => {
 
     // 3. WebSocket
     setupWebSocket(server);
-    console.log('[SOCKET] WebSocket initialized');
 
-    // 4. Cron jobs - only once
-    cronJobGame1p();
-    console.log('[CRON] Settlement cron started');
+    // 4. Cron jobs
+    if (APP_TYPE !== 'dashboard') {
+      cronJobGame1p();
+      console.log('[CRON] Settlement crons started (client process)');
+    } else {
+      console.log('[CRON] Settlement crons SKIPPED (dashboard process)');
+    }
 
-    // 5. Start all three servers
-    await Promise.all([
-      listen(server, API_PORT, 'API'),
-      listen(clientServer, CLIENT_PORT, 'CLIENT'),
-      listen(dashboardServer, DASHBOARD_PORT, 'DASHBOARD'),
-    ]);
-
-    console.log('====================================');
-    console.log('       ALL SERVERS STARTED          ');
-    console.log('====================================');
-
-    console.log(`API       : http://localhost:${API_PORT}`);
-    console.log(`CLIENT    : http://localhost:${CLIENT_PORT}`);
-    console.log(`DASHBOARD : http://localhost:${DASHBOARD_PORT}`);
-
-    console.log('====================================');
+    // 5. Start HTTP server
+    server.listen(PORT, () => {
+      console.log(
+        `${APP_TYPE} server running on port ${PORT} (${isLocal ? 'local' : 'prod'})`
+      );
+    });
 
   } catch (error) {
     console.error('[SERVER STARTUP ERROR]', error);
-
-    // Close servers if startup fails
-    server.close();
-    clientServer.close();
-    dashboardServer.close();
-
     process.exit(1);
   }
 };
 
-// --------------------------------------------------
-// GRACEFUL SHUTDOWN
-// --------------------------------------------------
-
-const shutdown = (signal) => {
-  console.log(`[SERVER] ${signal} received. Shutting down...`);
-
-  Promise.all([
-    new Promise((resolve) => server.close(resolve)),
-    new Promise((resolve) => clientServer.close(resolve)),
-    new Promise((resolve) => dashboardServer.close(resolve)),
-  ]).finally(() => {
-    console.log('[SERVER] All HTTP servers stopped');
-    process.exit(0);
-  });
-};
-
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-
-// Start
 startServer();
