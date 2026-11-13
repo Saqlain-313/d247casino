@@ -207,8 +207,10 @@ export const getCasinoBettingData = async (req, res) => {
       CACHE.betting.ttl
     );
 
+    console.log(`[CASINO] Fetched betting data for ${eventName}:`, data);
+
     // 2. Validate provider MID
-    if (!data || data.mid === undefined || data.mid === null) {
+    if (!data.data || data.data.mid === undefined || data.data.mid === null) {
       return res.status(502).json({
         success: false,
         message: 'Casino round data not found',

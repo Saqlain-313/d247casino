@@ -37,15 +37,15 @@ export function createProviderA() {
       return response.data.data;
     },
 
-    // async fetchMatchData(gameId, sportId) {
+    // async fetchMatchData(eventName, sportId) {
     //   const response = await axios.get(
-    //     `${API_URL}/getPriveteData?key=${API_KEY}&gmid=${gameId}&sid=${sportId}`
+    //     `${API_URL}/getPriveteData?key=${API_KEY}&gmid=${eventName}&sid=${sportId}`
     //   );
     //   return response.data;
     // },
-    async fetchMatchData(gameId, sportId) {
+    async fetchMatchData(eventName, sportId) {
       const response = await axios.get(
-        `${API_URL}/diamond/odds/${sportId}_${gameId}`,
+        `${API_URL}/diamond/odds/${sportId}_${eventName}`,
         {
           headers: {
             "X-API-Key": API_KEY,
@@ -118,7 +118,7 @@ export function createProviderA() {
 
     async fetchCasinoTables() {
       const response = await axios.get(
-        `${API_URL}/diamond/casino-table-list?key=${API_KEY}`,
+        `${API_URL}/diamond/direct-casino-table-list?key=${API_KEY}`,
         { timeout: 10000 }
       );
 
@@ -137,25 +137,22 @@ export function createProviderA() {
 
     async fetchCasinoData(eventName) {
       const response = await axios.get(
-        `${API_URL}/diamond/casino/data/${encodeURIComponent(eventName)}?key=${API_KEY}`,
+        `${API_URL}/diamond/direct-casino/data/${encodeURIComponent(eventName)}?key=${API_KEY}`,
         { timeout: 10000 }
       );
-
 
       // The provider wraps the table as { fetchedAt, eventName, data: { success, data } }.
       // Everything downstream (socket polling, bet validation, the API) expects
       // { success, data }, so unwrap it once here.
       const table = response.data?.data;
-
-      return table
-      // return {
-      //   success: Boolean(table?.success && table?.data),
-      //   data: table?.data ?? null,
-      // };
+      return {
+        success: Boolean(table?.success && table?.data),
+        data: table?.data ?? null,
+      };
     },
-    // async fetchCasinoData(gameId) {
+    // async fetchCasinoData(eventName) {
     // //   const response = await axios.get(
-    // //     `${API_URL}/casino/data?key=${API_KEY}&type=${gameId}`
+    // //     `${API_URL}/casino/data?key=${API_KEY}&type=${eventName}`
     // //   );
     // //   return response.data;
     // },
@@ -168,11 +165,10 @@ export function createProviderA() {
       return response.data;
     },
 
-    async fetchCasinoDetailResult(gtype, mid) {
+    async fetchCasinoDetailResult(eventName, mid) {
       const response = await axios.get(
-        `${API_URL}/diamond/casino/detail_result?key=${API_KEY}&type=${gtype}&mid=${mid}`
+        `${API_URL}/casino/detail_result?key=${API_KEY}&type=${eventName}&mid=${mid}`
       );
-
       return response.data;
     },
 
