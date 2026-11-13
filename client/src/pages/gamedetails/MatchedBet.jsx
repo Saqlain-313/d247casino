@@ -1,9 +1,8 @@
-
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { getMyCasinoBets } from '../../redux/reducer/casinoBetSlice';
 
-function MatchedBet({ eventName, slug }) {
+function MatchedBet({ eventName, slug, fetchBets = true }) {
   const dispatch = useDispatch();
 
   const {
@@ -12,21 +11,14 @@ function MatchedBet({ eventName, slug }) {
     myBetsError,
   } = useSelector((state) => state.casinoBet);
 
-  console.log("Slug:", slug);
-  console.log("Event Name:", eventName);
+  const casinoSlug = slug || eventName;
 
-  // Fetch casino bets
   useEffect(() => {
-    const casinoSlug = slug || eventName;
-
-    if (!casinoSlug) return;
-
-
+    if (!fetchBets || !casinoSlug) return;
 
     dispatch(getMyCasinoBets(casinoSlug));
-  }, [dispatch, eventName, slug]);
+  }, [dispatch, casinoSlug, fetchBets]);
 
-  // Filter bets for current casino
   const filteredBetHistory = useMemo(() => {
     if (!Array.isArray(myBets)) return [];
 
@@ -36,25 +28,22 @@ function MatchedBet({ eventName, slug }) {
         bet?.gameSlug ||
         bet?.casinoSlug;
 
-      // If API returns slug, match it
       if (betSlug) {
-        return String(betSlug) === String(slug || eventName);
+        return String(betSlug) === String(casinoSlug);
       }
 
-      // If API already returns bets for requested slug,
-      // don't filter using unrelated eventName.
       return true;
     });
-  }, [myBets, eventName, slug]);
+  }, [myBets, casinoSlug]);
 
   const getMatchedBetLabel = (item) => {
     if (!item) return 'N/A';
 
     if (item.gameType === 'oddeven') {
-      const market = item.marketName || '';
-      const team = item.teamName || '';
-
-      return [market, team].filter(Boolean).join(' / ') || 'N/A';
+      return [
+        item.marketName,
+        item.teamName,
+      ].filter(Boolean).join(' / ') || 'N/A';
     }
 
     return (
@@ -66,48 +55,36 @@ function MatchedBet({ eventName, slug }) {
   };
 
   const formatNumber = (num) => {
-    if (num === undefined || num === null || num === '') {
-      return '0';
-    }
+    const value = Number(num ?? 0);
 
-    const numValue =
-      typeof num === 'string' ? parseFloat(num) : Number(num);
-
-    if (Number.isNaN(numValue)) return '0';
-
-    return numValue.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
+    return Number.isFinite(value)
+      ? value.toLocaleString('en-US', {
+          maximumFractionDigits: 0,
+        })
+      : '0';
   };
 
   return (
     <div className="bg-[#f7f7f7]">
-      {/* Table Headers */}
       <div className="grid grid-cols-4 border-b border-gray-300 bg-white">
-        <div className="col-span-2 flex h-8 items-center px-2 py-1 text-left text-sm font-semibold">
+        <div className="col-span-2 flex h-8 items-center px-2 text-sm font-semibold">
           Matched Bet
         </div>
-
-        <div className="flex h-8 items-center px-2 py-1 text-right text-sm font-semibold">
+        <div className="flex h-8 items-center px-2 text-sm font-semibold">
           Odds
         </div>
-
-        <div className="flex h-8 items-center px-2 py-1 text-right text-sm font-semibold">
+        <div className="flex h-8 items-center px-2 text-sm font-semibold">
           Stake
         </div>
       </div>
 
-      {/* Loading */}
       {myBetsLoading && filteredBetHistory.length === 0 ? (
-        <div className="flex h-8 items-center justify-center bg-white text-xs text-gray-500">
+        <div className="bg-white p-2 text-center text-xs">
           Loading...
         </div>
       ) : myBetsError ? (
-        <div className="flex h-8 items-center justify-center bg-white text-xs text-red-500">
-          {typeof myBetsError === 'string'
-            ? myBetsError
-            : 'Unable to load bets'}
+        <div className="bg-white p-2 text-center text-xs text-red-500">
+          Unable to load bets
         </div>
       ) : filteredBetHistory.length > 0 ? (
         filteredBetHistory.map((item, index) => (
@@ -119,27 +96,24 @@ function MatchedBet({ eventName, slug }) {
                 : 'bg-[#faa9ba]'
             }`}
           >
-            <div className="col-span-2 flex h-8 items-center truncate px-2 py-1 text-left text-sm font-semibold text-gray-800">
+            <div className="col-span-2 flex h-8 items-center truncate px-2 text-sm font-semibold">
               {getMatchedBetLabel(item)}
               {item?.fancyScore ? `/${item?.xValue}` : ''}
             </div>
 
-            <div className="flex h-8 items-center px-2 py-1 text-right text-sm font-semibold text-gray-800">
+            <div className="flex h-8 items-center px-2 text-sm font-semibold">
               {item?.odds || item?.price || item?.fancyScore || item?.xValue || '0'}
             </div>
 
-            <div className="flex h-8 items-center px-2 py-1 text-right text-sm font-semibold text-gray-800">
+            <div className="flex h-8 items-center px-2 text-sm font-semibold">
               {formatNumber(
-                item?.stake ??
-                item?.amount ??
-                item?.betAmount ??
-                0
+                item?.stake ?? item?.amount ?? item?.betAmount ?? 0
               )}
             </div>
           </div>
         ))
       ) : (
-        <div className="flex h-8 items-center justify-center bg-white px-2 py-1 text-sm text-gray-500">
+        <div className="bg-white p-2 text-center text-sm text-gray-500">
           No Matched Bets
         </div>
       )}

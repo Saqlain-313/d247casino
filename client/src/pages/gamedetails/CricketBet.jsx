@@ -24,6 +24,7 @@ import Normal from './Normal';
 import OddEven from './OddEven';
 import PlaceBet from './PlaceBet';
 import TiedMatch from './TiedMatch';
+
 function CricketBet() {
   const { game, id } = useParams();
   const location = useLocation();
@@ -44,8 +45,14 @@ function CricketBet() {
     (state) => state.bet
   );
   const { userInfo } = useSelector((state) => state.auth);
+
+  // ✅ streamGmid = actual backend gameId (event id)
+  const streamGmid = beventId || eventName;
+
+  // ✅ gameId ko formData mein bhi rakh do (agar kahin use ho raha ho)
   const [formData, setFormData] = useState({
-    eventName: eventName,
+    gameId: streamGmid,          // ✅ FIX: gameId add kiya
+    game: eventName,
     sid: 4,
     otype: '',
     price: null,
@@ -56,18 +63,17 @@ function CricketBet() {
   });
 
   console.log('eventName', eventName);
+  console.log('streamGmid (gameId)', streamGmid);
+
   const [activeSubTab, setActiveSubTab] = useState('Normal');
   const [item, setitem] = useState(null);
   const [showLive, setShowLive] = useState(false);
   const [showlivetv, setshowlivetv] = useState(false);
-  const streamGmid = beventId || eventName;
   const liveTvUrl = getLiveTvUrl(4, streamGmid);
   const scorecardUrl = getCricketScorecardUrl(streamGmid);
   const [scoreData, setScoreData] = useState(null);
   const [scoreTimedOut, setScoreTimedOut] = useState(false);
 
-  // If the shared score feed has nothing for this match, fall back to the
-  // hosted scorecard page so the user still sees a score.
   useEffect(() => {
     setScoreData(null);
     setScoreTimedOut(false);
@@ -83,11 +89,12 @@ function CricketBet() {
     { id: 'meter', name: 'Meter Markets' },
     { id: 'khado', name: 'Khado Markets' },
   ];
-  // Extract team names from match title
+
   const matchTitle = decodeURIComponent(game || 'Team 1 v Team 2');
   const teams = matchTitle.split(' v ');
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
+
   console.log(showodds);
 
   const handleBetSelect = (betData) => {
@@ -104,12 +111,10 @@ function CricketBet() {
         setshowodds(true);
       }
     };
-
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // ✅ Fetch once before using socket (optional)
   useEffect(() => {
     if (eventName) {
       setLoader(true);
@@ -167,7 +172,6 @@ function CricketBet() {
 
     if (eventName) {
       setLoader(true);
-
       const fetchData = async () => {
         await dispatch(fetchCricketBatingData(eventName));
         setLoader(false);
@@ -195,7 +199,6 @@ function CricketBet() {
     }
   }, [dispatch, eventName]);
 
-  // Show toast messages for success/error (centralized to prevent duplicates)
   useEffect(() => {
     if (successMessage) {
       toast.success(successMessage);
@@ -221,8 +224,6 @@ function CricketBet() {
       )
     : [];
 
-  // console.log('matchodds from cricketbet', matchOddsList);
-
   const tiedMatchList = Array.isArray(bettingData)
     ? bettingData.filter(
         (item) =>
@@ -246,12 +247,10 @@ function CricketBet() {
           odds: sec.odds,
           max: sec.max,
           min: sec.min,
-          mname: fancy1List[0].mname, // ✅ Access from first item
-          status: fancy1List[0].status, // ✅ Access from first item
+          mname: fancy1List[0].mname,
+          status: fancy1List[0].status,
         }))
       : [];
-
-  // console.log('fancy1Data from cricketbet', fancy1Data);
 
   const NormalList = bettingData?.filter((item) => item.mname === 'Normal');
   const NormalData =
@@ -262,12 +261,10 @@ function CricketBet() {
           odds: sec.odds,
           max: sec.max,
           min: sec.min,
-          mname: NormalList[0].mname, // ✅ Access from first item
-          status: sec.gstatus, // ✅ Access from first item
+          mname: NormalList[0].mname,
+          status: sec.gstatus,
         }))
       : [];
-
-  // console.log('NormalData from cricketbet', NormalList);
 
   const khadoList = bettingData?.filter((item) => item.mname === 'khado');
   const khadoData =
@@ -278,8 +275,8 @@ function CricketBet() {
           odds: sec.odds,
           max: sec.max,
           min: sec.min,
-          mname: khadoList[0].mname, // ✅ Access from first item
-          status: sec.gstatus, // ✅ Access from first item
+          mname: khadoList[0].mname,
+          status: sec.gstatus,
         }))
       : [];
 
@@ -296,8 +293,8 @@ function CricketBet() {
           odds: sec.odds,
           max: sec.max,
           min: sec.min,
-          mname: oddEvenList[0].mname, // ✅ Access from first item
-          status: sec.gstatus, // ✅ Access from first item
+          mname: oddEvenList[0].mname,
+          status: sec.gstatus,
         }))
       : [];
 
@@ -315,6 +312,7 @@ function CricketBet() {
     'khado',
     'oddeven',
   ]);
+
   const otherMarkets = (Array.isArray(bettingData) ? bettingData : []).filter(
     (market) =>
       !knownMarketNames.has(market?.mname) &&
@@ -366,13 +364,13 @@ function CricketBet() {
                 className='w-full'
                 title='Live Score'
                 allow='
-                        autoplay;
-                        encrypted-media;
-                        fullscreen;
-                        picture-in-picture;
-                        accelerometer;
-                        gyroscope
-                      '
+                  autoplay;
+                  encrypted-media;
+                  fullscreen;
+                  picture-in-picture;
+                  accelerometer;
+                  gyroscope
+                '
               />
             )}
             {showLive && liveTvUrl && (
@@ -393,23 +391,6 @@ function CricketBet() {
                     gyroscope
                   '
                 />
-                {!showLive && scoreData && <LiveScoreCard data={scoreData} />}
-            { scoreTimedOut && scorecardUrl && (
-              <iframe
-                src={scorecardUrl}
-                allowFullScreen
-                className='w-full'
-                title='Live Score'
-                allow='
-                        autoplay;
-                        encrypted-media;
-                        fullscreen;
-                        picture-in-picture;
-                        accelerometer;
-                        gyroscope
-                      '
-              />
-            )}
               </div>
             )}
             {/** Match Odds */}
@@ -466,7 +447,7 @@ function CricketBet() {
               />
             )}
 
-            {/** */}
+            {/** Khado */}
             {khadoData.length > 0 && (
               <Khado
                 onBetSelect={handleBetSelect}
@@ -493,24 +474,16 @@ function CricketBet() {
                 onBetSelect={handleBetSelect}
               />
             ))}
-
-            {/** New Tied Match */}
-            {/* {newtiedMatchList.length > 0 && (
-              <TiedMatch
-                onBetSelect={handleBetSelect}
-                tiedMatchList={newtiedMatchList}
-                pendingBetAmounts={pendingBetAmounts}
-                selectedBet={selectedBet}
-              />
-            )} */}
           </div>
-   )}
+        )}
+
         {!showodds && (
           <div className='block'>
             <MatchedBet eventName={eventName} />
           </div>
         )}
       </div>
+
       <div className='sticky top-0 hidden h-fit lg:block'>
         <div className='w-[350px]'>
           <div className='mb-1'>
@@ -550,7 +523,7 @@ function CricketBet() {
               team2={team2}
               item={item}
               eventName={eventName}
-              eventName={match}
+              gameId={streamGmid}              // ✅ FIX: gameId pass
               sid={4}
               marketName={selectedBet?.marketName}
               gameType={selectedBet?.gameType}
@@ -569,12 +542,10 @@ function CricketBet() {
       {/* Mobile PlaceBet Modal */}
       {selectedBet && (
         <>
-          {/* Backdrop */}
           <div
             className='bg-opacity-50 fixed inset-0 z-40 block bg-black/60 lg:hidden'
             onClick={() => setSelectedBet(null)}
           ></div>
-          {/* Modal */}
           <div className='fixed top-0 right-0 left-0 z-50 block max-h-screen overflow-y-auto bg-white shadow-lg lg:hidden'>
             <PlaceBet
               selectedBet={selectedBet}
@@ -584,7 +555,7 @@ function CricketBet() {
               team1={team1}
               team2={team2}
               eventName={eventName}
-              eventName={match}
+              gameId={streamGmid}            // ✅ FIX: gameId pass
               sid={4}
               marketName={selectedBet?.marketName}
               gameType={selectedBet?.gameType}

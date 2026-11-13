@@ -260,9 +260,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { host } from '../../redux/api';
 import {
-    getPendingBet,
-    getPendingBetAmo,
-    messageClear
+  getPendingBet,
+  getPendingBetAmo,
+  messageClear
 } from '../../redux/reducer/betReducer';
 import { fetchTannisBatingData } from '../../redux/reducer/tennisSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
@@ -513,7 +513,7 @@ function TennisBet() {
         )}
         {!showodds && (
           <div className='block lg:hidden'>
-            <MatchedBet eventName={eventName} />
+            <MatchedBet eventName={match} fetchBets={false} />
           </div>
         )}
       </div>
@@ -568,7 +568,7 @@ function TennisBet() {
           <div className='bg-secondary text-secondary p-1'>
             <span className='font-bold'>My Bet</span>
           </div>
-          <MatchedBet eventName={eventName} />
+          <MatchedBet eventName={match} fetchBets={false} />
         </div>
       </div>
 
