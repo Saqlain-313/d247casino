@@ -19,12 +19,31 @@ const getUid = (req) => req.id ?? req.user?._id; // placeBet used req.id, others
 const isActive = (s) => ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
 
 // ======================================================================
-// Provider API helpers
+// Provider API helpers  (direct-casino endpoints)
 // ======================================================================
+
+// Live round object nikalo. Provider response kabhi { data: {mid,...} } hota hai,
+// kabhi wrapped { data: { success, data: {mid,...} } }. Dono handle hote hain.
+const pickLive = (body) => {
+  const candidates = [body?.data, body?.data?.data, body];
+  for (const c of candidates) {
+    if (c && typeof c === 'object' && c.mid !== undefined && c.mid !== null) return c;
+  }
+  return null;
+};
+
+// Result rows ka array nikalo (newest first). Wrapped aur plain dono shapes handle.
+const pickResultRows = (body) => {
+  const candidates = [body?.data?.res, body?.data?.data?.res, body?.res];
+  for (const c of candidates) {
+    if (Array.isArray(c)) return c;
+  }
+  return null;
+};
 
 // LIVE DATA API  -> used for placing bets (current round / betting status)
 export const fetchCasinoData = async (slug) => {
-  const url = `${API_URL}/diamond/casino/data/${encodeURIComponent(slug)}?key=${API_KEY}`;
+  const url = `${API_URL}/diamond/direct-casino/data/${encodeURIComponent(slug)}?key=${API_KEY}`;
   try {
     const response = await axios.get(url, { timeout: 15000 });
     if (DEBUG) console.log('Casino DATA API:', JSON.stringify(response.data, null, 2));
@@ -43,14 +62,15 @@ export const fetchCasinoData = async (slug) => {
 // RESULT API -> used for settling
 // Response: { success, data: { res: [{ mid, win }, ...newest first], res1: { cname } } }
 export const fetchCasinoResult = async (slug) => {
-  const url = `${API_URL}/diamond/casino/result/${encodeURIComponent(slug)}?key=${API_KEY}`;
+  const url = `${API_URL}/diamond/direct-casino/result/${encodeURIComponent(slug)}?key=${API_KEY}`;
   try {
     const { data } = await axios.get(url, { timeout: 15000 });
     if (DEBUG) console.log('Casino RESULT API:', JSON.stringify(data, null, 2));
-    if (!data || data.success === false || !Array.isArray(data.data?.res)) {
+    const rows = pickResultRows(data);
+    if (!data || data.success === false || !rows) {
       throw new Error('Bad result API response');
     }
-    return data.data.res;
+    return rows;
   } catch (error) {
     console.error('CASINO RESULT API ERROR:', {
       message: error.message,
@@ -173,8 +193,8 @@ export const placeBet = async (req, res) => {
       });
     }
 
-    const liveData = providerResponse?.data;
-    if (!liveData || liveData.mid === undefined || liveData.mid === null) {
+    const liveData = pickLive(providerResponse);
+    if (!liveData) {
       return res.status(503).json({
         success: false,
         message: 'Provider returned invalid casino data',

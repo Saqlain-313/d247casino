@@ -868,6 +868,8 @@ const placeBet = async (req, res) => {
       tno,
     } = req.body;
 
+    console.log(req.body,"[BET] Received bet request from userId:", id);
+
     // Validate required fields
     if (!gameId || !sid || !price || !xValue || !gameName || !teamName) {
       return res.status(400).json({ message: 'All fields are required' });
