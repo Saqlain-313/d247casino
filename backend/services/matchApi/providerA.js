@@ -165,6 +165,19 @@ export function createProviderA() {
       return response.data;
     },
 
+    async fetchDirectCasinoResultByDate(date, eventName) {
+      const response = await axios.get(
+        `${API_URL}/diamond/direct-casino/result/${encodeURIComponent(date)}/${encodeURIComponent(eventName)}`,
+        {
+          headers: {
+            "X-API-Key": API_KEY,
+          },
+          timeout: 10000,
+        }
+      );
+      return response.data;
+    },
+
     async fetchCasinoDetailResult(eventName, mid) {
       const response = await axios.get(
         `${API_URL}/casino/detail_result?key=${API_KEY}&type=${eventName}&mid=${mid}`

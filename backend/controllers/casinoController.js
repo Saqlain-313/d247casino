@@ -7,6 +7,7 @@ import {
   fetchCasinoDetailResult as fetchCasinoDetailResultApi,
   fetchCasinoResult as fetchCasinoResultApi,
   fetchCasinoTables,
+  fetchDirectCasinoResultByDate as fetchDirectCasinoResultByDateApi,
 } from '../services/matchApi/index.js';
 
 dotenv.config();
@@ -24,6 +25,8 @@ export const isCasinoGame = (gameId, cid, gid, tabno) => {
 };
 
 const EVENT_NAME_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
+// YYYY-MM-DD
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 // Fallback TTL in SECONDS (60 = 1 min).
 const DEFAULT_TTL_SECONDS = Number(process.env.CASINO_CACHE_TTL) || 60;
@@ -51,6 +54,11 @@ const CACHE = {
     prefix: 'casino:result-detail',
     // 1 min
     ttl: Number(process.env.CASINO_RESULT_DETAIL_TTL) || 60,
+  },
+  directResultByDate: {
+    prefix: 'casino:direct-result-by-date',
+    // 1 min
+    ttl: Number(process.env.CASINO_DIRECT_RESULT_TTL) || 60,
   },
 };
 
@@ -281,6 +289,74 @@ export const getCasinoResultData = async (req, res) => {
     return res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('getCasinoResultData error:', error?.message || error);
+
+    return res.status(error.provider !== undefined ? 502 : 503).json({
+      success: false,
+      message: error.message || 'Casino provider temporarily unavailable',
+      ...(error.provider !== undefined ? { provider: error.provider } : {}),
+    });
+  }
+};
+
+/**
+ * GET /casino/direct-result-by-date?date=YYYY-MM-DD&eventName=aaa
+ *
+ * Endpoint pattern: /diamond/direct-casino/result/<date>/:eventName
+ * Example:          /diamond/direct-casino/result/2026-11-13/aaa
+ */
+export const getDirectCasinoResultByDate = async (req, res) => {
+  const { date, eventName } = req.query;
+
+  if (!date || !eventName) {
+    return res.status(400).json({
+      success: false,
+      message: 'date and eventName are required',
+    });
+  }
+
+  if (
+    typeof date !== 'string' ||
+    !DATE_PATTERN.test(date) ||
+    typeof eventName !== 'string' ||
+    !EVENT_NAME_PATTERN.test(eventName)
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid date or eventName',
+    });
+  }
+
+  try {
+    const data = await getWithCache(
+      `${CACHE.directResultByDate.prefix}:${date}:${eventName}`,
+      async () => {
+        const response = await fetchDirectCasinoResultByDateApi(date, eventName);
+
+        if (!response) {
+          const error = new Error('Invalid provider response');
+          error.provider = response;
+          throw error;
+        }
+
+        // If the provider wraps the payload in { success, data }, unwrap it.
+        // Otherwise return the bare response as-is.
+        if (typeof response === 'object' && 'success' in response && 'data' in response) {
+          if (!response.success) {
+            const error = new Error('Invalid Response from API');
+            error.provider = response;
+            throw error;
+          }
+          return response.data;
+        }
+
+        return response;
+      },
+      CACHE.directResultByDate.ttl
+    );
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('getDirectCasinoResultByDate error:', error?.message || error);
 
     return res.status(error.provider !== undefined ? 502 : 503).json({
       success: false,
