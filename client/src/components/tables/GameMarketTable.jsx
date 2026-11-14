@@ -10228,463 +10228,1378 @@ function TableVlucky7({ isMobile, isSuspended, openBetSlip, markets }) {
 // --------------------------------------------------------------------------
 // Game: Virtual Trio (vtrio)
 // --------------------------------------------------------------------------
-function TableVtrio({ isMobile, isSuspended, openBetSlip, markets }) {
-  return (
-    <div className="casino-table trio">
-      <div className="casino-table-box">
-        <div className="d-flex justify-content-between gap-2 mb-3">
-          <div className="w-100 border p-2 rounded">
-            <div className="fw-bold">Player 1</div>
-            <div className="d-flex gap-2 mt-1">
-              <OddsBox nation="Player 1" odds="2.95" type="back" className="w-50" />
-              <OddsBox nation="Player 1" odds="3.05" type="lay" className="w-50" />
-            </div>
-          </div>
-          <div className="w-100 border p-2 rounded">
-            <div className="fw-bold">Player 2</div>
-            <div className="d-flex gap-2 mt-1">
-              <OddsBox nation="Player 2" odds="2.95" type="back" className="w-50" />
-              <OddsBox nation="Player 2" odds="3.05" type="lay" className="w-50" />
-            </div>
-          </div>
-          <div className="w-100 border p-2 rounded">
-            <div className="fw-bold">Player 3</div>
-            <div className="d-flex gap-2 mt-1">
-              <OddsBox nation="Player 3" odds="2.95" type="back" className="w-50" />
-              <OddsBox nation="Player 3" odds="3.05" type="lay" className="w-50" />
-            </div>
-          </div>
-        </div>
 
-        <div className="casino-table-box triocards mt-3">
-          <div className="casino-table-header">
-            <div className="casino-nation-detail">Side Bets (Hand Combinations)</div>
-            <div className="casino-odds-box back">Back Rate</div>
-          </div>
-          <div className="casino-table-body">
-            <div className="casino-table-row">
-              <div className="casino-nation-detail">Pair (Payout 5.5)</div>
-              <OddsBox nation="Pair" odds="5.5" type="back" />
-            </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail">Flush (Payout 17.0)</div>
-              <OddsBox nation="Flush" odds="17.0" type="back" />
-            </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail">Straight (Payout 24.0)</div>
-              <OddsBox nation="Straight" odds="24.0" type="back" />
-            </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail">Trio (Payout 201.0)</div>
-              <OddsBox nation="Trio" odds="201.0" type="back" />
-            </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail">Straight Flush (Payout 226.0)</div>
-              <OddsBox nation="Straight Flush" odds="226.0" type="back" />
-            </div>
-          </div>
-        </div>
+function TableVtrio({ isMobile, isSuspended, openBetSlip, markets }) {
+  const topMarkets = [
+    {
+      name: "Session",
+      back: "21",
+      lay: "21",
+      backVolume: "80",
+      layVolume: "100",
+      info: true,
+    },
+    {
+      name: "3 Card Judgement (1 2 4)",
+      back: "1.78",
+      lay: "1.83",
+    },
+    {
+      name: "3 Card Judgement (J Q K)",
+      back: "1.78",
+      lay: "1.83",
+    },
+  ];
+
+  const middleMarkets = [
+    { name: "Two Red Only", back: "2.52", lay: "2.72" },
+    { name: "Two Black Only", back: "2.52", lay: "2.72" },
+    { name: "Two Odd Only", back: "2.33", lay: "2.53" },
+    { name: "Two Even Only", back: "2.75", lay: "2.95" },
+  ];
+
+  const sideMarkets = [
+    { name: "Pair", odds: "5.5" },
+    { name: "Flush", odds: "17" },
+    { name: "Straight", odds: "24" },
+    { name: "Trio", odds: "201" },
+    { name: "Straight Flush", odds: "226" },
+  ];
+
+  const OddsCell = ({ nation, odds, type, volume }) => (
+    <div className="min-w-0 flex-1">
+      <OddsBox
+        nation={nation}
+        odds={odds}
+        volume={volume}
+        type={type}
+        className="!flex !min-h-[63px] !w-full !flex-col !items-center !justify-center !rounded-none !border-0 !px-1 !py-1 !text-center"
+      />
+    </div>
+  );
+
+  const MarketGroup = ({ item }) => (
+    <div className="min-w-0">
+      {/* Market Title */}
+      <div className="flex min-h-[33px] items-center justify-center gap-1 px-1 text-center text-sm font-bold text-[#333] sm:text-base">
+        {item.name}
+
+        {item.info && (
+          <span
+            title="Session information"
+            className="flex h-[19px] w-[19px] shrink-0 items-center justify-center rounded-full bg-[#333] text-xs font-bold text-white"
+          >
+            i
+          </span>
+        )}
+      </div>
+
+      {/* Back / Lay */}
+      <div className="flex gap-1">
+        <OddsCell
+          nation={item.name}
+          odds={item.back}
+          type="back"
+          volume={item.backVolume}
+        />
+
+        <OddsCell
+          nation={item.name}
+          odds={item.lay}
+          type="lay"
+          volume={item.layVolume}
+        />
       </div>
     </div>
   );
+
+  return (
+    <div className="trio w-full min-w-0 bg-[#f6f6f6] p-1">
+
+      {/* TOP SECTION */}
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-1.5">
+        {topMarkets.map((item) => (
+          <MarketGroup key={item.name} item={item} />
+        ))}
+      </div>
+
+      {/* MIDDLE SECTION */}
+      <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-1.5">
+        {middleMarkets.map((item) => (
+          <MarketGroup key={item.name} item={item} />
+        ))}
+      </div>
+
+      {/* BOTTOM SECTION - HAND COMBINATIONS */}
+      <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-1.5">
+        {sideMarkets.map((item) => (
+          <div key={item.name} className="min-w-0">
+
+            <div className="flex min-h-[33px] items-center justify-center px-1 text-center text-sm font-bold text-[#333] sm:text-base">
+              {item.name}
+            </div>
+
+            <OddsCell
+              nation={item.name}
+              odds={item.odds}
+              type="back"
+            />
+
+          </div>
+        ))}
+      </div>
+
+    </div>
+  );
 }
+
 
 // --------------------------------------------------------------------------
 // Game: Virtual 20-20 DTL (vdtl20)
 // --------------------------------------------------------------------------
+
 function TableVdtl20({ isMobile, isSuspended, openBetSlip, markets }) {
-  return (
-    <div className="casino-table dtl20">
-      <div className="casino-table-box">
-        <div className="casino-table-header">
-          <div className="casino-nation-detail">Nation</div>
-          <div className="casino-odds-box back">Back</div>
-          <div className="casino-odds-box lay">Lay</div>
+  const marketList = (() => {
+    if (Array.isArray(markets)) return markets;
+    if (Array.isArray(markets?.markets)) return markets.markets;
+    if (Array.isArray(markets?.data)) return markets.data;
+
+    return Object.values(markets || {}).flatMap((value) =>
+      Array.isArray(value)
+        ? value
+        : Array.isArray(value?.markets)
+          ? value.markets
+          : Array.isArray(value?.data)
+            ? value.data
+            : value?.name
+              ? [value]
+              : []
+    );
+  })();
+
+  const players = [
+    { name: "Dragon", suffix: "D" },
+    { name: "Tiger", suffix: "T" },
+    { name: "Lion", suffix: "L" },
+  ];
+
+  const commonRows = [
+    { label: "Winner", market: "Winner" },
+    { label: "Black", market: "Black", suit: "black" },
+    { label: "Red", market: "Red", suit: "red" },
+    { label: "Odd", market: "Odd" },
+    { label: "Even", market: "Even" },
+  ];
+
+  const leftCards = ["A", "2", "3", "4"];
+  const rightCards = ["5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+
+  const getMarket = (name) =>
+    marketList.find(
+      (item) =>
+        item?.name?.trim().toLowerCase() === name.toLowerCase()
+    );
+
+  const CardLabel = ({ value }) => (
+    <div className="flex h-[42px] w-[30px] shrink-0 flex-col items-center justify-center border border-[#d9e0e8] bg-white shadow-sm">
+      <span className="text-[18px] font-bold leading-5 text-black">
+        {value}
+      </span>
+      <span className="text-[12px] leading-[11px]">
+        <span className="text-black">♠</span>
+        <span className="text-red-600">♦</span>
+      </span>
+    </div>
+  );
+
+  const RowLabel = ({ row }) => (
+    <div className="flex min-h-[51px] min-w-0 items-center gap-1.5 border-b border-r border-[#c9c9c9] bg-[#f1efef] px-2">
+      {row.card ? (
+        <CardLabel value={row.card} />
+      ) : (
+        <>
+          <span className="text-sm font-bold text-[#333] sm:text-base">
+            {row.label}
+          </span>
+
+          {row.suit === "black" && (
+            <span className="text-[21px] leading-none text-black">
+              ♠ ♣
+            </span>
+          )}
+
+          {row.suit === "red" && (
+            <span className="text-[21px] leading-none text-red-600">
+              ♥ ♦
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  const OddsCell = ({ marketName }) => {
+    const market = getMarket(marketName);
+
+    // Hidden market
+    if (market?.visible === false) {
+      return (
+        <div className="min-h-[51px] border-b border-r border-[#c9c9c9] bg-[#f1efef]" />
+      );
+    }
+
+    // Closed market
+    if (market && market.status !== "OPEN") {
+      return (
+        <div className="flex min-h-[51px] items-center justify-center border-b border-r border-[#c9c9c9] bg-[#414d57] text-white">
+          -
         </div>
-        <div className="casino-table-body">
-          <div className="casino-table-row">
-            <div className="casino-nation-detail"><div className="casino-nation-name">Dragon</div></div>
-            <OddsBox nation="Dragon" odds={markets?.dragon?.back || '2.95'} type="back" />
-            <OddsBox nation="Dragon" odds={markets?.dragon?.lay || '3.05'} type="lay" />
+      );
+    }
+
+    // Open market or temporarily missing market data
+    return (
+      <div className="min-w-0 border-b border-r border-[#c9c9c9] bg-[#72b9e8]">
+        {market ? (
+          <OddsBox
+            nation={market.name}
+            odds={market.back ?? "-"}
+            type="back"
+            className="!flex !min-h-[51px] !w-full !items-center !justify-center !rounded-none !border-0 !bg-[#72b9e8] !px-1 !text-base !font-bold !text-[#263747]"
+          />
+        ) : (
+          <div className="flex min-h-[51px] items-center justify-center text-base font-bold text-[#263747]">
+            -
           </div>
-          <div className="casino-table-row">
-            <div className="casino-nation-detail"><div className="casino-nation-name">Tiger</div></div>
-            <OddsBox nation="Tiger" odds={markets?.tiger?.back || '2.95'} type="back" />
-            <OddsBox nation="Tiger" odds={markets?.tiger?.lay || '3.05'} type="lay" />
-          </div>
-          <div className="casino-table-row">
-            <div className="casino-nation-detail"><div className="casino-nation-name">Lion</div></div>
-            <OddsBox nation="Lion" odds={markets?.lion?.back || '2.95'} type="back" />
-            <OddsBox nation="Lion" odds={markets?.lion?.lay || '3.05'} type="lay" />
-          </div>
-        </div>
+        )}
       </div>
+    );
+  };
+
+  const MarketRow = ({ row }) => (
+    <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,0.9fr))]">
+      <RowLabel row={row} />
+
+      {players.map((player) => {
+        const marketName = row.card
+          ? `${player.name} ${row.card}`
+          : `${row.market} ${player.suffix}`;
+
+        return (
+          <OddsCell key={marketName} marketName={marketName} />
+        );
+      })}
+    </div>
+  );
+
+  const TableHeader = () => (
+    <div className="grid grid-cols-[minmax(0,1fr)_repeat(3,minmax(0,0.9fr))]">
+      <div className="min-h-[50px] border-b border-r border-[#c9c9c9] bg-[#f1efef]" />
+
+      {players.map((player) => (
+        <div
+          key={player.name}
+          className="flex min-h-[50px] items-center justify-center border-b border-r border-[#c9c9c9] bg-[#72b9e8] text-sm font-bold text-[#263747] sm:text-lg"
+        >
+          {player.name}
+        </div>
+      ))}
+    </div>
+  );
+
+  const leftRows = [
+    ...commonRows,
+    ...leftCards.map((card) => ({ card })),
+  ];
+
+  const rightRows = rightCards.map((card) => ({ card }));
+
+  return (
+    <div className="casino-table dtl20 w-full min-w-0 overflow-hidden bg-white">
+
+      <div className="grid grid-cols-2 gap-[6px]">
+
+        {/* LEFT TABLE */}
+        <div className="min-w-0">
+          <TableHeader />
+
+          {leftRows.map((row) => (
+            <MarketRow
+              key={row.market || row.card}
+              row={row}
+            />
+          ))}
+        </div>
+
+        {/* RIGHT TABLE */}
+        <div className="min-w-0">
+          <TableHeader />
+
+          {rightRows.map((row) => (
+            <MarketRow key={row.card} row={row} />
+          ))}
+        </div>
+
+      </div>
+
+      {/* LAST RESULT */}
+      <div className="flex min-h-[50px] items-center justify-between bg-[#293e50] px-2 text-white">
+        <span className="text-lg font-bold">
+          Last Result
+        </span>
+
+        <button
+          type="button"
+          className="text-base font-bold text-blue-500"
+        >
+          View All
+        </button>
+      </div>
+
     </div>
   );
 }
+
 
 // --------------------------------------------------------------------------
 // Game: Virtual Muflis Teenpatti (vteenmuf)
 // --------------------------------------------------------------------------
-function TableVteenmuf({ isMobile, isSuspended, openBetSlip, markets }) {
+
+function TableVteenmuf({
+  isMobile,
+  isSuspended,
+  openBetSlip,
+  markets
+}) {
   return (
     <div className="casino-table vteenmuf">
-      <div className="casino-table-box">
-        <div className="casino-table-left-box">
-          <div className="casino-table-header">
-            <div className="casino-nation-detail">Nation</div>
-            <div className="casino-odds-box back">Back</div>
-            <div className="casino-odds-box lay">Lay</div>
+      <div className="grid grid-cols-2 gap-1.5 w-full">
+
+        {/* PLAYER A */}
+        <div className="min-w-0 border border-gray-300 bg-[#f1f1f1]">
+          <div className="border-b border-gray-300 px-2 py-1.5 text-lg font-bold text-[#333]">
+            Player A
           </div>
-          <div className="casino-table-body">
-            <div className="casino-table-row">
-              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
-              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
-              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
+
+          <div className="grid grid-cols-3">
+            <div className="flex min-h-[63px] items-center justify-center border-b border-r border-gray-300 px-1 text-center text-[17px] font-bold text-[#333]">
+              Winner
             </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
-              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
-              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
+
+            <div className="flex min-h-[63px] items-center justify-center border-b border-r border-gray-300 px-1 text-center text-[17px] font-bold text-[#333]">
+              Top 9
+            </div>
+
+            <div className="flex min-h-[63px] items-center justify-center border-b border-gray-300 px-1 text-center text-[17px] font-bold text-[#333]">
+              M Baccarat A
+            </div>
+
+            <div className="min-w-0 min-h-16 border-r border-gray-300 bg-[#72b9e8]">
+              <OddsBox
+                nation="Player A Winner"
+                odds={markets?.playerA?.back || "1.98"}
+                type="back"
+              />
+            </div>
+
+            <div className="min-w-0 min-h-16 border-r border-gray-300 bg-[#72b9e8]">
+              <OddsBox
+                nation="Player A Top 9"
+                odds={markets?.top9A?.back || "A"}
+                type="back"
+              />
+            </div>
+
+            <div className="min-w-0 min-h-16 bg-[#72b9e8]">
+              <OddsBox
+                nation="M Baccarat A"
+                odds={markets?.baccaratA?.back || "1.98"}
+                type="back"
+              />
             </div>
           </div>
         </div>
 
-        <div className="casino-table-right-box mt-3 mt-md-0">
-          <div className="teenpatti20-other-oods">
-            <div className="casino-table-header">
-              <div className="casino-nation-detail">Side Bets</div>
-              <div className="casino-odds-box back">Back</div>
+        {/* PLAYER B */}
+        <div className="min-w-0 border border-gray-300 bg-[#f1f1f1]">
+          <div className="border-b border-gray-300 px-2 py-1.5 text-lg font-bold text-[#333]">
+            Player B
+          </div>
+
+          <div className="grid grid-cols-3">
+            <div className="flex min-h-[63px] items-center justify-center border-b border-r border-gray-300 px-1 text-center text-[17px] font-bold text-[#333]">
+              Winner
             </div>
-            <div className="casino-table-body">
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">Pair Plus A</div>
-                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
-              </div>
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">Pair Plus B</div>
-                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
-              </div>
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">3 Baccarat A</div>
-                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
-              </div>
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">3 Baccarat B</div>
-                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
-              </div>
+
+            <div className="flex min-h-[63px] items-center justify-center border-b border-r border-gray-300 px-1 text-center text-[17px] font-bold text-[#333]">
+              Top 9
+            </div>
+
+            <div className="flex min-h-[63px] items-center justify-center border-b border-gray-300 px-1 text-center text-[17px] font-bold text-[#333]">
+              M Baccarat B
+            </div>
+
+            <div className="min-w-0 min-h-16 border-r border-gray-300 bg-[#72b9e8]">
+              <OddsBox
+                nation="Player B Winner"
+                odds={markets?.playerB?.back || "1.98"}
+                type="back"
+              />
+            </div>
+
+            <div className="min-w-0 min-h-16 border-r border-gray-300 bg-[#72b9e8]">
+              <OddsBox
+                nation="Player B Top 9"
+                odds={markets?.top9B?.back || "B"}
+                type="back"
+              />
+            </div>
+
+            <div className="min-w-0 min-h-16 bg-[#72b9e8]">
+              <OddsBox
+                nation="M Baccarat B"
+                odds={markets?.baccaratB?.back || "1.98"}
+                type="back"
+              />
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
 }
+
 
 // --------------------------------------------------------------------------
 // Game: Virtual Amar Akbar Anthony (vaaa)
 // --------------------------------------------------------------------------
+
 function TableVaaa({ isMobile, isSuspended, openBetSlip, markets }) {
-  const cards13 = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K'];
+  const cards13 = ["A", 2, 3, 4, 5, 6, 7, 8, 9, 10, "J", "Q", "K"];
+
+  const players = [
+    {
+      name: "A. Amar",
+      key: "amar",
+      back: "2.95",
+      lay: "3.05",
+    },
+    {
+      name: "B. Akbar",
+      key: "akbar",
+      back: "2.95",
+      lay: "3.05",
+    },
+    {
+      name: "C. Anthony",
+      key: "anthony",
+      back: "2.95",
+      lay: "3.05",
+    },
+  ];
+
+  const panels = [
+    [
+      { name: "Even", odds: markets?.even?.back || "2.10" },
+      { name: "Odd", odds: markets?.odd?.back || "1.79" },
+    ],
+    [
+      { name: "♥ ♦", odds: markets?.red?.back || "1.95", color: "text-red-500" },
+      { name: "♠ ♣", odds: markets?.black?.back || "1.95", color: "text-black" },
+    ],
+    [
+      { name: "Under 7", odds: markets?.under7?.back || "2" },
+      { name: "Over 7", odds: markets?.over7?.back || "2" },
+    ],
+  ];
+
+  const placeBet = (name, odds) => {
+    if (!isSuspended) {
+      openBetSlip(name, odds, "back", isMobile);
+    }
+  };
+
   return (
-    <div className="casino-table aaa">
-      <div className="casino-table-box">
-        <div className="d-flex justify-content-between w-100 gap-2 mb-3">
-          <div className="casino-odd-box-container w-100">
-            <div className="casino-nation-name">A. Amar</div>
-            <OddsBox nation="A. Amar" odds={markets?.amar?.back || '2.95'} type="back" />
-            <OddsBox nation="A. Amar" odds={markets?.amar?.lay || '3.05'} type="lay" />
-          </div>
-          <div className="casino-odd-box-container w-100">
-            <div className="casino-nation-name">B. Akbar</div>
-            <OddsBox nation="B. Akbar" odds={markets?.akbar?.back || '2.95'} type="back" />
-            <OddsBox nation="B. Akbar" odds={markets?.akbar?.lay || '3.05'} type="lay" />
-          </div>
-          <div className="casino-odd-box-container w-100">
-            <div className="casino-nation-name">C. Anthony</div>
-            <OddsBox nation="C. Anthony" odds={markets?.anthony?.back || '2.95'} type="back" />
-            <OddsBox nation="C. Anthony" odds={markets?.anthony?.lay || '3.05'} type="lay" />
-          </div>
-        </div>
+    <div className="w-full min-w-0 bg-[#f5f5f5] p-1">
 
-        <div className="casino-table-box mt-3 d-flex justify-content-between w-100 gap-2">
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
-          </div>
-        </div>
+      {/* TOP: THREE PLAYERS */}
+      <div className="grid grid-cols-3 gap-2">
 
-        <div className="casino-table-full-box aaacards mt-3">
-          <div className="casino-odds w-100 text-center fw-bold mb-1">13 Cards Market (Payout 12.0)</div>
-          <div className="d-flex flex-wrap justify-content-center w-100 gap-2">
-            {cards13.map((c) => (
-              <div
-                key={c}
-                className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
-                onClick={isSuspended ? undefined : () => openBetSlip(`Card ${c}`, '12', 'back', isMobile)}
-                style={{ cursor: isSuspended ? 'not-allowed' : 'pointer', minWidth: '40px', textAlign: 'center' }}
-              >
-                <div className="casino-odds">{isSuspended ? '-' : '12'}</div>
-                <div className="fw-bold">{c}</div>
-              </div>
-            ))}
+        {players.map((player) => (
+          <div key={player.key} className="min-w-0">
+
+            <div className="flex h-[35px] items-center justify-center text-center text-lg font-bold text-[#333]">
+              {player.name}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+
+              <OddsBox
+                nation={player.name}
+                odds={markets?.[player.key]?.back || player.back}
+                type="back"
+                className="!flex !h-[63px] !min-h-[63px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+              />
+
+              <OddsBox
+                nation={player.name}
+                odds={markets?.[player.key]?.lay || player.lay}
+                type="lay"
+                className="!flex !h-[63px] !min-h-[63px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+              />
+
+            </div>
           </div>
-        </div>
+        ))}
+
       </div>
+
+      {/* MIDDLE: THREE BETTING PANELS */}
+      <div className="mt-4 grid grid-cols-3 gap-1.5">
+
+        {panels.map((panel, index) => (
+          <div
+            key={index}
+            className="min-w-0 border border-[#c9c9c9] bg-[#f1f1f1] p-1.5 sm:p-2"
+          >
+
+            <div className="flex flex-col gap-6">
+
+              {panel.map((item) => (
+                <div key={item.name} className="min-w-0">
+
+                  {/* Odds */}
+                  <div className="flex h-[29px] items-center justify-center text-lg font-bold text-[#333]">
+                    {isSuspended ? "-" : item.odds}
+                  </div>
+
+                  {/* Gradient Bet Button */}
+                  <button
+                    type="button"
+                    disabled={isSuspended}
+                    onClick={() => placeBet(item.name, item.odds)}
+                    className={`
+                      flex h-[63px] w-full items-center justify-center
+                      border border-[#31536c]
+                      bg-gradient-to-r from-[#008dcc] to-[#293e50]
+                      px-1 text-sm font-bold text-white
+                      shadow-md sm:text-lg
+                      ${
+                        isSuspended
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer hover:brightness-110 active:scale-[0.99]"
+                      }
+                    `}
+                  >
+                    <span className={item.color || ""}>
+                      {isSuspended ? "-" : item.name}
+                    </span>
+                  </button>
+
+                </div>
+              ))}
+
+            </div>
+
+          </div>
+        ))}
+
+      </div>
+
+      {/* BOTTOM: 13 CARDS */}
+      <div className="mt-5 w-full bg-[#f1efef] px-2 py-3">
+
+        <div className="mb-3 text-center text-[27px] font-bold text-[#333]">
+          12
+        </div>
+
+        {/* All cards stay in one horizontal row */}
+        <div className="mx-auto grid w-full max-w-[900px] grid-cols-[repeat(13,minmax(0,1fr))] gap-1.5">
+
+          {cards13.map((card) => (
+            <button
+              key={card}
+              type="button"
+              disabled={isSuspended}
+              onClick={() => placeBet(`Card ${card}`, "12")}
+              className={`
+                flex h-[88px] min-w-0 flex-col
+                items-center justify-center
+                border-2 border-[#f5d943]
+                bg-white text-[#777]
+                shadow-sm transition-all
+                ${
+                  isSuspended
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer hover:bg-yellow-50 active:scale-95"
+                }
+              `}
+            >
+
+              <span className="text-[clamp(16px,2.5vw,35px)] font-bold leading-[1.05]">
+                {card}
+              </span>
+
+              <div className="grid grid-cols-2 gap-x-0.5 text-[clamp(10px,1.4vw,19px)] leading-[1.05]">
+                <span className="text-[#777]">♠</span>
+                <span className="text-[#ef8585]">♦</span>
+                <span className="text-[#777]">♣</span>
+                <span className="text-[#ef8585]">♥</span>
+              </div>
+
+            </button>
+          ))}
+
+        </div>
+
+      </div>
+
     </div>
   );
 }
 
+
 // --------------------------------------------------------------------------
 // Game: Virtual Bollywood Casino (vbtable)
 // --------------------------------------------------------------------------
+
 function TableVbtable({ isMobile, isSuspended, openBetSlip, markets }) {
   const chars = [
-    { key: 'A', name: 'Don' },
-    { key: 'B', name: 'Amar' },
-    { key: 'C', name: 'Anthony' },
-    { key: 'D', name: 'Vijay' },
-    { key: 'E', name: 'Shehenshah' },
-    { key: 'F', name: 'Gabbar' },
+    { key: "A", name: "Don" },
+    { key: "B", name: "Amar" },
+    { key: "C", name: "Anthony" },
+    { key: "D", name: "Vijay" },
+    { key: "E", name: "Shehenshah" },
+    { key: "F", name: "Gabbar" },
   ];
+
+  const placeBet = (name, odds, type = "back") => {
+    if (!isSuspended) {
+      openBetSlip(name, odds, type, isMobile);
+    }
+  };
+
+  const gradientButton =
+    "flex min-h-[49px] w-full items-center justify-center border border-[#31536c] bg-gradient-to-r from-[#008dcc] to-[#293e50] px-2 text-center text-sm font-bold text-white shadow-md sm:text-base";
+
   return (
-    <div className="casino-table bollywood">
-      <div className="casino-table-box">
-        <div className="row g-2 mb-3">
-          {chars.map((char) => (
-            <div key={char.key} className="col-12 col-md-4">
-              <div className="casino-odd-box-container p-2 border rounded">
-                <div className="casino-nation-name fw-bold">{char.key}. {char.name}</div>
-                <div className="d-flex gap-2 mt-1">
-                  <OddsBox nation={`${char.key}. ${char.name}`} odds="5.5" type="back" className="w-50" />
-                  <OddsBox nation={`${char.key}. ${char.name}`} odds="6.0" type="lay" className="w-50" />
+    <div className="w-full min-w-0 bg-[#f5f5f5] p-1">
+
+      {/* TOP: SIX PLAYERS */}
+      <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+
+        {chars.map((char) => (
+          <div key={char.key} className="min-w-0">
+
+            <div className="flex min-h-[30px] items-center justify-center px-1 text-center text-sm font-bold text-[#333] sm:text-base">
+              {char.key}. {char.name}
+            </div>
+
+            <div className="grid grid-cols-2 gap-1">
+
+              <OddsBox
+                nation={`${char.key}. ${char.name}`}
+                odds={markets?.[char.key.toLowerCase()]?.back || "5.5"}
+                type="back"
+                className="!flex !min-h-[49px] !w-full !items-center !justify-center !rounded-none !border-0 !text-base !font-bold"
+              />
+
+              <OddsBox
+                nation={`${char.key}. ${char.name}`}
+                odds={markets?.[char.key.toLowerCase()]?.lay || "6.0"}
+                type="lay"
+                className="!flex !min-h-[49px] !w-full !items-center !justify-center !rounded-none !border-0 !text-base !font-bold"
+              />
+
+            </div>
+          </div>
+        ))}
+
+      </div>
+
+      {/* MIDDLE SECTION */}
+      <div className="mt-5 grid grid-cols-12 gap-1.5">
+
+        {/* ODD BACK / LAY */}
+        <div className="col-span-3 min-w-0 border border-[#ccc] bg-[#f1f1f1] p-1">
+          <div className="mb-1 text-center text-sm font-bold text-[#333]">
+            Odd
+          </div>
+
+          <div className="grid grid-cols-2 gap-1">
+            <OddsBox
+              nation="Odd"
+              odds={markets?.odd?.back || "1.32"}
+              type="back"
+              className="!flex !min-h-[49px] !w-full !items-center !justify-center !rounded-none !border-0 !text-base !font-bold"
+            />
+
+            <OddsBox
+              nation="Odd"
+              odds={markets?.odd?.lay || "1.36"}
+              type="lay"
+              className="!flex !min-h-[49px] !w-full !items-center !justify-center !rounded-none !border-0 !text-base !font-bold"
+            />
+          </div>
+        </div>
+
+        {/* DULHA DULHAN */}
+        <div className="col-span-4 min-w-0 border border-[#ccc] bg-[#f1f1f1] p-1">
+          <div className="mb-1 text-center text-base font-bold text-[#333]">
+            {isSuspended ? "-" : "1.97"}
+          </div>
+
+          <button
+            type="button"
+            disabled={isSuspended}
+            onClick={() => placeBet("Dulha Dulhan K-Q", "1.97")}
+            className={`${gradientButton} ${isSuspended ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+          >
+            Dulha Dulhan K-Q
+          </button>
+        </div>
+
+        {/* BARATI */}
+        <div className="col-span-5 min-w-0 border border-[#ccc] bg-[#f1f1f1] p-1">
+          <div className="mb-1 text-center text-base font-bold text-[#333]">
+            {isSuspended ? "-" : "1.97"}
+          </div>
+
+          <button
+            type="button"
+            disabled={isSuspended}
+            onClick={() => placeBet("Barati J-A", "1.97")}
+            className={`${gradientButton} ${isSuspended ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+          >
+            Barati J-A
+          </button>
+        </div>
+
+      </div>
+
+      {/* BOTTOM SECTION */}
+      <div className="mt-3 grid grid-cols-2 gap-1.5">
+
+        {/* RED / BLACK */}
+        <div className="grid grid-cols-2 gap-1.5 border border-[#ccc] bg-[#f1f1f1] p-1.5">
+
+          <div className="min-w-0">
+            <div className="mb-1 text-center text-base font-bold text-[#333]">
+              {isSuspended ? "-" : "1.97"}
+            </div>
+
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() => placeBet("Red ♥ ♦", "1.97")}
+              className={`${gradientButton} ${isSuspended ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+            >
+              <span className="text-xl text-red-500">♥ ♦</span>
+            </button>
+          </div>
+
+          <div className="min-w-0">
+            <div className="mb-1 text-center text-base font-bold text-[#333]">
+              {isSuspended ? "-" : "1.97"}
+            </div>
+
+            <button
+              type="button"
+              disabled={isSuspended}
+              onClick={() => placeBet("Black ♠ ♣", "1.97")}
+              className={`${gradientButton} ${isSuspended ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+            >
+              <span className="text-xl text-black">♠ ♣</span>
+            </button>
+          </div>
+
+        </div>
+
+        {/* CARD MARKET */}
+        <div className="min-w-0 border border-[#ccc] bg-[#f1f1f1] p-2">
+
+          <div className="mb-2 text-center text-lg font-bold text-[#333]">
+            {isSuspended ? "-" : "3.75"}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-1">
+
+            {["J", "Q", "K", "A"].map((card) => (
+              <button
+                key={card}
+                type="button"
+                disabled={isSuspended}
+                onClick={() => placeBet(`Card ${card}`, "3.75")}
+                className={`
+                  flex h-[68px] w-[44px] flex-col
+                  items-center justify-center
+                  border-2 border-yellow-400 bg-white
+                  text-[#333] shadow-sm
+                  ${
+                    isSuspended
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-pointer hover:bg-yellow-50"
+                  }
+                `}
+              >
+                <span className="text-[27px] font-bold leading-7">
+                  {card}
+                </span>
+
+                <span className="text-[13px] leading-[13px]">
+                  <span className="text-black">♠</span>
+                  <span className="text-red-600">♦</span>
+                </span>
+
+                <span className="text-[13px] leading-[13px]">
+                  <span className="text-black">♣</span>
+                  <span className="text-red-600">♥</span>
+                </span>
+              </button>
+            ))}
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Virtual 1 Day Dragon Tiger (vdt6)
+// --------------------------------------------------------------------------
+
+function TableVdt6({ isMobile, isSuspended, openBetSlip, markets }) {
+  const blue = "bg-[#72b9e8]";
+  const pink = "bg-[#f5a6ba]";
+  const labelStyle =
+    "flex min-h-[58px] items-center border border-[#c9c9c9] bg-[#f1f1f1] px-2 text-sm font-bold text-[#333] sm:text-lg";
+
+  const market = (key, fallback) => ({
+    ...(markets?.[key] || {}),
+    back: markets?.[key]?.back ?? fallback,
+  });
+
+  const dragon = markets?.dragon || {};
+  const tiger = markets?.tiger || {};
+
+  const getMarket = (key, fallback) => markets?.[key] || {
+    back: fallback,
+  };
+
+  const LockedIcon = () => (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-7 w-7 fill-white"
+      aria-hidden="true"
+    >
+      <path d="M18 8h-1V6a5 5 0 0 0-10 0v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2ZM9 6a3 3 0 0 1 6 0v2H9V6Zm4 10.73V19h-2v-2.27a2 2 0 1 1 2 0Z" />
+    </svg>
+  );
+
+  const OddsCell = ({
+    nation,
+    odds,
+    type = "back",
+    marketData,
+  }) => {
+    const locked =
+      isSuspended ||
+      (marketData?.status != null && marketData.status !== "OPEN") ||
+      marketData?.visible === false;
+
+    const isLay = type === "lay";
+
+    return (
+      <button
+        type="button"
+        disabled={locked}
+        onClick={() => {
+          if (!locked) {
+            openBetSlip(nation, odds, type, isMobile);
+          }
+        }}
+        className={`
+          relative flex min-h-[58px] w-full min-w-0
+          items-center justify-center border border-[#c9c9c9]
+          text-base font-bold text-[#263747] sm:text-lg
+          ${locked
+            ? isLay
+              ? "bg-[#57484d]"
+              : "bg-[#414d57]"
+            : isLay
+              ? pink
+              : blue
+          }
+          ${locked ? "cursor-not-allowed" : "cursor-pointer"}
+        `}
+      >
+        {locked ? (
+          <span className="flex flex-col items-center justify-center">
+            <LockedIcon />
+            <span className="text-sm leading-none text-[#333]">0</span>
+          </span>
+        ) : (
+          odds
+        )}
+      </button>
+    );
+  };
+
+  const TableHeading = ({ children, className = "" }) => (
+    <div
+      className={`flex min-h-[55px] items-center justify-center border border-[#c9c9c9] bg-[#f1f1f1] px-1 text-center text-sm font-bold text-[#333] sm:text-lg ${className}`}
+    >
+      {children}
+    </div>
+  );
+
+  // Dragon / Tiger table
+  const MainTable = () => (
+    <div className="grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(65px,0.33fr))]">
+      <TableHeading />
+      <TableHeading className={blue}>Back</TableHeading>
+      <TableHeading className={pink}>Lay</TableHeading>
+
+      {["Dragon", "Tiger"].map((name) => {
+        const data = name === "Dragon" ? dragon : tiger;
+
+        return (
+          <React.Fragment key={name}>
+            <div className={labelStyle}>{name}</div>
+
+            <OddsCell
+              nation={name}
+              odds={data?.back ?? (name === "Dragon" ? "1.58" : "1.58")}
+              type="back"
+              marketData={data}
+            />
+
+            <OddsCell
+              nation={name}
+              odds={data?.lay ?? (name === "Dragon" ? "1.61" : "1.61")}
+              type="lay"
+              marketData={data}
+            />
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+
+  // Pair market
+  const PairMarket = () => {
+    const pair = getMarket("pair", "12");
+
+    return (
+      <div className="flex flex-col border border-[#c9c9c9] bg-[#f1f1f1] p-2">
+        <div className="flex min-h-[50px] items-center justify-center text-lg font-bold text-[#333]">
+          {isSuspended ? "-" : pair.back}
+        </div>
+
+        <button
+          type="button"
+          disabled={isSuspended || pair.status && pair.status !== "OPEN"}
+          onClick={() => openBetSlip("Pair", pair.back, "back", isMobile)}
+          className="flex min-h-[86px] w-full items-center justify-center border border-[#31536c] bg-gradient-to-r from-[#008dcc] to-[#293e50] text-xl font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Pair
+        </button>
+      </div>
+    );
+  };
+
+  // Dragon / Tiger Even-Odd and Red-Black tables
+  const TwoMarketTable = ({
+    headings,
+    rows,
+    getData,
+  }) => (
+    <div className="grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(65px,0.33fr))]">
+      <TableHeading />
+
+      {headings.map((heading) => (
+        <TableHeading key={heading.key} className={blue}>
+          {heading.label}
+        </TableHeading>
+      ))}
+
+      {rows.map((row) => (
+        <React.Fragment key={row}>
+          <div className={labelStyle}>{row}</div>
+
+          {headings.map((heading) => {
+            const item = getData(row, heading.key);
+
+            return (
+              <OddsCell
+                key={heading.key}
+                nation={`${row} ${heading.label}`}
+                odds={item.back}
+                marketData={item}
+              />
+            );
+          })}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+
+  const bottomSuits = [
+    { key: "spade", label: "♠", color: "text-black" },
+    { key: "heart", label: "♥", color: "text-red-600" },
+    { key: "club", label: "♣", color: "text-black" },
+    { key: "diamond", label: "♦", color: "text-red-600" },
+  ];
+
+  return (
+    <div className="w-full min-w-0 space-y-3 bg-[#f5f5f5] p-1">
+
+      {/* TOP SECTION */}
+      <div className="grid grid-cols-1 items-start gap-2 md:grid-cols-2">
+
+        <MainTable />
+
+        <PairMarket />
+
+      </div>
+
+      {/* MIDDLE SECTION */}
+      <div className="grid grid-cols-1 items-start gap-2 md:grid-cols-2">
+
+        {/* EVEN / ODD */}
+        <TwoMarketTable
+          headings={[
+            { key: "even", label: "Even" },
+            { key: "odd", label: "Odd" },
+          ]}
+          rows={["Dragon", "Tiger"]}
+          getData={(row, key) =>
+            getMarket(
+              `${row.toLowerCase()}${key.charAt(0).toUpperCase()}${key.slice(1)}`,
+              row === "Tiger"
+                ? key === "even" ? "2.07" : "1.83"
+                : "2.07"
+            )
+          }
+        />
+
+        {/* RED / BLACK */}
+        <TwoMarketTable
+          headings={[
+            { key: "red", label: <>Red <span className="text-red-600">♥ ♦</span></> },
+            { key: "black", label: <>Black <span className="text-black">♠ ♣</span></> },
+          ]}
+          rows={["Dragon", "Tiger"]}
+          getData={(row, key) =>
+            getMarket(
+              `${row.toLowerCase()}${key.charAt(0).toUpperCase()}${key.slice(1)}`,
+              row === "Tiger"
+                ? key === "red" ? "2" : "1.93"
+                : "2"
+            )
+          }
+        />
+
+      </div>
+
+      {/* BOTTOM SUIT TABLE */}
+      <div className="grid grid-cols-[minmax(0,0.8fr)_repeat(4,minmax(0,1fr))]">
+
+        <TableHeading />
+
+        {bottomSuits.map((suit) => (
+          <TableHeading key={suit.key} className="text-2xl">
+            <span className={suit.color}>{suit.label}</span>
+          </TableHeading>
+        ))}
+
+        {["Dragon", "Tiger"].map((row) => (
+          <React.Fragment key={row}>
+            <div className={labelStyle}>{row}</div>
+
+            {bottomSuits.map((suit) => {
+              const key = `${row.toLowerCase()}${suit.key.charAt(0).toUpperCase()}${suit.key.slice(1)}`;
+
+              const item = getMarket(
+                key,
+                "3.72"
+              );
+
+              return (
+                <OddsCell
+                  key={key}
+                  nation={`${row} ${suit.key}`}
+                  odds={item.back}
+                  marketData={item}
+                />
+              );
+            })}
+          </React.Fragment>
+        ))}
+
+      </div>
+
+    </div>
+  );
+}
+
+
+// --------------------------------------------------------------------------
+// Game: Virtual 1 Day Teenpatti (vteen)
+// --------------------------------------------------------------------------
+
+function TableVteen({ isMobile, isSuspended, openBetSlip, markets }) {
+  const players = [
+    {
+      name: "Player A",
+      key: "playerA",
+    },
+    {
+      name: "Player B",
+      key: "playerB",
+    },
+  ];
+
+  const cards = [1, 2, 3, 4, 5, 6];
+
+  const renderLockedCard = () => (
+    <div className="flex min-h-[55px] items-center justify-center border-r border-gray-300 bg-[#414d57]">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="h-5 w-5 text-white"
+      >
+        <path
+          fillRule="evenodd"
+          d="M7.5 8.25V6a4.5 4.5 0 119 0v2.25h.75A2.25 2.25 0 0119.5 10.5v9a2.25 2.25 0 01-2.25 2.25h-10.5A2.25 2.25 0 014.5 19.5v-9A2.25 2.25 0 016.75 8.25h.75zM9 6a3 3 0 116 0v2.25H9V6z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  );
+
+  return (
+    <div className="casino-table vteen">
+      <div className="flex flex-col gap-2">
+
+        {/* PLAYER A & PLAYER B MARKETS */}
+        <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
+
+          {players.map((player) => (
+            <div
+              key={player.key}
+              className="min-w-0 border border-gray-300 bg-[#f1f1f1]"
+            >
+              {/* Header */}
+              <div className="grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,124px))]">
+                <div className="flex items-center border-r border-gray-300 px-2 py-1.5 text-base font-bold text-[#333]">
+                  {player.name}
+                </div>
+
+                <div className="flex min-h-[35px] items-center justify-center border-r border-gray-300 bg-[#72b9e8] text-base font-bold text-[#333]">
+                  Back
+                </div>
+
+                <div className="flex min-h-[35px] items-center justify-center bg-[#f5a7ba] text-base font-bold text-[#333]">
+                  Lay
+                </div>
+              </div>
+
+              {/* Main */}
+              <div className="grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,124px))]">
+                <div className="flex min-h-[55px] items-center border-r border-t border-gray-300 px-2 font-bold text-[#333]">
+                  Main
+                </div>
+
+                <div className="min-w-0 border-r border-t border-gray-300 bg-[#72b9e8]">
+                  <OddsBox
+                    nation={`${player.name} Main`}
+                    odds={
+                      markets?.[player.key]?.main?.back ||
+                      markets?.[player.key]?.back ||
+                      "1.98"
+                    }
+                    type="back"
+                    className="!flex !h-full !min-h-[55px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+                  />
+                </div>
+
+                <div className="min-w-0 border-t border-gray-300 bg-[#f5a7ba]">
+                  <OddsBox
+                    nation={`${player.name} Main`}
+                    odds={
+                      markets?.[player.key]?.main?.lay ||
+                      markets?.[player.key]?.lay ||
+                      "0"
+                    }
+                    type="lay"
+                    className="!flex !h-full !min-h-[55px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Consecutive */}
+              <div className="grid grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,124px))]">
+                <div className="flex min-h-[55px] items-center border-r border-t border-gray-300 px-2 font-bold text-[#333]">
+                  Consecutive
+                </div>
+
+                <div className="min-w-0 border-r border-t border-gray-300 bg-[#72b9e8]">
+                  <OddsBox
+                    nation={`${player.name} Consecutive`}
+                    odds={
+                      markets?.[player.key]?.consecutive?.back ||
+                      "2.43"
+                    }
+                    type="back"
+                    className="!flex !h-full !min-h-[55px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+                  />
+                </div>
+
+                <div className="min-w-0 border-t border-gray-300 bg-[#f5a7ba]">
+                  <OddsBox
+                    nation={`${player.name} Consecutive`}
+                    odds={
+                      markets?.[player.key]?.consecutive?.lay ||
+                      "2.53"
+                    }
+                    type="lay"
+                    className="!flex !h-full !min-h-[55px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+                  />
                 </div>
               </div>
             </div>
           ))}
         </div>
 
-        <div className="casino-table-box mt-2 d-flex justify-content-between gap-2">
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Odd', '1.79', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold">Odd</div><div className="casino-odds">{isSuspended ? '-' : '1.79'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Even', '2.10', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold">Even</div><div className="casino-odds">{isSuspended ? '-' : '2.10'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Red', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold text-danger">Red</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
-          </div>
-          <div className="aaa-odd-box w-100 p-2 text-center rounded border" onClick={isSuspended ? undefined : () => openBetSlip('Black', '1.95', 'back', isMobile)} style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}>
-            <div className="fw-bold text-dark">Black</div><div className="casino-odds">{isSuspended ? '-' : '1.95'}</div>
+        {/* CARD ODD / EVEN MARKETS */}
+        <div className="w-full overflow-x-auto border border-gray-300 bg-[#f1f1f1]">
+          <div className="min-w-[650px]">
+
+            {/* Card Headers */}
+            <div className="grid grid-cols-[minmax(100px,1.2fr)_repeat(6,minmax(0,1fr))]">
+              <div className="min-h-[35px] border-b border-r border-gray-300" />
+
+              {cards.map((card) => (
+                <div
+                  key={card}
+                  className="flex min-h-[35px] items-center justify-center border-b border-r border-gray-300 text-base font-bold text-[#333]"
+                >
+                  Card {card}
+                </div>
+              ))}
+            </div>
+
+            {/* Odd Row */}
+            <div className="grid grid-cols-[minmax(100px,1.2fr)_repeat(6,minmax(0,1fr))]">
+              <div className="flex min-h-[55px] items-center border-b border-r border-gray-300 px-2 font-bold text-[#333]">
+                Odd
+              </div>
+
+              {cards.map((card) => (
+                <div
+                  key={`odd-${card}`}
+                  className="min-w-0 border-b border-r border-gray-300"
+                >
+                  {card === 1 ? (
+                    <div className="bg-[#72b9e8]">
+                      <OddsBox
+                        nation="Card 1 Odd"
+                        odds={markets?.card1?.odd?.back || "1.83"}
+                        type="back"
+                        className="!flex !h-full !min-h-[55px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+                      />
+                    </div>
+                  ) : (
+                    renderLockedCard()
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Even Row */}
+            <div className="grid grid-cols-[minmax(100px,1.2fr)_repeat(6,minmax(0,1fr))]">
+              <div className="flex min-h-[55px] items-center border-r border-gray-300 px-2 font-bold text-[#333]">
+                Even
+              </div>
+
+              {cards.map((card) => (
+                <div
+                  key={`even-${card}`}
+                  className="min-w-0 border-r border-gray-300"
+                >
+                  {card === 1 ? (
+                    <div className="bg-[#72b9e8]">
+                      <OddsBox
+                        nation="Card 1 Even"
+                        odds={markets?.card1?.even?.back || "2.13"}
+                        type="back"
+                        className="!flex !h-full !min-h-[55px] !w-full !items-center !justify-center !rounded-none !border-0 !text-lg !font-bold"
+                      />
+                    </div>
+                  ) : (
+                    renderLockedCard()
+                  )}
+                </div>
+              ))}
+            </div>
+
           </div>
         </div>
+
       </div>
     </div>
   );
 }
 
-// --------------------------------------------------------------------------
-// Game: Virtual 1 Day Dragon Tiger (vdt6)
-// --------------------------------------------------------------------------
-function TableVdt6({ isMobile, isSuspended, openBetSlip, markets }) {
-  return (
-    <div className="casino-table dt20">
-      <div className="casino-table-full-box">
-        <div className="dt20-odd-box dt20dragon">
-          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.dragon?.back || '1.98')}</div>
-          <div
-            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Dragon', markets?.dragon?.back || '1.98', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <span className="casino-odds">Dragon</span>
-          </div>
-          <div className="casino-nation-book text-center"></div>
-        </div>
-
-        <div className="dt20-odd-box dt20tie">
-          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tie?.back || '11')}</div>
-          <div
-            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Tie', markets?.tie?.back || '11', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <span className="casino-odds">Tie</span>
-          </div>
-          <div className="casino-nation-book text-center"></div>
-        </div>
-
-        <div className="dt20-odd-box dt20tiger">
-          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.tiger?.back || '1.98')}</div>
-          <div
-            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Tiger', markets?.tiger?.back || '1.98', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <span className="casino-odds">Tiger</span>
-          </div>
-          <div className="casino-nation-book text-center"></div>
-        </div>
-
-        <div className="dt20-odd-box dt20pair">
-          <div className="casino-odds text-center fw-bold">{isSuspended ? '-' : (markets?.pair?.back || '12')}</div>
-          <div
-            className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
-            onClick={isSuspended ? undefined : () => openBetSlip('Pair', markets?.pair?.back || '12', 'back', isMobile)}
-            style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-          >
-            <span className="casino-odds">Pair</span>
-          </div>
-          <div className="casino-nation-book text-center"></div>
-        </div>
-      </div>
-
-      <div className="casino-table-box mt-3">
-        <div className="casino-table-left-box">
-          <div className="dt20-odd-box dt20odds">
-            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
-            <div
-              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Even', '2.10', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              Even
-            </div>
-          </div>
-          <div className="dt20-odd-box dt20odds">
-            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
-            <div
-              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Dragon Odd', '1.79', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              Odd
-            </div>
-          </div>
-        </div>
-
-        <div className="casino-table-right-box">
-          <div className="dt20-odd-box dt20odds">
-            <div className="casino-odds text-center">{isSuspended ? '-' : '2.10'}</div>
-            <div
-              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Even', '2.10', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              Even
-            </div>
-          </div>
-          <div className="dt20-odd-box dt20odds">
-            <div className="casino-odds text-center">{isSuspended ? '-' : '1.79'}</div>
-            <div
-              className={`casino-odds-box back ${isSuspended ? 'suspended-box' : ''}`}
-              onClick={isSuspended ? undefined : () => openBetSlip('Tiger Odd', '1.79', 'back', isMobile)}
-              style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
-            >
-              Odd
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --------------------------------------------------------------------------
-// Game: Virtual 1 Day Teenpatti (vteen)
-// --------------------------------------------------------------------------
-function TableVteen({ isMobile, isSuspended, openBetSlip, markets }) {
-  return (
-    <div className="casino-table vteen">
-      <div className="casino-table-box">
-        <div className="casino-table-left-box">
-          <div className="casino-table-header">
-            <div className="casino-nation-detail">Nation</div>
-            <div className="casino-odds-box back">Back</div>
-            <div className="casino-odds-box lay">Lay</div>
-          </div>
-          <div className="casino-table-body">
-            <div className="casino-table-row">
-              <div className="casino-nation-detail"><div className="casino-nation-name">Player A</div></div>
-              <OddsBox nation="Player A" odds={markets?.playerA?.back || '1.98'} type="back" />
-              <OddsBox nation="Player A" odds={markets?.playerA?.lay || '2.02'} type="lay" />
-            </div>
-            <div className="casino-table-row">
-              <div className="casino-nation-detail"><div className="casino-nation-name">Player B</div></div>
-              <OddsBox nation="Player B" odds={markets?.playerB?.back || '1.98'} type="back" />
-              <OddsBox nation="Player B" odds={markets?.playerB?.lay || '2.02'} type="lay" />
-            </div>
-          </div>
-        </div>
-
-        <div className="casino-table-right-box mt-3 mt-md-0">
-          <div className="teenpatti20-other-oods">
-            <div className="casino-table-header">
-              <div className="casino-nation-detail">Side Bets</div>
-              <div className="casino-odds-box back">Back</div>
-            </div>
-            <div className="casino-table-body">
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">Pair Plus A</div>
-                <OddsBox nation="Pair Plus A" odds="2.0" type="back" />
-              </div>
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">Pair Plus B</div>
-                <OddsBox nation="Pair Plus B" odds="2.0" type="back" />
-              </div>
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">3 Baccarat A</div>
-                <OddsBox nation="3 Baccarat A" odds="1.95" type="back" />
-              </div>
-              <div className="casino-table-row">
-                <div className="casino-nation-detail">3 Baccarat B</div>
-                <OddsBox nation="3 Baccarat B" odds="1.95" type="back" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // --------------------------------------------------------------------------
 // Game: Virtual 20-20 Teen Patti (vteen20)
 // --------------------------------------------------------------------------
 
 
+
 function TableVteen20({ isMobile, isSuspended, openBetSlip, markets }) {
-  const mainMarkets = [
+
+  const players = [
     {
-      name: 'Player A',
-      back: markets?.playerA?.back || '1.98',
-      lay: markets?.playerA?.lay || '2.02',
+      name: "Player A",
+      key: "playerA",
+      columns: [
+        { label: "Player A", market: "playerA", odds: "1.98" },
+        { label: "3 Baccarat A", market: "baccaratA", odds: "1.98" },
+        { label: "Total A", market: "totalA", odds: "2" },
+        { label: "Pair Plus A", market: "pairPlusA", odds: "A" },
+      ],
+      suits: [
+        { label: "Spade Club A", icons: ["♠️", "♣️"], odds: "1.98" },
+        { label: "Heart Diamond A", icons: ["♥️", "♦️"], odds: "1.98" },
+      ],
     },
     {
-      name: 'Player B',
-      back: markets?.playerB?.back || '1.98',
-      lay: markets?.playerB?.lay || '2.02',
+      name: "Player B",
+      key: "playerB",
+      columns: [
+        { label: "Player B", market: "playerB", odds: "1.98" },
+        { label: "3 Baccarat B", market: "baccaratB", odds: "1.98" },
+        { label: "Total B", market: "totalB", odds: "2" },
+        { label: "Pair Plus B", market: "pairPlusB", odds: "B" },
+      ],
+      suits: [
+        { label: "Spade Club B", icons: ["♠️", "♣️"], odds: "1.98" },
+        { label: "Heart Diamond B", icons: ["♥️", "♦️"], odds: "1.98" },
+      ],
     },
   ];
 
-  const sideMarkets = [
-    { name: 'Pair Plus A', odds: '2.0' },
-    { name: 'Pair Plus B', odds: '2.0' },
-    { name: '3 Baccarat A', odds: '1.95' },
-    { name: '3 Baccarat B', odds: '1.95' },
-  ];
-
-  // Reusable Odds Button
-  const OddsButton = ({ nation, odds, type }) => {
-    const isBack = type === 'back';
+  const OddsButton = ({ nation, odds, type = "back" }) => {
+    const isBack = type === "back";
 
     return (
       <button
@@ -10696,167 +11611,155 @@ function TableVteen20({ isMobile, isSuspended, openBetSlip, markets }) {
           }
         }}
         className={`
-          flex min-h-[54px] w-full min-w-0 flex-col
-          items-center justify-center gap-0.5
+          flex min-h-[64px] w-full min-w-0
+          items-center justify-center
           px-1 py-2 text-center
-          text-[#263747] transition-all duration-150
-          ${
-            isBack
-              ? 'bg-[#78bce9] hover:bg-[#60abe0]'
-              : 'bg-[#f5a6ba] hover:bg-[#ed91a9]'
+          text-lg font-bold text-[#263747]
+          transition-all duration-150
+          ${isBack
+            ? "bg-[#78bce9] hover:bg-[#60abe0]"
+            : "bg-[#f5a6ba] hover:bg-[#ed91a9]"
           }
-          ${
-            isSuspended
-              ? 'cursor-not-allowed opacity-50'
-              : 'cursor-pointer active:brightness-95'
+          ${isSuspended
+            ? "cursor-not-allowed opacity-50"
+            : "cursor-pointer active:brightness-95"
           }
         `}
       >
-        <span className="text-base font-bold leading-5">
-          {isSuspended ? '-' : odds}
-        </span>
+        {isSuspended ? "-" : odds}
       </button>
     );
   };
 
-  // Main Bets Section
-  const MainBets = () => (
-    <section className="min-w-0 overflow-hidden rounded-md border border-[#d5d9de] bg-white shadow-sm">
-
-      {/* Header */}
-      <div className="grid grid-cols-[minmax(0,1fr)_80px_80px] bg-[#4b5b6b] text-white">
-
-        <div className="flex items-center px-3 py-3">
-          <span className="text-sm font-bold">
-            Nation
-          </span>
-        </div>
-
-        <div className="flex items-center justify-center border-l border-white/20 bg-[#72b9e8] py-3 text-sm font-bold text-[#263747]">
-          Back
-        </div>
-
-        <div className="flex items-center justify-center border-l border-white/20 bg-[#f5a6ba] py-3 text-sm font-bold text-[#263747]">
-          Lay
-        </div>
-
-      </div>
-
-      {/* Players */}
-      <div>
-        {mainMarkets.map((item, index) => (
-          <div
-            key={item.name}
-            className={`
-              grid grid-cols-[minmax(0,1fr)_80px_80px]
-              min-h-[66px] border-t border-[#dfe2e6]
-              ${index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'}
-            `}
-          >
-
-            {/* Player Name */}
-            <div className="flex min-w-0 items-center px-3 py-3">
-              <span className="break-words text-sm font-semibold text-[#343a40] sm:text-base">
-                {item.name}
-              </span>
-            </div>
-
-            {/* Back */}
-            <div className="flex items-stretch border-l border-white/60">
-              <OddsButton
-                nation={item.name}
-                odds={item.back}
-                type="back"
-              />
-            </div>
-
-            {/* Lay */}
-            <div className="flex items-stretch border-l border-white/60">
-              <OddsButton
-                nation={item.name}
-                odds={item.lay}
-                type="lay"
-              />
-            </div>
-
-          </div>
-        ))}
-      </div>
-
-    </section>
-  );
-
-  // Side Bets Section
-  const SideBets = () => (
-    <section className="min-w-0 overflow-hidden rounded-md border border-[#d5d9de] bg-white shadow-sm">
-
-      {/* Header */}
-      <div className="grid grid-cols-[minmax(0,1fr)_90px] bg-[#4b5b6b] text-white">
-
-        <div className="flex items-center px-3 py-3">
-          <span className="text-sm font-bold">
-            Side Bets
-          </span>
-        </div>
-
-        <div className="flex items-center justify-center border-l border-white/20 bg-[#72b9e8] py-3 text-sm font-bold text-[#263747]">
-          Back
-        </div>
-
-      </div>
-
-      {/* Side Bets Rows */}
-      <div>
-        {sideMarkets.map((item, index) => (
-          <div
-            key={item.name}
-            className={`
-              grid grid-cols-[minmax(0,1fr)_90px]
-              min-h-[66px] border-t border-[#dfe2e6]
-              ${index % 2 === 0 ? 'bg-white' : 'bg-[#f8f9fa]'}
-            `}
-          >
-
-            {/* Name */}
-            <div className="flex min-w-0 items-center px-3 py-3">
-              <span className="break-words text-sm font-medium text-[#343a40] sm:text-base">
-                {item.name}
-              </span>
-            </div>
-
-            {/* Odds */}
-            <div className="flex items-stretch border-l border-white/60">
-              <OddsButton
-                nation={item.name}
-                odds={item.odds}
-                type="back"
-              />
-            </div>
-
-          </div>
-        ))}
-      </div>
-
-    </section>
-  );
-
   return (
-    <div className="w-full min-w-0 bg-[#f5f6f8] p-2 sm:p-3">
+    <div className="w-full min-w-0 bg-white">
 
-      {/* Main Layout */}
-      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 lg:gap-4">
+      <div className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
 
-        {/* Left: Main Bets */}
-        <MainBets />
+        {players.map((player) => (
+          <div
+            key={player.key}
+            className="min-w-0 border border-[#d0d0d0] bg-[#f1f1f1]"
+          >
 
-        {/* Right: Side Bets */}
-        <SideBets />
+            {/* Player Title */}
+            <div className="border-b border-[#c7c7c7] px-2 py-1 text-lg font-bold text-[#333]">
+              {player.name}
+            </div>
+
+            {/* Market Headers */}
+            <div className="grid grid-cols-4">
+              {player.columns.map((column, index) => (
+                <div
+                  key={column.market}
+                  className={`
+                    flex min-h-[63px] min-w-0
+                    items-center justify-center
+                    border-r border-[#c7c7c7]
+                    px-1 text-center
+                    text-sm font-bold text-[#333]
+                    sm:text-base
+                    ${index === 3 ? "border-r-0" : ""}
+                  `}
+                >
+                  {column.label}
+                </div>
+              ))}
+            </div>
+
+            {/* Main Odds */}
+            <div className="grid grid-cols-4 border-t border-[#c7c7c7]">
+              {player.columns.map((column, index) => {
+                const odds =
+                  markets?.[column.market]?.back ?? column.odds;
+
+                return (
+                  <div
+                    key={column.market}
+                    className={`
+                      min-w-0 border-r border-[#c7c7c7]
+                      ${index === 3 ? "border-r-0" : ""}
+                    `}
+                  >
+                    <OddsButton
+                      nation={column.label}
+                      odds={odds}
+                      type="back"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Suit Combination Bets */}
+            <div className="mt-3 grid grid-cols-2 gap-1.5 pb-0.5">
+
+              {player.suits.map((suit) => {
+                const marketKey =
+                  suit.label === `Spade Club ${player.key === "playerA" ? "A" : "B"}`
+                    ? "spadeClub"
+                    : "heartDiamond";
+
+                const odds =
+                  markets?.[player.key]?.[marketKey]?.back ??
+                  suit.odds;
+
+                return (
+                  <div
+                    key={suit.label}
+                    className="min-w-0"
+                  >
+                    <button
+                      type="button"
+                      disabled={isSuspended}
+                      onClick={() => {
+                        if (!isSuspended) {
+                          openBetSlip(
+                            suit.label,
+                            odds,
+                            "back",
+                            isMobile
+                          );
+                        }
+                      }}
+                      className={`
+                        flex min-h-[63px] w-full
+                        items-center justify-between
+                        gap-1 px-3 py-2
+                        text-[#263747]
+                        transition-all duration-150
+                        ${isSuspended
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer active:brightness-95"
+                        }
+                        bg-[#78bce9]
+                        hover:bg-[#60abe0]
+                      `}
+                    >
+                      <span className="flex items-center gap-1 text-[25px] leading-none sm:text-[32px]">
+                        {suit.icons.map((icon, index) => (
+                          <span key={index}>{icon}</span>
+                        ))}
+                      </span>
+
+                      <span className="text-base font-bold sm:text-lg">
+                        {isSuspended ? "-" : odds}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })}
+
+            </div>
+
+          </div>
+        ))}
 
       </div>
-
     </div>
   );
 }
+
 
 
 // --------------------------------------------------------------------------
