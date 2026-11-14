@@ -1,27 +1,26 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import Login from './pages/auth/Login';
+import { Route, Routes } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
 import MainLayout from './layouts/MainLayout';
-import Home from './pages/Home/Home';
+import CasinoBet from './pages/CasinoBet/casinoBet';
 import Cricket from './pages/Home/Cricket';
 import Football from './pages/Home/Football';
+import Home from './pages/Home/Home';
 import Tennis from './pages/Home/Tennis';
-import CricketBet from './pages/gamedetails/CricketBet';
-import FootballBet from './pages/gamedetails/FootballBet';
-import TennisBet from './pages/gamedetails/TennisBet';
-import AccountStatement from './pages/other/AccountStatement';
-import CurrentBets from './pages/other/CurrentBets';
-import ActivityLog from './pages/other/ActivityLog';
-import ChangePassword from './pages/other/ChangePassword';
-import CasinoResults from './pages/other/CasinoResults';
-import PrivateRoute from './redux/PrivateRoute';
-import { ToastContainer } from 'react-toastify';
 import CasinoList from './pages/Home/ourcasino/CasinoList';
+import OurPremCasino from './pages/Home/ourpremcasino/CasinoList';
 import OurVipCasino from './pages/Home/ourvipcasino/CasinoList';
 import OurVirtualCasino from './pages/Home/ourvirtual/CasinoList';
-import OurPremCasino from './pages/Home/ourpremcasino/CasinoList';
-import CasinoBet from './pages/CasinoBet/casinoBet';
+import Login from './pages/auth/Login';
+import CricketBet from './pages/gamedetails/CricketBet';
+import FootballBet from './pages/gamedetails/FootballBet';
 import HourseRacingBet from './pages/gamedetails/HourseRacingBet';
+import TennisBet from './pages/gamedetails/TennisBet';
+import AccountStatement from './pages/other/AccountStatement';
+import ActivityLog from './pages/other/ActivityLog';
+import CasinoResults from './pages/other/CasinoResults';
+import ChangePassword from './pages/other/ChangePassword';
+import CurrentBets from './pages/other/CurrentBets';
+import PrivateRoute from './redux/PrivateRoute';
 function App() {
   return (
     <>
@@ -33,6 +32,10 @@ function App() {
             <Route path='cricket' element={<Cricket />} />
             <Route path='football' element={<Football />} />
             <Route path='tennis' element={<Tennis />} />
+            <Route
+  path="/casino-bet/:slug"
+  element={<CasinoBet />}
+/>
             <Route path='cricket-bet/:game/:id' element={<CricketBet />} />
             <Route path='football-bet/:game/:id' element={<FootballBet />} />
             <Route path='tennis-bet/:game/:id' element={<TennisBet />} />
