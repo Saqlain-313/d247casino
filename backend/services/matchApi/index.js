@@ -1,3 +1,4 @@
+
 import dotenv from 'dotenv';
 
 import { createProviderA } from './providerA.js';
@@ -6,9 +7,11 @@ import { createProviderC } from './providerC.js';
 
 dotenv.config();
 
-const PROVIDER = (process.env.API_PROVIDER || 'provider A').toLowerCase();
+const PROVIDER = (process.env.API_PROVIDER || 'provider_a')
+  .toLowerCase()
+  .replace(/\s+/g, '');
 
-console.log("Active Provider", PROVIDER);
+console.log('[API PROVIDER] Active provider:', PROVIDER);
 
 let activeProvider;
 
@@ -17,47 +20,84 @@ switch (PROVIDER) {
   case 'provider_b':
     activeProvider = createProviderB();
     break;
+
   case 'providerc':
   case 'provider_c':
     activeProvider = createProviderC();
     break;
+
   case 'providera':
   case 'provider_a':
     activeProvider = createProviderA();
     break;
+
   default:
+    console.warn(
+      `[API PROVIDER] Unknown provider "${PROVIDER}". Using Provider A.`
+    );
     activeProvider = createProviderA();
     break;
 }
 
-console.log(`[API PROVIDER] Active provider: ${PROVIDER}`);
+// Helper: safely call provider methods
+const callProvider = (method, ...args) => {
+  if (typeof activeProvider?.[method] !== 'function') {
+    throw new Error(
+      `${method} is not supported by active provider: ${PROVIDER}`
+    );
+  }
 
-export const fetchMatchList = (sportId) => activeProvider.fetchMatchList(sportId);
+  return activeProvider[method](...args);
+};
+
+// Match APIs
+export const fetchMatchList = (sportId) =>
+  callProvider('fetchMatchList', sportId);
+
 export const fetchMatchData = (gameId, sportId) =>
-  activeProvider.fetchMatchData(gameId, sportId);
+  callProvider('fetchMatchData', gameId, sportId);
 
-export const getResult = (payload) => activeProvider.getResult(payload);
+// Result APIs
+export const getResult = (payload) =>
+  callProvider('getResult', payload);
+
 export const sendBetIncoming = (payload) =>
-  activeProvider.sendBetIncoming(payload);
+  callProvider('sendBetIncoming', payload);
 
-export const fetchCasinoTables = () => activeProvider.fetchCasinoTables();
+// Casino APIs
+export const fetchCasinoTables = () =>
+  callProvider('fetchCasinoTables');
+
 export const fetchCasinoData = (eventName) =>
-  activeProvider.fetchCasinoData(eventName);
+  callProvider('fetchCasinoData', eventName);
+
 export const fetchCasinoResult = (eventName) =>
-  activeProvider.fetchCasinoResult(eventName);
+  callProvider('fetchCasinoResult', eventName);
+
+export const fetchDirectCasinoResultByDate = (date, eventName) =>
+  callProvider('fetchDirectCasinoResultByDate', date, eventName);
+
 export const fetchCasinoDetailResult = (gtype, mid) =>
-  activeProvider.fetchCasinoDetailResult(gtype, mid);
+  callProvider('fetchCasinoDetailResult', gtype, mid);
 
+// Cricket APIs
 export const fetchCricketFancyResult = (eventId, fancyId) =>
-  activeProvider.fetchCricketFancyResult(eventId, fancyId);
+  callProvider('fetchCricketFancyResult', eventId, fancyId);
+
 export const fetchCricketFancyByEvent = (eventId) =>
-  activeProvider.fetchCricketFancyByEvent(eventId);
+  callProvider('fetchCricketFancyByEvent', eventId);
+
 export const fetchStFancyByEvent = (eventId) =>
-  activeProvider.fetchStFancyByEvent(eventId);
+  callProvider('fetchStFancyByEvent', eventId);
 
-export const fetchScore = (gmid, sid) => activeProvider.fetchScore(gmid, sid);
-export const fetchAllIframes = (gmid) => activeProvider.fetchAllIframes(gmid);
+// Other APIs
+export const fetchScore = (gmid, sid) =>
+  callProvider('fetchScore', gmid, sid);
 
+export const fetchAllIframes = (gmid) =>
+  callProvider('fetchAllIframes', gmid);
+
+// Provider information
 export const getProviderName = () => PROVIDER;
 
 export default activeProvider;
