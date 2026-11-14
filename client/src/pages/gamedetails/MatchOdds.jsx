@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+
+import { useEffect, useState } from 'react';
 import { FaArrowRight, FaCheck } from 'react-icons/fa';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../redux/api';
+import { getUser } from '../../redux/reducer/authReducer';
 import {
-  getPendingBetAmo,
-  getPendingBet,
-  executeCashout,
   clearCashoutValues,
+  executeCashout,
+  getPendingBet,
+  getPendingBetAmo,
   updateCashoutValues,
 } from '../../redux/reducer/betReducer';
-import { getUser } from '../../redux/reducer/authReducer';
 
 function MatchOdds({
   onBetSelect,
@@ -20,9 +21,9 @@ function MatchOdds({
   gameid,
 }) {
   const dispatch = useDispatch();
-  const { eventName, cashoutValues, cashoutLoading, cashoutPL } = useSelector(
-    (state) => state.bet
-  );
+
+  const { eventName, cashoutValues, cashoutLoading, cashoutPL } =
+    useSelector((state) => state.bet);
 
   const [showCashoutOptions, setShowCashoutOptions] = useState(false);
   const [cashedOutBetIds, setCashedOutBetIds] = useState(new Set());
@@ -41,24 +42,24 @@ function MatchOdds({
     }
   }, [selectedBet, dispatch]);
 
-  const backBg = ['bg-[#72bbef7f]', 'bg-[#72bbefbf]', 'bg-[#72bbef]'];
-  const layBg = ['bg-[#faa9ba]', 'bg-[#faa9babf]', 'bg-[#faa9ba7f]'];
-
-  // Transform API data similar to MatchOdd component
+  // API data
   const oddsData = matchOddsList?.[0]?.section?.length
     ? matchOddsList[0].section.map((sec) => ({
         team: sec.nat,
         sid: sec.sid,
-        odds: sec.odds,
+        odds: sec.odds || [],
         max: sec.max,
         min: sec.min,
         mname:
-          matchOddsList[0].mname === 'MATCH_ODDS' ? 'Match Odds' : 'Winner',
+          matchOddsList[0].mname === 'MATCH_ODDS'
+            ? 'Match Odds'
+            : 'Winner',
         status: matchOddsList[0].status,
       }))
     : [];
 
   const CASHOUT_GAME_TYPES = ['Match Odds', 'MATCH_ODDS'];
+
   const MATCH_ODDS_GAME_TYPES = [
     'Match Odds',
     'Winner',
@@ -67,17 +68,24 @@ function MatchOdds({
   ];
 
   const getHistoryMarketBets = (marketName) => {
-    const mname = marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+    const mname =
+      marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+
     if (!Array.isArray(eventName) || !gameid) return [];
 
     return eventName
       .filter((b) => {
         if (String(b.gameId) !== String(gameid)) return false;
+
         const gt = (b.gameType || '').toLowerCase();
-        return MATCH_ODDS_GAME_TYPES.some((t) => t.toLowerCase() === gt);
+
+        return MATCH_ODDS_GAME_TYPES.some(
+          (t) => t.toLowerCase() === gt
+        );
       })
       .map((b) => ({
-        gameType: b.gameType === 'MATCH_ODDS' ? 'Match Odds' : b.gameType,
+        gameType:
+          b.gameType === 'MATCH_ODDS' ? 'Match Odds' : b.gameType,
         marketName: b.marketName,
         teamName: b.teamName,
         otype: b.otype,
@@ -86,6 +94,7 @@ function MatchOdds({
       }));
   };
 
+  // Cashout calculations
   const marketBetsForCashout =
     Array.isArray(eventName) && oddsData?.[0]?.mname && gameid
       ? eventName.filter(
@@ -98,22 +107,28 @@ function MatchOdds({
         )
       : [];
 
-  const uniqueMarketBetsForCashout = marketBetsForCashout.filter(
-    (bet, index, arr) =>
-      index ===
-      arr.findIndex(
-        (b) => String(b.betId || b._id) === String(bet.betId || bet._id)
-      )
-  );
+  const uniqueMarketBetsForCashout =
+    marketBetsForCashout.filter(
+      (bet, index, arr) =>
+        index ===
+        arr.findIndex(
+          (b) =>
+            String(b.betId || b._id) ===
+            String(bet.betId || bet._id)
+        )
+    );
 
-  const hasCashoutAvailable = uniqueMarketBetsForCashout.length > 0;
+  const hasCashoutAvailable =
+    uniqueMarketBetsForCashout.length > 0;
 
-  const marketCashoutPL = cashoutPL?.[oddsData?.[0]?.mname] || 0;
+  const marketCashoutPL =
+    cashoutPL?.[oddsData?.[0]?.mname] || 0;
 
   const mergedCashoutValue =
     uniqueMarketBetsForCashout.reduce((sum, bet) => {
       const id = bet.betId || bet._id;
       const val = cashoutValues[id];
+
       return val !== undefined ? sum + val : sum;
     }, 0) + (marketCashoutPL || 0);
 
@@ -131,27 +146,35 @@ function MatchOdds({
 
     const results = await Promise.allSettled(
       betIds.map((betId) =>
-        api.post('/user/cashout/quote', { betId }, { withCredentials: true })
+        api.post(
+          '/user/cashout/quote',
+          { betId },
+          { withCredentials: true }
+        )
       )
     );
 
     const freshValues = {};
+
     for (const result of results) {
       if (
         result.status === 'fulfilled' &&
         result.value?.data?.cashoutAvailable
       ) {
-        freshValues[result.value.data.betId] = result.value.data.cashoutValue;
+        freshValues[result.value.data.betId] =
+          result.value.data.cashoutValue;
       }
     }
 
     if (Object.keys(freshValues).length > 0) {
       dispatch(
         updateCashoutValues(
-          Object.entries(freshValues).map(([betId, cashoutValue]) => ({
-            betId,
-            cashoutValue,
-          }))
+          Object.entries(freshValues).map(
+            ([betId, cashoutValue]) => ({
+              betId,
+              cashoutValue,
+            })
+          )
         )
       );
     }
@@ -166,51 +189,73 @@ function MatchOdds({
 
     for (const id of betIds) {
       const result = await dispatch(executeCashout(id));
+
       if (result.meta?.requestStatus === 'fulfilled') {
         setCashedOutBetIds((prev) => new Set(prev).add(id));
       } else {
         toast.error(
-          result.payload?.message || 'Cashout failed. Please try again.'
+          result.payload?.message ||
+            'Cashout failed. Please try again.'
         );
       }
     }
 
     setShowCashoutOptions(false);
     dispatch(clearCashoutValues());
+
     await dispatch(getUser());
+
     if (gameid) {
       await dispatch(getPendingBetAmo(gameid));
       await dispatch(getPendingBet(gameid));
     }
+
     setCashedOutBetIds(new Set());
   };
 
-  // Helper function to format stake/size
+  // Stake formatter
   const formatStake = (size) => {
     if (!size || size === 0) return '0';
+
     if (size < 1000) return size.toFixed(2);
+
     return `${(size / 1000).toFixed(1)}k`;
   };
 
   const getMarketBets = (marketName) => {
     const historyBets = getHistoryMarketBets(marketName);
+
     const amountBets =
       pendingBetAmounts?.filter(
-        (item) => item.gameType === 'Match Odds' || item.gameType === marketName
+        (item) =>
+          item.gameType === 'Match Odds' ||
+          item.gameType === marketName
       ) || [];
-    return historyBets.length > 0 ? historyBets : amountBets;
+
+    return historyBets.length > 0
+      ? historyBets
+      : amountBets;
   };
 
   const getMarketCashoutPL = (marketName) => {
-    const mname = marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+    const mname =
+      marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+
     return cashoutPL?.[mname] || 0;
   };
 
-  const computeNetOutcome = (team, marketBets, mCashoutPL = 0) => {
+  // Net outcome
+  const computeNetOutcome = (
+    team,
+    marketBets,
+    mCashoutPL = 0
+  ) => {
     let netOutcome = 0;
+
     marketBets.forEach((bet) => {
       const isBetOnThisTeam =
         bet.teamName?.toLowerCase() === team?.toLowerCase();
+
       const betAmt = parseFloat(bet.totalBetAmount) || 0;
       const stake = parseFloat(bet.totalPrice) || 0;
 
@@ -220,28 +265,51 @@ function MatchOdds({
         netOutcome += isBetOnThisTeam ? -stake : betAmt;
       }
     });
+
     return Math.round((netOutcome + mCashoutPL) * 100) / 100;
   };
 
   const buildPendingBetLeg = (bet) => {
-    if (!bet?.stake || !bet?.odds || !bet?.team || !bet?.type) return null;
+    if (!bet?.stake || !bet?.odds || !bet?.team || !bet?.type) {
+      return null;
+    }
+
     const stakeNum = parseFloat(bet.stake);
     const oddsNum = parseFloat(bet.odds);
-    if (isNaN(stakeNum) || isNaN(oddsNum) || stakeNum <= 0) return null;
+
+    if (
+      isNaN(stakeNum) ||
+      isNaN(oddsNum) ||
+      stakeNum <= 0
+    ) {
+      return null;
+    }
 
     const isLay = bet.type === 'lay';
+
     return {
       teamName: bet.team,
       otype: bet.type,
-      totalBetAmount: isLay ? stakeNum : stakeNum * (oddsNum - 1),
-      totalPrice: isLay ? stakeNum * (oddsNum - 1) : stakeNum,
+      totalBetAmount: isLay
+        ? stakeNum
+        : stakeNum * (oddsNum - 1),
+      totalPrice: isLay
+        ? stakeNum * (oddsNum - 1)
+        : stakeNum,
     };
   };
 
-  const getProjectedNetOutcome = (team, marketName, bet) => {
+  const getProjectedNetOutcome = (
+    team,
+    marketName,
+    bet
+  ) => {
     const pendingLeg = buildPendingBetLeg(bet);
+
     if (!pendingLeg) return null;
+
     const marketBets = getMarketBets(marketName);
+
     return computeNetOutcome(
       team,
       [...marketBets, pendingLeg],
@@ -254,16 +322,29 @@ function MatchOdds({
     const marketBets = getMarketBets(marketName);
 
     const matchedTeamBet = marketBets.find(
-      (item) => item.teamName?.toLowerCase() === team?.toLowerCase()
+      (item) =>
+        item.teamName?.toLowerCase() === team?.toLowerCase()
     );
+
     const otherTeamBet = marketBets[0];
 
-    const otype = matchedTeamBet?.otype || otherTeamBet?.otype || '';
+    const otype =
+      matchedTeamBet?.otype || otherTeamBet?.otype || '';
+
     const totalBetAmount =
-      matchedTeamBet?.totalBetAmount || otherTeamBet?.totalBetAmount || '';
+      matchedTeamBet?.totalBetAmount ||
+      otherTeamBet?.totalBetAmount ||
+      '';
+
     const totalPrice =
-      matchedTeamBet?.totalPrice || otherTeamBet?.totalPrice || '';
-    const teamName = matchedTeamBet?.teamName || otherTeamBet?.teamName || '';
+      matchedTeamBet?.totalPrice ||
+      otherTeamBet?.totalPrice ||
+      '';
+
+    const teamName =
+      matchedTeamBet?.teamName ||
+      otherTeamBet?.teamName ||
+      '';
 
     if (marketBets.length === 0) {
       if (mCashoutPL) {
@@ -276,6 +357,7 @@ function MatchOdds({
           teamName: '',
         };
       }
+
       return {
         isHedged: false,
         netOutcome: null,
@@ -288,7 +370,11 @@ function MatchOdds({
 
     return {
       isHedged: true,
-      netOutcome: computeNetOutcome(team, marketBets, mCashoutPL),
+      netOutcome: computeNetOutcome(
+        team,
+        marketBets,
+        mCashoutPL
+      ),
       otype,
       totalBetAmount,
       totalPrice,
@@ -296,161 +382,353 @@ function MatchOdds({
     };
   };
 
-  const handleOddsClick = (team, rate, type, sid, oname) => {
+  // Bet selection
+  const handleOddsClick = (
+    team,
+    rate,
+    type,
+    sid,
+    oname
+  ) => {
     if (onBetSelect && rate) {
-      // Extract all teams from this matchOddsList
       const allTeams = oddsData.map((item) => item.team);
 
-      const marketName = matchOddsList?.[0]?.mname || 'MATCH_ODDS';
+      const marketName =
+        matchOddsList?.[0]?.mname || 'MATCH_ODDS';
+
       const gameType =
-        marketName === 'MATCH_ODDS' || marketName === 'TOURNAMENT_WINNER'
+        marketName === 'MATCH_ODDS' ||
+        marketName === 'TOURNAMENT_WINNER'
           ? 'Match Odds'
           : 'Winner';
 
       onBetSelect({
-        team: team,
+        team,
         odds: rate.toString(),
-        type: type, // 'back' or 'lay'
+        type,
         oname: oname || '',
         stake: '',
-        //sid: sid, // Include section id
-        teams: allTeams, // Add all teams for MatchOdds
-        marketName: marketName,
-        gameType: gameType,
-        maxAmount: matchOddsList?.[0]?.max || matchOddsList?.[0]?.maxb || 0,
+        teams: allTeams,
+        marketName,
+        gameType,
+        maxAmount:
+          matchOddsList?.[0]?.max ||
+          matchOddsList?.[0]?.maxb ||
+          0,
         minAmount: matchOddsList?.[0]?.min || 0,
       });
     }
   };
 
-  // Get max value from API
-  const maxValue = matchOddsList?.[0]?.max || matchOddsList?.[0]?.maxb || 0;
+  const maxValue =
+    matchOddsList?.[0]?.max ||
+    matchOddsList?.[0]?.maxb ||
+    0;
+
+  // Market suspended status
+  const isMarketSuspended =
+    String(matchOddsList?.[0]?.status || '').toUpperCase() ===
+    'SUSPENDED';
 
   return (
-    <div>
-      <div className='text-secondary mt-1 flex items-center justify-between bg-[#2C3E50D9] p-1'>
-        <span className='text-[13px] font-bold lg:text-[15px]'>MATCH_ODDS</span>
+    <div className="w-full min-w-0 overflow-hidden bg-white">
+
+      {/* MATCH ODDS HEADER */}
+      <div className="flex h-[30px] items-center justify-between bg-[#4b5b6b] px-2 text-white">
+
+        <span className="text-[13px] font-bold">
+          MATCH_ODDS
+        </span>
+
         {hasCashoutAvailable && showCashoutOptions ? (
           <button
-            type='button'
+            type="button"
             disabled={!hasMergedValue || cashoutLoading}
             onClick={handleCashOutClick}
-            className={`flex items-center gap-1 p-1 font-[400] text-white ${
+            className={`flex h-[25px] items-center gap-1 px-3 text-[11px] font-semibold text-white ${
               hasMergedValue && !cashoutLoading
                 ? 'cursor-pointer bg-[#198754]'
                 : 'cursor-not-allowed bg-[#198754] opacity-60'
             }`}
           >
-            <FaCheck className='text-xs' />
-            <span>
-              {hasMergedValue
-                ? `₹ ${mergedCashoutValue.toFixed(2)}`
-                : cashoutLoading
-                  ? '...'
-                  : marketCashoutPL
-                    ? `₹ ${marketCashoutPL}`
-                    : 'Cash Out'}
-            </span>
+            <FaCheck className="text-[10px]" />
+
+            {hasMergedValue
+              ? `₹ ${mergedCashoutValue.toFixed(2)}`
+              : cashoutLoading
+                ? '...'
+                : marketCashoutPL
+                  ? `₹ ${marketCashoutPL}`
+                  : 'Cashout'}
           </button>
         ) : hasCashoutAvailable ? (
           <button
+            type="button"
             onClick={() => {
               setShowCashoutOptions(true);
               fetchCashoutQuotes();
             }}
-            className='cursor-pointer bg-[#198754] p-1 font-[400] text-white'
+            className="h-[25px] cursor-pointer bg-[#198754] px-3 text-[11px] font-semibold text-white"
           >
             Cashout
           </button>
         ) : (
           <button
+            type="button"
             disabled
-            className='cursor-not-allowed bg-[#198754] p-1 font-[400] text-white opacity-60'
+            className="h-[25px] cursor-not-allowed bg-[#198754] px-3 text-[11px] font-semibold text-white opacity-60"
           >
             Cashout
           </button>
         )}
+
       </div>
-      <div className='grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b border-b-[#c7c8ca] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]'>
-        <div className='ml-2 text-[12px] font-bold text-[#097c93]'>
-          Max:{maxValue}
+
+      {/* MAX / BACK / LAY HEADER */}
+      <div className="grid h-[24px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca]">
+
+        <div className="flex items-center px-1 text-[12px] font-bold text-[#097c93]">
+          Max: {maxValue}
         </div>
-        <div></div>
-        <div></div>
-        <div className='flex items-center justify-center bg-[#72bbef] p-[2px] font-[16px] font-bold text-[#333]'>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#72bbef] text-[13px] font-bold text-[#333]">
           Back
         </div>
-        <div className='flex items-center justify-center bg-[#faa9ba] p-[2px] font-[16px] font-bold text-[#333]'>
+
+        <div className="flex items-center justify-center border-l border-white bg-[#faa9ba] text-[13px] font-bold text-[#333]">
           Lay
         </div>
-        <div></div>
-        <div></div>
+
       </div>
 
+      {/* TEAM ROWS */}
       {oddsData.length > 0 ? (
-        oddsData.map(({ team, odds, sid }, teamIndex) => {
-          // Separate back and lay odds
-          const backOdds = odds
-            .filter((odd) => odd.otype === 'back' && odd.odds > 0)
-            .slice(0, 3); // Take only first 3
+        <div className="relative">
 
-          const layOdds = odds
-            .filter((odd) => odd.otype === 'lay' && odd.odds > 0)
-            .slice(0, 3); // Take only first 3
+          {oddsData.map(({ team, odds, sid }, teamIndex) => {
 
-          return (
-            <div
-              key={teamIndex}
-              className='grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b border-b-[#c7c8ca] hover:bg-[#f7f7f7] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]'
-            >
-              {/* Team with suggestions */}
-              <div className='ml-2 truncate text-[13px] font-bold text-[#333] lg:text-[14px]'>
-                <div>{team}</div>
-                {(() => {
-                  // Check if selectedBet belongs to Match Odds market
-                  const isMatchOddsBet =
-                    selectedBet?.gameType === 'Match Odds' ||
-                    selectedBet?.gameType === 'Winner' ||
-                    selectedBet?.marketName === 'MATCH_ODDS' ||
-                    selectedBet?.marketName === 'TOURNAMENT_WINNER';
+            // First available Back and Lay odds
+            const backOdds = (odds || [])
+              .filter(
+                (odd) =>
+                  odd.otype === 'back' &&
+                  Number(odd.odds) > 0
+              )
+              .slice(0, 1);
 
-                  const {
-                    otype,
-                    totalBetAmount,
-                    totalPrice,
-                    teamName,
-                    isHedged,
-                    netOutcome,
-                  } = getBetDetails(team, matchOddsList?.[0]?.mname);
-                  const isMatchedTeam =
-                    teamName?.toLowerCase() === team?.toLowerCase();
-                  const existingBet =
-                    isHedged ||
-                    (otype && totalBetAmount) ||
-                    (totalPrice && teamName && isMatchedTeam);
+            const layOdds = (odds || [])
+              .filter(
+                (odd) =>
+                  odd.otype === 'lay' &&
+                  Number(odd.odds) > 0
+              )
+              .slice(0, 1);
 
-                  // Show projected P/L for every outcome when a bet is in the slip
-                  if (isMatchOddsBet && selectedBet?.stake) {
-                    const projectedNet = getProjectedNetOutcome(
+            const backItem = backOdds[0];
+            const layItem = layOdds[0];
+
+            const renderOddsCell = (item, type) => {
+              const formattedOdds = item?.odds;
+
+              return (
+                <button
+                  key={`${type}-${sid}`}
+                  type="button"
+                  disabled={
+                    isMarketSuspended || !formattedOdds
+                  }
+                  onClick={() => {
+                    if (!isMarketSuspended && formattedOdds) {
+                      handleOddsClick(
+                        team,
+                        formattedOdds,
+                        type,
+                        sid,
+                        item?.oname
+                      );
+                    }
+                  }}
+                  className={`
+                    flex h-[33px] min-w-0 flex-col
+                    items-center justify-center
+                    border-l border-white/50
+                    ${
+                      isMarketSuspended
+                        ? type === 'back'
+                          ? 'bg-[#414d57]'
+                          : 'bg-[#57484d]'
+                        : type === 'back'
+                          ? 'bg-[#72bbef]'
+                          : 'bg-[#faa9ba]'
+                    }
+                    ${
+                      !isMarketSuspended && formattedOdds
+                        ? 'cursor-pointer hover:brightness-95'
+                        : 'cursor-not-allowed'
+                    }
+                  `}
+                >
+                  {!isMarketSuspended && formattedOdds ? (
+                    <>
+                      <span className="text-[13px] font-bold leading-[15px] text-[#333]">
+                        {formattedOdds}
+                      </span>
+
+                      <span className="text-[9px] leading-[11px] text-[#333]">
+                        {formatStake(item.size)}
+                      </span>
+                    </>
+                  ) : (
+                    <span
+                      className={`text-[12px] font-bold ${
+                        isMarketSuspended
+                          ? 'text-[#333]'
+                          : 'text-[#333]'
+                      }`}
+                    >
+                      -
+                    </span>
+                  )}
+                </button>
+              );
+            };
+
+            return (
+              <div
+                key={teamIndex}
+                className="grid min-h-[33px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca] hover:bg-[#f7f7f7]"
+              >
+
+                {/* TEAM NAME + P/L */}
+                <div className="flex min-w-0 flex-col justify-center px-1">
+
+                  <span className="truncate text-[12px] font-medium leading-[16px] text-[#333]">
+                    {team}
+                  </span>
+
+                  {(() => {
+                    const isMatchOddsBet =
+                      selectedBet?.gameType === 'Match Odds' ||
+                      selectedBet?.gameType === 'Winner' ||
+                      selectedBet?.marketName === 'MATCH_ODDS' ||
+                      selectedBet?.marketName === 'TOURNAMENT_WINNER';
+
+                    const {
+                      otype,
+                      totalBetAmount,
+                      totalPrice,
+                      teamName,
+                      isHedged,
+                      netOutcome,
+                    } = getBetDetails(
                       team,
-                      matchOddsList?.[0]?.mname,
-                      selectedBet
+                      matchOddsList?.[0]?.mname
                     );
-                    const suggestionValue = projectedNet;
-                    const suggestionColor =
-                      projectedNet === null
-                        ? 'green'
-                        : projectedNet >= 0
-                          ? 'green'
-                          : 'red';
 
-                    if (existingBet) {
+                    const isMatchedTeam =
+                      teamName?.toLowerCase() ===
+                      team?.toLowerCase();
+
+                    const existingBet =
+                      isHedged ||
+                      (otype && totalBetAmount) ||
+                      (totalPrice && teamName && isMatchedTeam);
+
+                    if (isMatchOddsBet && selectedBet?.stake) {
+                      const projectedNet = getProjectedNetOutcome(
+                        team,
+                        matchOddsList?.[0]?.mname,
+                        selectedBet
+                      );
+
+                      const suggestionValue = projectedNet;
+
+                      const suggestionColor =
+                        projectedNet === null
+                          ? 'green'
+                          : projectedNet >= 0
+                            ? 'green'
+                            : 'red';
+
+                      if (existingBet) {
+                        let betColor;
+                        let displayValue;
+
+                        if (isHedged && netOutcome !== null) {
+                          displayValue = netOutcome;
+                          betColor =
+                            netOutcome >= 0 ? 'green' : 'red';
+                        } else {
+                          betColor =
+                            otype === 'lay'
+                              ? isMatchedTeam
+                                ? 'red'
+                                : 'green'
+                              : otype === 'back'
+                                ? isMatchedTeam
+                                  ? 'green'
+                                  : 'red'
+                                : 'green';
+
+                          displayValue = (() => {
+                            if (otype === 'lay') {
+                              return isMatchedTeam
+                                ? totalPrice
+                                : totalBetAmount;
+                            }
+
+                            if (otype === 'back') {
+                              return isMatchedTeam
+                                ? totalBetAmount
+                                : totalPrice;
+                            }
+
+                            return '';
+                          })();
+                        }
+
+                        return (
+                          <div
+                            className="flex gap-1 leading-3"
+                            style={{ color: betColor }}
+                          >
+                            {displayValue !== '' &&
+                              displayValue !== null &&
+                              displayValue !== undefined && (
+                                <span className="flex items-center gap-0.5 text-[9px]">
+                                  <FaArrowRight />
+                                  {parseFloat(displayValue).toFixed(2)}
+                                </span>
+                              )}
+
+                            {suggestionValue !== null && (
+                              <span
+                                style={{ color: suggestionColor }}
+                                className="text-[9px]"
+                              >
+                                ({suggestionValue.toFixed(2)})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      } else if (suggestionValue !== null) {
+                        return (
+                          <span
+                            style={{ color: suggestionColor }}
+                            className="text-[9px] leading-3"
+                          >
+                            ({suggestionValue.toFixed(2)})
+                          </span>
+                        );
+                      }
+                    } else if (existingBet) {
                       let betColor;
                       let displayValue;
 
                       if (isHedged && netOutcome !== null) {
                         displayValue = netOutcome;
-                        betColor = netOutcome >= 0 ? 'green' : 'red';
+                        betColor =
+                          netOutcome >= 0 ? 'green' : 'red';
                       } else {
                         betColor =
                           otype === 'lay'
@@ -465,175 +743,69 @@ function MatchOdds({
 
                         displayValue = (() => {
                           if (otype === 'lay') {
-                            return isMatchedTeam ? totalPrice : totalBetAmount;
-                          } else if (otype === 'back') {
-                            return isMatchedTeam ? totalBetAmount : totalPrice;
+                            return isMatchedTeam
+                              ? totalPrice
+                              : totalBetAmount;
                           }
+
+                          if (otype === 'back') {
+                            return isMatchedTeam
+                              ? totalBetAmount
+                              : totalPrice;
+                          }
+
                           return '';
                         })();
                       }
 
                       return (
-                        <div className='flex gap-1' style={{ color: betColor }}>
+                        <div
+                          className="flex gap-1 leading-3"
+                          style={{ color: betColor }}
+                        >
                           {displayValue !== '' &&
                             displayValue !== null &&
                             displayValue !== undefined && (
-                              <span className='flex items-center gap-0.5 text-[11px]'>
+                              <span className="flex items-center gap-0.5 text-[9px]">
                                 <FaArrowRight />
                                 {parseFloat(displayValue).toFixed(2)}
                               </span>
                             )}
-                          {suggestionValue !== null && (
-                            <span
-                              style={{ color: suggestionColor }}
-                              className='text-[11px]'
-                            >
-                              ({suggestionValue.toFixed(2)})
-                            </span>
-                          )}
                         </div>
                       );
-                    } else {
-                      // No existing bet, just show suggestion
-                      if (suggestionValue !== null) {
-                        return (
-                          <span
-                            style={{ color: suggestionColor }}
-                            className='text-[11px]'
-                          >
-                            ({suggestionValue.toFixed(2)})
-                          </span>
-                        );
-                      }
-                    }
-                  } else if (existingBet) {
-                    let betColor;
-                    let displayValue;
-
-                    if (isHedged && netOutcome !== null) {
-                      displayValue = netOutcome;
-                      betColor = netOutcome >= 0 ? 'green' : 'red';
-                    } else {
-                      betColor =
-                        otype === 'lay'
-                          ? isMatchedTeam
-                            ? 'red'
-                            : 'green'
-                          : otype === 'back'
-                            ? isMatchedTeam
-                              ? 'green'
-                              : 'red'
-                            : 'green';
-
-                      displayValue = (() => {
-                        if (otype === 'lay') {
-                          return isMatchedTeam ? totalPrice : totalBetAmount;
-                        } else if (otype === 'back') {
-                          return isMatchedTeam ? totalBetAmount : totalPrice;
-                        }
-                        return '';
-                      })();
                     }
 
-                    return (
-                      <div className='flex gap-1' style={{ color: betColor }}>
-                        {displayValue !== '' &&
-                          displayValue !== null &&
-                          displayValue !== undefined && (
-                            <span className='flex items-center gap-0.5 text-[11px]'>
-                              <FaArrowRight />
-                              {parseFloat(displayValue).toFixed(2)}
-                            </span>
-                          )}
-                      </div>
-                    );
-                  }
+                    return null;
+                  })()}
 
-                  return null;
-                })()}
+                </div>
+
+                {/* BACK */}
+                {renderOddsCell(backItem, 'back')}
+
+                {/* LAY */}
+                {renderOddsCell(layItem, 'lay')}
+
               </div>
+            );
+          })}
 
-              {/* BACK - Fill 3 slots */}
-              {[0, 1, 2].map((i) => {
-                const backItem = backOdds[i];
-                const formattedOdds = backItem ? backItem.odds : null;
-                return (
-                  <div
-                    key={`back-${i}`}
-                    className={`${backBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${formattedOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
-                    onClick={() =>
-                      formattedOdds &&
-                      handleOddsClick(
-                        team,
-                        formattedOdds,
-                        'back',
-                        sid,
-                        backItem?.oname
-                      )
-                    }
-                  >
-                    {formattedOdds ? (
-                      <>
-                        <span className='text-[15px] leading-4 font-bold text-[#333] lg:text-[16px]'>
-                          {formattedOdds}
-                        </span>
-                        <span className='text-[11px] leading-4 font-[100] text-[#333] lg:text-[12px]'>
-                          {formatStake(backItem.size)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className='text-[15px] leading-4 font-bold text-[#333] lg:text-[16px]'>
-                        -
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* LAY - Fill 3 slots */}
-              {[0, 1, 2].map((i) => {
-                const layItem = layOdds[i];
-                const formattedOdds = layItem ? layItem.odds : null;
-                return (
-                  <div
-                    key={`lay-${i}`}
-                    className={`${layBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${formattedOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
-                    onClick={() =>
-                      formattedOdds &&
-                      handleOddsClick(
-                        team,
-                        formattedOdds,
-                        'lay',
-                        sid,
-                        layItem?.oname
-                      )
-                    }
-                  >
-                    {formattedOdds ? (
-                      <>
-                        <span className='text-[15px] leading-4 font-bold text-[#333] lg:text-[16px]'>
-                          {formattedOdds}
-                        </span>
-                        <span className='text-[11px] leading-4 font-[100] text-[#333] lg:text-[12px]'>
-                          {formatStake(layItem.size)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className='text-[15px] leading-4 font-bold text-[#333] lg:text-[16px]'>
-                        -
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+          {/* SUSPENDED OVERLAY */}
+          {isMarketSuspended && (
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-[136px] items-center justify-center">
+              <span className="whitespace-nowrap text-[13px] font-bold text-red-600">
+                SUSPENDED
+              </span>
             </div>
-          );
-        })
+          )}
+
+        </div>
       ) : (
-        <div className='py-4 text-center text-gray-500'>
+        <div className="py-3 text-center text-[12px] text-gray-500">
           No match odds available
         </div>
       )}
+
     </div>
   );
 }

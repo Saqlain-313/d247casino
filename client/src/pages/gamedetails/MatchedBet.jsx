@@ -14,10 +14,11 @@ function MatchedBet({ eventName, slug, fetchBets = true }) {
   const casinoSlug = slug || eventName;
 
   useEffect(() => {
-    if (!fetchBets || !casinoSlug) return;
+  if (!fetchBets || !casinoSlug) return;
 
-    dispatch(getMyCasinoBets(casinoSlug));
-  }, [dispatch, casinoSlug, fetchBets]);
+  dispatch(getMyCasinoBets(casinoSlug));
+
+}, [dispatch, casinoSlug, fetchBets]);
 
   const filteredBetHistory = useMemo(() => {
     if (!Array.isArray(myBets)) return [];

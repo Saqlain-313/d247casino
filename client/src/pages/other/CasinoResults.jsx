@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchCasinoResultData } from '../../redux/reducer/casinoSlice';
+import { getDirectCasinoResultByDate } from '../../redux/reducer/casinoBetSlice';
 import ResultPopup from '../CasinoBet/components/CasinoResult1';
 const casinos = [
   // Teenpatti
@@ -373,9 +373,20 @@ const casinos = [
 ];
 function CasinoResults() {
   const dispatch = useDispatch();
-  const { resultData, loader, error } = useSelector((state) => state.casino);
+  const {
+    directCasinoResult,
+    directCasinoResultLoading,
+    directCasinoResultError,
+  } = useSelector((state) => state.casinoBet);
 
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  // Local date avoids UTC date shifting.
+  const today = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
   const [selectedDate, setSelectedDate] = useState(today);
   const [selectedGameId, setSelectedGameId] = useState(
     casinos?.[0]?.slug || ''
@@ -385,28 +396,41 @@ function CasinoResults() {
   const [selectedItem, setSelectedItem] = useState(null);
 
   useEffect(() => {
-    if (selectedGameId) {
-      dispatch(fetchCasinoResultData(selectedGameId));
-    }
-  }, [dispatch, selectedGameId]);
+    if (!selectedGameId || !selectedDate) return;
+
+    dispatch(
+      getDirectCasinoResultByDate({
+        date: selectedDate,
+        eventName: selectedGameId,
+      })
+    );
+  }, [dispatch, selectedGameId, selectedDate]);
 
   const handleSubmit = () => {
-    if (!selectedGameId) return;
-    dispatch(fetchCasinoResultData(selectedGameId));
+    if (!selectedGameId || !selectedDate) return;
+
+    dispatch(
+      getDirectCasinoResultByDate({
+        date: selectedDate,
+        eventName: selectedGameId,
+      })
+    );
   };
 
+  // API shape: { success: true, data: { date, eventName, count, data: [...] } }
   const resultRows = useMemo(() => {
-    if (Array.isArray(resultData?.res)) return resultData.res;
-    if (Array.isArray(resultData)) return resultData;
-    return [];
-  }, [resultData]);
+    const rows = directCasinoResult?.data;
+    return Array.isArray(rows) ? rows : [];
+  }, [directCasinoResult]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
     const rows = query
       ? resultRows.filter((row) => {
           const roundId = String(row?.mid ?? row?.roundId ?? '').toLowerCase();
-          const winner = String(row?.win ?? row?.winner ?? '').toLowerCase();
+          const winner = String(
+            row?.nat ?? row?.win ?? row?.winner ?? ''
+          ).toLowerCase();
           return roundId.includes(query) || winner.includes(query);
         })
       : resultRows;
@@ -494,7 +518,7 @@ function CasinoResults() {
                 </tr>
               </thead>
               <tbody>
-                {loader?.result ? (
+                {directCasinoResultLoading ? (
                   <tr>
                     <td
                       colSpan={2}
@@ -503,33 +527,45 @@ function CasinoResults() {
                       Loading...
                     </td>
                   </tr>
-                ) : error?.result ? (
+                ) : directCasinoResultError ? (
                   <tr>
                     <td
                       colSpan={2}
                       className='border border-[#c7c8ca] p-2 text-center text-sm text-red-500'
                     >
-                      {error.result}
+                      {
+                        typeof directCasinoResultError === 'string'
+                          ? directCasinoResultError
+                          : directCasinoResultError?.message || 'Unable to load casino results'
+                      }
                     </td>
                   </tr>
                 ) : filteredRows.length > 0 ? (
                   filteredRows.map((row, index) => (
                     <tr key={`${row?.mid || row?.roundId || 'row'}-${index}`}>
                       <td
-                        onClick={() => setSelectedItem(row)}
+                        onClick={() =>
+                          setSelectedItem({
+                            ...row,
+                            resultDate: selectedDate,
+                            eventName: selectedGameId,
+                          })
+                        }
                         className='cursor-pointer border border-[#c7c8ca] p-1 text-sm underline-offset-2 hover:underline'
                       >
                         {row?.mid || row?.roundId || '-'}
                       </td>
                       <td
-                        onClick={() => setSelectedItem(row)}
+                        onClick={() =>
+                          setSelectedItem({
+                            ...row,
+                            resultDate: selectedDate,
+                            eventName: selectedGameId,
+                          })
+                        }
                         className='cursor-pointer border border-[#c7c8ca] p-1 text-sm underline-offset-2 hover:underline'
                       >
-                        {String(row?.win ?? row?.winner ?? '') === '1'
-                          ? 'Player A'
-                          : String(row?.win ?? row?.winner ?? '') === '2'
-                            ? 'Player B'
-                            : row?.win || row?.winner || '-'}
+                        {row?.nat || row?.win || row?.winner || '-'}
                       </td>
                     </tr>
                   ))

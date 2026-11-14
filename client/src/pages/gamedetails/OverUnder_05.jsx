@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import TeamOutcomeLabels from './components/TeamOutcomeLabels';
 import { useMarketNetOutcome } from './hooks/useMarketNetOutcome';
 

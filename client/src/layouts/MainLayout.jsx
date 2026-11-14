@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Footer from '../components/footer/Footer';
@@ -18,26 +19,30 @@ function MainLayout() {
   };
 
   return (
-    <div className='bg-body min-h-screen'>
-      {/* Har login pe banner popup */}
+    <div className="bg-body min-h-screen flex flex-col">
       <LoginBannerPopup />
 
-      <Header onMenuToggle={toggleSidebar} isSidebarOpen={isSidebarOpen} />
-      <div className='hidden lg:block'>
+      <Header
+        onMenuToggle={toggleSidebar}
+        isSidebarOpen={isSidebarOpen}
+      />
+
+      <div className="hidden lg:block">
         <Navbar />
       </div>
-      {/* <div className='block md:hidden'>
-        <MobileNav />
-      </div> */}
-      <div className='flex'>
-        {/* Sidebar - Hidden on mobile, visible on desktop */}
-        <Sidebar isOpen={isSidebarOpen} onClose={closeSidebar} />
 
-        {/* Main Content Area */}
-        <main className='scrollbar-hide w-full flex-1 lg:ml-0'>
+      {/* Main Content Area */}
+      <div className="flex flex-1">
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onClose={closeSidebar}
+        />
+
+        <main className="scrollbar-hide w-full min-w-0 flex-1 lg:ml-0">
           <Outlet />
         </main>
       </div>
+
       {/* Footer */}
       <Footer />
     </div>

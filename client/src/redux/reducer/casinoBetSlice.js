@@ -1,3 +1,4 @@
+
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import api from '../api';
 
@@ -16,12 +17,6 @@ const getErrorMessage = (error) => {
 // --------------------------------------------------
 // 1. PLACE CASINO BET
 // POST /casino/:slug/bet
-//
-// payload: { slug, roundId, selection, side, odds, stake, autoRetry? }
-// roundId = latest poll ka data.mid (state.casinoBet.latestRoundId)
-//
-// Server 409 "Round changed" bheje to latestProviderRoundId par ek baar retry.
-// Odds round ke saath badalte hain to autoRetry: false pass karo.
 // --------------------------------------------------
 export const placeCasinoBet = createAsyncThunk(
   'casinoBet/placeBet',
@@ -36,13 +31,15 @@ export const placeCasinoBet = createAsyncThunk(
       const status = error.response?.status;
       const latest = error.response?.data?.latestProviderRoundId;
 
-      // Round badal gaya: latest mid save karo (bet slip isi se agla roundId lega)
       if (status === 409 && latest) {
         dispatch(setLatestRoundId(latest));
 
         if (autoRetry) {
           try {
-            const retry = await send({ ...formData, roundId: String(latest) });
+            const retry = await send({
+              ...formData,
+              roundId: String(latest),
+            });
             return retry.data;
           } catch (retryError) {
             return rejectWithValue(getErrorMessage(retryError));
@@ -123,8 +120,17 @@ export const getCasinoBook = createAsyncThunk(
 // --------------------------------------------------
 export const getMyCasinoBets = createAsyncThunk(
   'casinoBet/getMyBets',
-  async (slug, { rejectWithValue }) => {
+  async (slugOrParams, { rejectWithValue }) => {
     try {
+      const slug =
+        typeof slugOrParams === 'string'
+          ? slugOrParams
+          : slugOrParams?.slug;
+
+      if (!slug) {
+        return rejectWithValue('Casino slug is required');
+      }
+
       const response = await api.get(
         `/casino/${slug}/my-bets`,
         { withCredentials: true }
@@ -158,10 +164,36 @@ export const getCasinoStats = createAsyncThunk(
 );
 
 // --------------------------------------------------
+// 7. GET DIRECT CASINO RESULT BY DATE
+// GET /casino/direct-result-by-date?date=YYYY-MM-DD&eventName=...
+// --------------------------------------------------
+export const getDirectCasinoResultByDate = createAsyncThunk(
+  'casinoBet/getDirectCasinoResultByDate',
+  async ({ date, eventName }, { rejectWithValue }) => {
+    try {
+      const response = await api.get(
+        '/casino/direct-result-by-date',
+        {
+          params: {
+            date,
+            eventName,
+          },
+          withCredentials: true,
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
+// --------------------------------------------------
 // INITIAL STATE
 // --------------------------------------------------
 const initialState = {
-  // Latest provider round id (poll se set hota hai, bet slip yahin se roundId leta hai)
+  // Latest provider round id
   latestRoundId: null,
 
   // Place bet
@@ -194,6 +226,11 @@ const initialState = {
   casinoStats: null,
   statsLoading: false,
   statsError: null,
+
+  // Direct casino result by date
+  directCasinoResult: null,
+  directCasinoResultLoading: false,
+  directCasinoResultError: null,
 };
 
 // --------------------------------------------------
@@ -206,7 +243,8 @@ const betSlice = createSlice({
   reducers: {
     setLatestRoundId: (state, action) => {
       const mid = action.payload;
-      state.latestRoundId = mid === undefined || mid === null ? null : String(mid);
+      state.latestRoundId =
+        mid === undefined || mid === null ? null : String(mid);
     },
 
     clearCasinoBetError: (state) => {
@@ -216,6 +254,7 @@ const betSlice = createSlice({
       state.bookError = null;
       state.myBetsError = null;
       state.statsError = null;
+      state.directCasinoResultError = null;
     },
 
     clearCasinoBook: (state) => {
@@ -228,6 +267,11 @@ const betSlice = createSlice({
 
     clearCasinoStats: (state) => {
       state.casinoStats = null;
+    },
+
+    clearDirectCasinoResult: (state) => {
+      state.directCasinoResult = null;
+      state.directCasinoResultError = null;
     },
 
     resetCasinoBet: () => initialState,
@@ -256,7 +300,6 @@ const betSlice = createSlice({
           state.latestRoundId = String(action.payload.latestProviderRoundId);
         }
 
-        // Refresh local bets list
         if (action.payload.bet) {
           state.myBets.unshift(action.payload.bet);
         }
@@ -264,7 +307,8 @@ const betSlice = createSlice({
 
       .addCase(placeCasinoBet.rejected, (state, action) => {
         state.placeBetLoading = false;
-        state.placeBetError = action.payload || action.error?.message || 'Bet failed';
+        state.placeBetError =
+          action.payload || action.error?.message || 'Bet failed';
       })
 
       // ------------------------------------------
@@ -355,6 +399,26 @@ const betSlice = createSlice({
       .addCase(getCasinoStats.rejected, (state, action) => {
         state.statsLoading = false;
         state.statsError = action.payload;
+      })
+
+      // ------------------------------------------
+      // GET DIRECT CASINO RESULT BY DATE
+      // ------------------------------------------
+      .addCase(getDirectCasinoResultByDate.pending, (state) => {
+        state.directCasinoResultLoading = true;
+        state.directCasinoResultError = null;
+      })
+
+      .addCase(getDirectCasinoResultByDate.fulfilled, (state, action) => {
+        state.directCasinoResultLoading = false;
+        state.directCasinoResult =
+          action.payload?.data ?? action.payload;
+      })
+
+      .addCase(getDirectCasinoResultByDate.rejected, (state, action) => {
+        state.directCasinoResultLoading = false;
+        state.directCasinoResultError =
+          action.payload || action.error?.message || 'Failed to fetch casino result';
       });
   },
 });
@@ -368,6 +432,7 @@ export const {
   clearCasinoBook,
   clearMyCasinoBets,
   clearCasinoStats,
+  clearDirectCasinoResult,
   resetCasinoBet,
 } = betSlice.actions;
 

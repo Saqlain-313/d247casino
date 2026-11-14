@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import { FaArrowRight, FaCheck } from 'react-icons/fa';
+import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../redux/api';
+import { getUser } from '../../redux/reducer/authReducer';
 import {
-  getPendingBetAmo,
-  getPendingBet,
-  executeCashout,
   clearCashoutValues,
+  executeCashout,
+  getPendingBet,
+  getPendingBetAmo,
   updateCashoutValues,
 } from '../../redux/reducer/betReducer';
-import { getUser } from '../../redux/reducer/authReducer';
 
 function Bookmaker({
   onBetSelect,

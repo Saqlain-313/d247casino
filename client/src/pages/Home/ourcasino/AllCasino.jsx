@@ -418,7 +418,7 @@ function AllCasino() {
         </div>
       ))}
 
-      <h1>helooooo</h1>
+
     </div>
   );
 }

@@ -17,7 +17,11 @@ import {
   getPendingBetAmo,
 } from '../../redux/reducer/betReducer';
 
-import { getMyCasinoBets } from '../../redux/reducer/casinoBetSlice';
+import {
+  clearDirectCasinoResult,
+  getDirectCasinoResultByDate,
+  getMyCasinoBets,
+} from '../../redux/reducer/casinoBetSlice';
 
 import {
   clearCasinoBettingData,
@@ -122,6 +126,13 @@ export default function CasinoBet() {
     (state) => state.auth
   );
 
+  // Direct casino result state
+  const {
+    directCasinoResult,
+    directCasinoResultLoading,
+    directCasinoResultError,
+  } = useSelector((state) => state.casinoBet);
+
   // =============================================
   // CUSTOM HOOKS
   // =============================================
@@ -219,6 +230,7 @@ export default function CasinoBet() {
     dispatch(clearCasinoResultData());
     dispatch(clearCasinoBettingData());
     dispatch(clearPendingBetAmounts());
+    dispatch(clearDirectCasinoResult());
 
     dispatch(fetchCasinoBatingData(gameid));
 
@@ -235,6 +247,30 @@ export default function CasinoBet() {
     }
 
   }, [gameid, eventName, dispatch]);
+
+  // =============================================
+  // FETCH DIRECT CASINO RESULT BY DATE
+  // GET /casino/direct-result-by-date
+  // =============================================
+
+  useEffect(() => {
+    if (!casinoEventName) return;
+
+    // Build today's date in the browser's local timezone.
+    const now = new Date();
+    const date = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+
+    dispatch(
+      getDirectCasinoResultByDate({
+        date,
+        eventName: casinoEventName,
+      })
+    );
+  }, [casinoEventName, dispatch]);
 
   // =============================================
   // SYNC REDUX DATA
@@ -556,7 +592,11 @@ export default function CasinoBet() {
           <RecentResults
             gameid={gameid}
             currentGameId={results.currentGameId}
-            results={results.resultData?.res}
+            results={results.resultData?.res || []}
+            directResults={directCasinoResult?.data || []}
+            resultDate={directCasinoResult?.date}
+            directResultsLoading={directCasinoResultLoading}
+            directResultsError={directCasinoResultError}
             onItemClick={results.setSelectedItem}
           />
 
@@ -568,7 +608,7 @@ export default function CasinoBet() {
             <div className="w-[350px]">
 
               <CasinoUiProvider
-                gameid={gameid}
+                gameid={eventName}
                 bettingData={mockBettingData}
                 betting={betting}
                 isMobile={false}
