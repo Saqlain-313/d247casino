@@ -262,7 +262,7 @@ import { FiChevronDown, FiMenu } from 'react-icons/fi';
 import { IoLogoAndroid, IoMdClose } from 'react-icons/io';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import clublogo from '../../assets/81club.png';
+import reddylogo from "../../assets/Reddy-logo.png";
 import api from '../../redux/api';
 import {
   getUser,
@@ -359,7 +359,7 @@ function Header({ onMenuToggle, isSidebarOpen }) {
             {isSidebarOpen ? <IoMdClose /> : <FiMenu />}
           </button>
           <img
-            src={clublogo}
+            src={reddylogo}
             alt='Alllogo'
             className='h-[65px]'
             onClick={() => navigate('/')}
