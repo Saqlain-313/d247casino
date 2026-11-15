@@ -2933,7 +2933,6 @@ export const updateResultOfCasinoBets = async (req, res) => {
     });
 
     await Promise.all(socketUpdates);
-    console.timeEnd('CASINO_SOCKET_UPDATES');
     console.log(
       ` WebSocket updates sent for ${allProcessedUserIds.length} users`
     );

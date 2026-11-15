@@ -23,14 +23,12 @@ export function createProviderA() {
     //   return response.data;
     // },
     async fetchMatchList(sportId) {
-      console.log('sportId******', sportId);
       const response = await axios.get(`${API_URL}/diamond/events/${sportId}`, {
         headers: {
           'X-API-Key': API_KEY,
         },
       });
 
-      console.log('API_URL Response******', response);
       return response.data.data;
     },
 

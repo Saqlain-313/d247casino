@@ -6,11 +6,8 @@ import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
 dotenv.config();
 
 export const getCricketData = async (req, res) => {
-  console.log('getCricketData called');
   try {
     const data = await fetchMatchList(4);
-
-    console.log('datadatadatadata', data);
 
     if (data.success) {
       const t1 = data.data.t1 || [];

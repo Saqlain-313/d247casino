@@ -1,28 +1,6 @@
 import React from 'react';
-import { MdSportsCricket } from 'react-icons/md';
 
-const matches = [
-  {
-    id: 1,
-    team1: 'Sydney Thunder',
-    team2: 'Melbourne Renegades',
-  },
-  {
-    id: 2,
-    team1: 'Kolkata Knight Riders',
-    team2: 'Delhi Capitals',
-  },
-  {
-    id: 3,
-    team1: 'Mumbai Indians',
-    team2: 'Chennai Super Kings',
-  },
-  {
-    id: 4,
-    team1: 'Royal Challengers Bangalore',
-    team2: 'Sunrisers Hyderabad',
-  },
-];
+import LatestEventsTicker from './LatestEventsTicker';
 
 const mainNavItems = [
   {
@@ -86,24 +64,7 @@ const mainNavItems = [
 function MobileNav({ selected, setSelected }) {
   return (
     <div className='flex flex-col'>
-      <div className='bg-primary text-primary scrollbar-hide flex overflow-x-auto px-[5px]'>
-        {matches.map((match) => (
-          <div
-            key={match.id}
-            className='bg-secondary text-secondary mr-1 flex min-w-[50%] items-center p-1 text-[14px] font-semibold sm:min-w-fit'
-          >
-            <div className='animate-blink flex shrink-0 items-center pr-1'>
-              <MdSportsCricket />
-            </div>
-
-            <div className='animate-blink flex items-center overflow-hidden sm:py-2'>
-              <span className='overflow-hidden text-ellipsis whitespace-nowrap sm:overflow-visible sm:text-clip sm:whitespace-normal'>
-                {match.team1} v {match.team2}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+      <LatestEventsTicker />
       <div className='bg-primary text-primary scrollbar-hide flex items-center justify-between gap-2 overflow-x-auto'>
         <div className='flex font-semibold'>
           {mainNavItems.map((item) => (
