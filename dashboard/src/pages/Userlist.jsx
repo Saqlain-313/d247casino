@@ -363,7 +363,9 @@ export default function AgentLIst() {
   const handleExportExcel = () => {
     const csv = exportRows()
       .map((row) =>
-        row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')
+        row
+          .map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`)
+          .join(',')
       )
       .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -428,57 +430,57 @@ export default function AgentLIst() {
             Account List
           </h1>
           <div className='flex flex-wrap items-center gap-2'>
-          <div className='flex items-center space-x-2'>
-            <div className='flex items-center text-[12px] font-semibold md:text-[15px] md:font-bold'>
-              Chips Summary
-            </div>
-            <div
-              className={`relative flex h-full w-[60px] items-center justify-evenly rounded ${
-                showChipsSummary
-                  ? 'bg-color'
-                  : 'border border-gray-300 bg-white'
-              }`}
-            >
-              <IoMdCheckmark className='p-1 text-2xl' />
-              <IoMdClose className='p-1 text-2xl text-gray-300' />
-              <button
-                className={`absolute left-0.5 block h-[25px] w-[25px] rounded border border-gray-300 bg-white transition-transform duration-300 ${
-                  showChipsSummary ? 'translate-x-[30px]' : 'translate-x-0'
+            <div className='flex items-center space-x-2'>
+              <div className='flex items-center text-[12px] font-semibold md:text-[15px] md:font-bold'>
+                Chips Summary
+              </div>
+              <div
+                className={`relative flex h-full w-[60px] items-center justify-evenly rounded ${
+                  showChipsSummary
+                    ? 'bg-color'
+                    : 'border border-gray-300 bg-white'
                 }`}
-                onClick={() => {
-                  const next = !showChipsSummary;
-                  setShowChipsSummary(next);
-                  toast.success('Chips Summary successfully updated');
-                }}
-              ></button>
-            </div>
-          </div>
-
-          <div className='flex items-center space-x-2'>
-            <button
-              className='rounded-[3px] bg-[#0b8bd9] px-[14px] py-[7px] text-[12px] leading-none font-bold text-white hover:bg-[#0976b9]'
-              onClick={() => navigate('/add-account')}
-            >
-              Add Account
-            </button>
-            <button
-              className='flex h-full w-[30px] items-center justify-center rounded border border-gray-300 bg-white leading-[30px] text-gray-500'
-              onClick={reloadPage}
-            >
-              <svg
-                xmlns='http://www.w3.org/2000/svg'
-                className='h-5 w-5'
-                viewBox='0 0 20 20'
-                fill='currentColor'
               >
-                <path
-                  fillRule='evenodd'
-                  d='M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z'
-                  clipRule='evenodd'
-                />
-              </svg>
-            </button>
-          </div>
+                <IoMdCheckmark className='p-1 text-2xl' />
+                <IoMdClose className='p-1 text-2xl text-gray-300' />
+                <button
+                  className={`absolute left-0.5 block h-[25px] w-[25px] rounded border border-gray-300 bg-white transition-transform duration-300 ${
+                    showChipsSummary ? 'translate-x-[30px]' : 'translate-x-0'
+                  }`}
+                  onClick={() => {
+                    const next = !showChipsSummary;
+                    setShowChipsSummary(next);
+                    toast.success('Chips Summary successfully updated');
+                  }}
+                ></button>
+              </div>
+            </div>
+
+            <div className='flex items-center space-x-2'>
+              <button
+                className='rounded-[3px] bg-[#0b8bd9] px-[14px] py-[7px] text-[12px] leading-none font-bold text-white hover:bg-[#0976b9]'
+                onClick={() => navigate('/add-account')}
+              >
+                Add Account
+              </button>
+              <button
+                className='flex h-full w-[30px] items-center justify-center rounded border border-gray-300 bg-white leading-[30px] text-gray-500'
+                onClick={reloadPage}
+              >
+                <svg
+                  xmlns='http://www.w3.org/2000/svg'
+                  className='h-5 w-5'
+                  viewBox='0 0 20 20'
+                  fill='currentColor'
+                >
+                  <path
+                    fillRule='evenodd'
+                    d='M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z'
+                    clipRule='evenodd'
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -716,7 +718,7 @@ export default function AgentLIst() {
                         <div className='flex items-center justify-center gap-x-2'>
                           {formatMoney(user.creditReference)}
                           <span
-                            className='cursor-pointer text-blue2'
+                            className='text-blue2 cursor-pointer'
                             onClick={() => {
                               setCreditPopup(true);
                               setcurrentUser(user);
@@ -725,7 +727,7 @@ export default function AgentLIst() {
                             <FaRegEdit />
                           </span>
                           <span
-                            className='cursor-pointer text-blue2'
+                            className='text-blue2 cursor-pointer'
                             onClick={() => {
                               handleCreditRefHistory(user._id);
                               setcurrentUser(user);
@@ -796,7 +798,7 @@ export default function AgentLIst() {
                           {formatMoney(user?.exposureLimit || 0)}
                           {isFetchingAllUsers == true ? (
                             <span
-                              className='cursor-pointer text-blue2'
+                              className='text-blue2 cursor-pointer'
                               onClick={() => {
                                 setPatnerPopup(true);
                                 setcurrentUser(user);

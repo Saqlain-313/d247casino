@@ -2,18 +2,10 @@
 
 // WebSocketServer - from the ws library, lets you create a WebSocketServer that client (browsers, app) can connect to
 import dotenv from 'dotenv';
-import io from 'socket.io-client';
 import { WebSocketServer } from 'ws';
-import betModel from '../models/betModel.js';
-import {
-  calculateCashoutValue,
-  isCashoutEligible,
-  CASHOUT_GAME_TYPES,
-} from '../utils/cashoutUtils.js';
+
 import { getBestOddsForTeam } from '../controllers/cashoutController.js';
-import {
-  fetchMatchData,
-} from '../services/matchApi/index.js';
+import betModel from '../models/betModel.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
 import {
   getLatestScore,
@@ -21,6 +13,12 @@ import {
   requestScore,
   startLiveScoreFeed,
 } from '../services/liveScoreFeed.js';
+import { fetchMatchData } from '../services/matchApi/index.js';
+import {
+  calculateCashoutValue,
+  CASHOUT_GAME_TYPES,
+  isCashoutEligible,
+} from '../utils/cashoutUtils.js';
 
 dotenv.config();
 
@@ -46,78 +44,6 @@ let cachedCasinoResults = new Map();
 
 //  NEW: Cache for recent results to prevent sending old results
 let recentResultsCache = new Map();
-
-// Store score socket connection per match
-let liveScoreSockets = {};
-
-// helper: subscribe to the Live score
-const subscribeToLiveScore = (gameid, apitype) => {
-  const key = `${gameid}_${apitype}`;
-
-  // Prevent duplicate socket connections for same game
-  if (liveScoreSockets[key]) {
-    console.log(` Already subscribed to live score for ${gameid} (${apitype})`);
-    return;
-  }
-
-  try {
-    console.log(` Connecting to live score for ${gameid} (${apitype})...`);
-
-    const scoreSocket = io(BASE_SCORE_URL, {
-      transports: ['websocket'],
-      reconnection: false, // disable auto reconnect
-      timeout: 20000,
-      forceNew: true,
-    });
-
-    liveScoreSockets[key] = scoreSocket;
-
-    //  When connected
-    scoreSocket.on('connect', () => {
-      console.log(` Connected to live score for ${gameid} (${apitype})`);
-      scoreSocket.emit('subscribe', { gameid, apitype });
-    });
-
-    //  When score updates arrive
-    scoreSocket.on('score_update', (data) => {
-      console.log(` Live update for ${gameid} (${apitype}):`, data);
-    });
-
-    // When disconnected
-    scoreSocket.on('disconnect', (reason) => {
-      console.warn(` Disconnected from ${gameid} (${apitype}):`, reason);
-      delete liveScoreSockets[key];
-    });
-
-    //  Handle connection errors safely
-    scoreSocket.on('connect_error', (err) => {
-      console.error(
-        ` Score socket error for ${gameid} (${apitype}):`,
-        err.message
-      );
-
-      // Close and clean current socket
-      try {
-        scoreSocket.close();
-      } catch (closeErr) {
-        console.error(' Error while closing socket:', closeErr.message);
-      }
-
-      delete liveScoreSockets[key];
-
-      // Retry safely after 5 seconds (no recursion)
-      setTimeout(() => {
-        console.log(` Reconnecting to ${gameid} (${apitype})...`);
-        subscribeToLiveScore(gameid, apitype);
-      }, 5000);
-    });
-  } catch (err) {
-    console.error(
-      ' Unexpected error while subscribing to live score:',
-      err.message
-    );
-  }
-};
 
 const getUniqueSubscriptions = () => {
   const uniqueSubscriptions = clients
@@ -377,9 +303,6 @@ export const setupWebSocket = (server) => {
               );
             }
           }
-
-          //  FIX: Subscribe to live score socket for this game
-          subscribeToLiveScore(client.gameid, client.apitype);
 
           // Live scorecard: viewers share one provider feed per event
           if (isValidScoreEventId(data.scoreEventId)) {

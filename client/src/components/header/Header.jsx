@@ -262,12 +262,9 @@ import { FiChevronDown, FiMenu } from 'react-icons/fi';
 import { IoLogoAndroid, IoMdClose } from 'react-icons/io';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import reddylogo from "../../assets/Reddy-logo.png";
+import reddylogo from '../../assets/Reddy-logo.png';
 import api from '../../redux/api';
-import {
-  getUser,
-  user_reset
-} from '../../redux/reducer/authReducer';
+import { getUser, user_reset } from '../../redux/reducer/authReducer';
 import { wsService } from '../../services/WebsocketService';
 import ButtonValues from './ButtonValues';
 import ExposureDetails from './ExposureDetails';

@@ -135,7 +135,9 @@ function ResultInfoPopup({
                 <p>
                   <span className='font-medium'>Bet Summary:</span> Total Bets:{' '}
                   {filteredReport.length} Total Amount:{' '}
-                  <span className={`font-medium ${totalAmount > 0 ? 'text-[#086f3f]' : totalAmount < 0 ? 'text-red-600' : ''}`}>
+                  <span
+                    className={`font-medium ${totalAmount > 0 ? 'text-[#086f3f]' : totalAmount < 0 ? 'text-red-600' : ''}`}
+                  >
                     {totalAmount.toFixed(2)}
                   </span>
                 </p>
@@ -207,7 +209,7 @@ function ResultInfoPopup({
                             {row.xValue}
                           </td>
                           <td className='border-r border-gray-200 p-2'>
-                          {row.otype === 'back' ? row.price : row.betAmount}
+                            {row.otype === 'back' ? row.price : row.betAmount}
                           </td>
                           <td className='border-r border-gray-200 p-2'>
                             {Number.isNaN(profitLoss) ? (

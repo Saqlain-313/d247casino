@@ -78,7 +78,9 @@ const roleHierarchy = {
 };
 
 const roleLabel = (role) =>
-  role === 'white' ? 'White_level' : role.charAt(0).toUpperCase() + role.slice(1);
+  role === 'white'
+    ? 'White_level'
+    : role.charAt(0).toUpperCase() + role.slice(1);
 
 // mode 'user' creates end users (Userlist); mode 'agent' creates downline
 // agents/masters (AgentLIst) with rolling commission and a required partnership.
@@ -355,7 +357,8 @@ export default function AddAccount({ mode = 'user' }) {
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      partnership: e.target.value === '' ? null : e.target.value,
+                      partnership:
+                        e.target.value === '' ? null : e.target.value,
                     })
                   }
                 />

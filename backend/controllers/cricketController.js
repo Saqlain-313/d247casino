@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-import axios from "axios";
 
 import adminModel from '../models/adminModel.js';
 import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
@@ -7,11 +6,11 @@ import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
 dotenv.config();
 
 export const getCricketData = async (req, res) => {
-  console.log("getCricketData called");
+  console.log('getCricketData called');
   try {
     const data = await fetchMatchList(4);
 
-    console.log("datadatadatadata", data)
+    console.log('datadatadatadata', data);
 
     if (data.success) {
       const t1 = data.data.t1 || [];
@@ -23,17 +22,17 @@ export const getCricketData = async (req, res) => {
           const team1Odds =
             match.section && match.section.length >= 1
               ? {
-                home: match.section[0].odds[0]?.odds?.toString() || '0',
-                away: match.section[0].odds[1]?.odds?.toString() || '0',
-              }
+                  home: match.section[0].odds[0]?.odds?.toString() || '0',
+                  away: match.section[0].odds[1]?.odds?.toString() || '0',
+                }
               : { home: '0', away: '0' };
 
           const team2Odds =
             match.section && match.section.length >= 2
               ? {
-                home: match.section[1].odds[0]?.odds?.toString() || '0',
-                away: match.section[1].odds[1]?.odds?.toString() || '0',
-              }
+                  home: match.section[1].odds[0]?.odds?.toString() || '0',
+                  away: match.section[1].odds[1]?.odds?.toString() || '0',
+                }
               : { home: '0', away: '0' };
 
           const oddsArr = [team1Odds, { home: '0', away: '0' }, team2Odds];
@@ -95,69 +94,58 @@ export const fetchCrirketBettingData = async (req, res) => {
   }
 };
 
-
 export const getDiamondEvents = async (req, res) => {
-
-  console.log("getDiamondEvents")
+  console.log('getDiamondEvents');
   try {
-    const response = await axios.get(
-      "https://scoreapi.nautical7.com/diamond/events/10",
-      {
-        headers: {
-          "X-API-Key":
-            "sck_Wr_0pAp2uAdClpn8uLulP-Iw849M_Lsq",
-        },
-      }
-    );
-
-    // console.log("response11111999", response.data)
+    const sid = Number(req.query.sid) || 10;
+    const data = await fetchMatchList(sid);
 
     return res.status(200).json({
       success: true,
-      data: response.data,
+      data,
     });
   } catch (error) {
     console.error(
-      "Diamond Events API Error:",
+      'Diamond Events API Error:',
       error.response?.data || error.message
     );
 
     return res.status(error.response?.status || 500).json({
       success: false,
-      message: "Failed to fetch diamond events",
+      message: 'Failed to fetch diamond events',
       error: error.response?.data || error.message,
     });
   }
 };
+
 export const getDiamondEventsData = async (req, res) => {
+  console.log('getDiamondEventsData');
+  const { gameid } = req.query;
+  const sid = Number(req.query.sid) || 10;
 
-  console.log("getDiamondEvents")
+  if (!gameid) {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing gameid',
+    });
+  }
+
   try {
-    const response = await axios.get(
-      "https://scoreapi.nautical7.com/diamond/odds/10_894750581",
-      {
-        headers: {
-          "X-API-Key":
-            "sck_Wr_0pAp2uAdClpn8uLulP-Iw849M_Lsq",
-        },
-      }
-    );
-
-    console.log("response data", response.data)
+    const data = await fetchMatchData(gameid, sid);
 
     return res.status(200).json({
       success: true,
-      data: response.data,
+      data,
     });
   } catch (error) {
     console.error(
-      "Diamond Events API Error:",
+      'Diamond Events API Error:',
       error.response?.data || error.message
     );
 
     return res.status(error.response?.status || 500).json({
       success: false,
-      message: "Failed to fetch diamond events",
+      message: 'Failed to fetch diamond events',
       error: error.response?.data || error.message,
     });
   }

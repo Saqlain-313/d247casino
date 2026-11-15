@@ -1,7 +1,12 @@
 import React from 'react';
 
 const formatValue = (value) => {
-  if (value === null || value === undefined || value === '' || Number(value) === 0) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    Number(value) === 0
+  ) {
     return '-';
   }
   return value;
@@ -57,12 +62,8 @@ function CricketMarket({ market, onBetSelect }) {
           runner.gstatus === 'SUSPENDED' ||
           runner.status === 'SUSPENDED';
         const odds = Array.isArray(runner.odds) ? runner.odds : [];
-        const backOdds = odds
-          .filter((odd) => odd.otype === 'back')
-          .slice(0, 3);
-        const layOdds = odds
-          .filter((odd) => odd.otype === 'lay')
-          .slice(0, 3);
+        const backOdds = odds.filter((odd) => odd.otype === 'back').slice(0, 3);
+        const layOdds = odds.filter((odd) => odd.otype === 'lay').slice(0, 3);
 
         return (
           <div
@@ -74,7 +75,10 @@ function CricketMarket({ market, onBetSelect }) {
             </div>
             {suspended ? (
               <div className='col-span-6 flex min-h-[38px] items-center justify-center bg-[#4b4b4b] text-center text-xs font-bold text-white'>
-                {runner.gstatus || runner.status || market.status || 'SUSPENDED'}
+                {runner.gstatus ||
+                  runner.status ||
+                  market.status ||
+                  'SUSPENDED'}
               </div>
             ) : (
               <>
@@ -92,7 +96,9 @@ function CricketMarket({ market, onBetSelect }) {
                           : 'cursor-default'
                       }`}
                     >
-                      <span className='font-bold'>{formatValue(odd?.odds)}</span>
+                      <span className='font-bold'>
+                        {formatValue(odd?.odds)}
+                      </span>
                       {odd && (
                         <span className='text-[10px]'>
                           {formatValue(odd.size)}
@@ -115,7 +121,9 @@ function CricketMarket({ market, onBetSelect }) {
                           : 'cursor-default'
                       }`}
                     >
-                      <span className='font-bold'>{formatValue(odd?.odds)}</span>
+                      <span className='font-bold'>
+                        {formatValue(odd?.odds)}
+                      </span>
                       {odd && (
                         <span className='text-[10px]'>
                           {formatValue(odd.size)}

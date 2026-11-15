@@ -219,7 +219,7 @@ function Sidebar({ isOpen, onClose }) {
 
       {/* Sidebar */}
       <aside
-        className={` sidebar-menu-bg sidebar-menu-text fixed top-0 left-0 z-50 mt-0.5 w-55 transform transition-transform duration-300 ease-in-out lg:static lg:relative ${
+        className={`sidebar-menu-bg sidebar-menu-text fixed top-0 left-0 z-50 mt-0.5 w-55 transform transition-transform duration-300 ease-in-out lg:relative lg:static ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } overflow-y-auto`}
       >
@@ -237,7 +237,7 @@ function Sidebar({ isOpen, onClose }) {
           <div className=''>
             <button
               onClick={() => toggleItem('racingSports')}
-              className='bg-primary text-white flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 hover:opacity-80'
+              className='bg-primary flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 text-white hover:opacity-80'
             >
               <span className='text-md font-[500]'>Racing Sports</span>
               {isExpanded('racingSports') ? <FiChevronUp /> : <FiChevronDown />}
@@ -264,32 +264,32 @@ function Sidebar({ isOpen, onClose }) {
               </div>
             )}
           </div>
-{/* Others Section */}
-<div>
-  <button
-    onClick={() => toggleItem('others')}
-    className='bg-primary text-white flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-2 hover:opacity-80'
-  >
-    <span className='text-md font-[500]'>Others</span>
+          {/* Others Section */}
+          <div>
+            <button
+              onClick={() => toggleItem('others')}
+              className='bg-primary flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-2 text-white hover:opacity-80'
+            >
+              <span className='text-md font-[500]'>Others</span>
 
-    {isExpanded('others') ? <FiChevronUp /> : <FiChevronDown />}
-  </button>
+              {isExpanded('others') ? <FiChevronUp /> : <FiChevronDown />}
+            </button>
 
-  {isExpanded('others') && (
-    <div className='w-full'>
-      {others.map((item) => (
-        <button
-          key={item.name}
-          type='button'
-          onClick={() => navigate(item.path)}
-          className='block w-full cursor-pointer border-b border-b-[#9e9e9e] bg-transparent p-2 pl-4 text-left text-sm font-[400] !text-gray-600 opacity-100 transition-colors hover:!text-gray-800'
-        >
-          {item.name}
-        </button>
-      ))}
-    </div>
-  )}
-</div>
+            {isExpanded('others') && (
+              <div className='w-full'>
+                {others.map((item) => (
+                  <button
+                    key={item.name}
+                    type='button'
+                    onClick={() => navigate(item.path)}
+                    className='block w-full cursor-pointer border-b border-b-[#9e9e9e] bg-transparent p-2 pl-4 text-left text-sm font-[400] !text-gray-600 opacity-100 transition-colors hover:!text-gray-800'
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* All Sports Section */}
           <div className=''>
@@ -297,7 +297,7 @@ function Sidebar({ isOpen, onClose }) {
               onClick={() => toggleItem('allSports')}
               className='bg-primary text-primary flex w-full items-center justify-between border-b border-b-[#9e9e9e] p-1 hover:opacity-80'
             >
-              <span className='text-md text-white font-[500]'>All Sports</span>
+              <span className='text-md font-[500] text-white'>All Sports</span>
               {isExpanded('allSports') ? <FiChevronUp /> : <FiChevronDown />}
             </button>
             {isExpanded('allSports') && (

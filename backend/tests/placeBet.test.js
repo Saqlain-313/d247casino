@@ -10,20 +10,18 @@ describe('placeBet - Complete Test Suite', () => {
   //Bet Amount Calculation and Price Calculation for all gameTypes
 
   describe('Bet Amount and Price Calculations - All Game Types', () => {
-    +(
-      // Match Odds, Tied Match, Winner, OVER_UNDER
-      test('Match Odds back bet: price=100, odds=2.5', () => {
-        const price = 100;
-        const xValue = 2.5;
-        const otype = 'back';
+    // Match Odds, Tied Match, Winner, OVER_UNDER
+    test('Match Odds back bet: price=100, odds=2.5', () => {
+      const price = 100;
+      const xValue = 2.5;
+      const otype = 'back';
 
-        const betAmount = otype === 'lay' ? price : price * (xValue - 1);
-        const p = otype === 'lay' ? price * (xValue - 1) : price;
+      const betAmount = otype === 'lay' ? price : price * (xValue - 1);
+      const p = otype === 'lay' ? price * (xValue - 1) : price;
 
-        expect(betAmount).toBe(150); //betAmount
-        expect(p).toBe(100); //Deducted from balance
-      })
-    );
+      expect(betAmount).toBe(150); //betAmount
+      expect(p).toBe(100); //Deducted from balance
+    });
 
     test('Match Odds lay bet: price=100, odds=2.5', () => {
       const price = 100;

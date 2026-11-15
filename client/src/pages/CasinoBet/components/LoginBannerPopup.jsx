@@ -84,7 +84,7 @@ function LoginBannerPopup() {
           <div className='flex items-center justify-between gap-3 bg-[#3d8bcd] px-3 py-2.5 sm:px-5 sm:py-3'>
             <div className='flex items-center gap-2 sm:gap-3'>
               <span className='text-lg sm:text-2xl'>⚠️</span>
-              <p className='text-[11px] font-bold leading-tight tracking-tight text-white sm:text-lg md:text-xl'>
+              <p className='text-[11px] leading-tight font-bold tracking-tight text-white sm:text-lg md:text-xl'>
                 Beware Of Phishing Websites Before Login. Enable Security Auth
                 To Secure Your ID.
               </p>
@@ -93,7 +93,7 @@ function LoginBannerPopup() {
               type='button'
               onClick={handleClose}
               aria-label='Close'
-              className='shrink-0 text-white transition-transform duration-200 hover:rotate-90 hover:scale-110'
+              className='shrink-0 text-white transition-transform duration-200 hover:scale-110 hover:rotate-90'
             >
               <svg
                 xmlns='http://www.w3.org/2000/svg'

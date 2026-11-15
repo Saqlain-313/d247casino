@@ -1,4 +1,3 @@
-
 import {
   createContext,
   useCallback,
@@ -36,9 +35,9 @@ const isMarketVisible = (market) => {
 };
 
 const isMarketOpen = (market) => {
-  const status = String(
-    market?.gstatus ?? market?.status ?? ''
-  ).trim().toUpperCase();
+  const status = String(market?.gstatus ?? market?.status ?? '')
+    .trim()
+    .toUpperCase();
 
   return ['OPEN', 'ACTIVE'].includes(status);
 };
@@ -55,9 +54,7 @@ export function CasinoUiProvider({
   const [rouletteMode, setRouletteMode] = useState('back');
   const [rouletteBets, setRouletteBets] = useState({});
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
-  const [slipMode, setSlipMode] = useState(
-    isMobile ? 'mobile' : 'desktop'
-  );
+  const [slipMode, setSlipMode] = useState(isMobile ? 'mobile' : 'desktop');
 
   // =========================================
   // FIX: NORMALIZE API RESPONSE
@@ -68,18 +65,13 @@ export function CasinoUiProvider({
   // =========================================
 
   const casinoData =
-    bettingData?.data?.data ??
-    bettingData?.data ??
-    bettingData ??
-    {};
+    bettingData?.data?.data ?? bettingData?.data ?? bettingData ?? {};
 
   // =========================================
   // PROVIDER MARKETS
   // =========================================
 
-  const marketList = Array.isArray(casinoData?.sub)
-    ? casinoData.sub
-    : [];
+  const marketList = Array.isArray(casinoData?.sub) ? casinoData.sub : [];
 
   // =========================================
   // DEBUG LOGS
@@ -101,17 +93,17 @@ export function CasinoUiProvider({
     console.log('==================================');
 
     console.table(
-  marketList.map((item) => ({
-    sid: item.sid ?? item.i,
-    name: item.nat ?? item.n,
-    status: item.gstatus,
-    back: item.b,
-    lay: item.l,
-    visible: item.visible,
-    min: item.min,
-    max: item.max,
-  }))
-);
+      marketList.map((item) => ({
+        sid: item.sid ?? item.i,
+        name: item.nat ?? item.n,
+        status: item.gstatus,
+        back: item.b,
+        lay: item.l,
+        visible: item.visible,
+        min: item.min,
+        max: item.max,
+      }))
+    );
   }, [gameid, casinoData]);
 
   // =========================================
@@ -120,10 +112,9 @@ export function CasinoUiProvider({
 
   // Game-level suspension only. Individual market status/visibility/odds
   // are validated independently in openBetSlip.
-  const gameStatusSuspended = [
-    casinoData?.gstatus,
-    casinoData?.status,
-  ].some((status) => String(status || '').toUpperCase() === 'SUSPENDED');
+  const gameStatusSuspended = [casinoData?.gstatus, casinoData?.status].some(
+    (status) => String(status || '').toUpperCase() === 'SUSPENDED'
+  );
 
   const hasAnyOpenMarket = marketList.some((item) => {
     const visible = isMarketVisible(item);
@@ -133,14 +124,12 @@ export function CasinoUiProvider({
     return (
       visible &&
       open &&
-      ((Number.isFinite(back) && back > 1) ||
-        (Number.isFinite(lay) && lay > 1))
+      ((Number.isFinite(back) && back > 1) || (Number.isFinite(lay) && lay > 1))
     );
   });
 
   const isSuspended =
-    gameStatusSuspended ||
-    (marketList.length > 0 && !hasAnyOpenMarket);
+    gameStatusSuspended || (marketList.length > 0 && !hasAnyOpenMarket);
 
   // =========================================
   // MARKET MAPPING
@@ -155,12 +144,7 @@ export function CasinoUiProvider({
       const entry = {
         back: String(item?.b ?? item?.back ?? item?.odds ?? ''),
         lay: String(item?.l ?? item?.lay ?? ''),
-        nat:
-          item?.nat ??
-          item?.n ??
-          item?.name ??
-          item?.label ??
-          '',
+        nat: item?.nat ?? item?.n ?? item?.name ?? item?.label ?? '',
         sid: providerId != null ? String(providerId) : '',
         gstatus: item?.gstatus ?? item?.status ?? '',
         visible: Number(item?.visible) === 1,
@@ -181,10 +165,7 @@ export function CasinoUiProvider({
 
       aliases
         .filter(
-          (value) =>
-            value !== undefined &&
-            value !== null &&
-            value !== ''
+          (value) => value !== undefined && value !== null && value !== ''
         )
         .forEach((alias) => {
           const key = normalizeSelection(alias);
@@ -210,9 +191,7 @@ export function CasinoUiProvider({
 
       remark: casinoData?.remark || '',
 
-      roundId: casinoData?.mid
-        ? String(casinoData.mid)
-        : '',
+      roundId: casinoData?.mid ? String(casinoData.mid) : '',
     }),
     [casinoData, marketMap]
   );
@@ -223,7 +202,6 @@ export function CasinoUiProvider({
 
   const openBetSlip = useCallback(
     (nation, odds, type = 'back', mobile = isMobile) => {
-
       if (isSuspended) {
         window.alert('Betting is currently suspended.');
         return;
@@ -245,8 +223,7 @@ export function CasinoUiProvider({
         ];
 
         const nameMatches = providerNames.some(
-          (name) =>
-            normalizeSelection(name) === lookupNation
+          (name) => normalizeSelection(name) === lookupNation
         );
 
         const idMatches =
@@ -259,31 +236,22 @@ export function CasinoUiProvider({
 
       // Selection not found
       if (!selectedMarket) {
-        console.error(
-          'Provider selection mapping failed:',
-          {
-            requested: nation,
-            game: gameid,
-            round: casinoData?.mid,
-            providerMarkets: marketList,
-          }
-        );
+        console.error('Provider selection mapping failed:', {
+          requested: nation,
+          game: gameid,
+          round: casinoData?.mid,
+          providerMarkets: marketList,
+        });
 
-        window.alert(
-          `Provider selection not found for "${nation}".`
-        );
+        window.alert(`Provider selection not found for "${nation}".`);
 
         return;
       }
 
       // Provider SID / ID
-      const providerId =
-        selectedMarket.sid ?? selectedMarket.i;
+      const providerId = selectedMarket.sid ?? selectedMarket.i;
 
-      if (
-        providerId === undefined ||
-        providerId === null
-      ) {
+      if (providerId === undefined || providerId === null) {
         window.alert('Provider selection ID is missing.');
         return;
       }
@@ -307,9 +275,10 @@ export function CasinoUiProvider({
       // Always use the latest odds from the matched provider market.
       // Never trust hardcoded/fallback odds passed by a table component.
       const requestedSide = type === 'lay' ? 'lay' : 'back';
-      const rawOdds = requestedSide === 'lay'
-        ? (selectedMarket.l ?? selectedMarket.lay)
-        : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
+      const rawOdds =
+        requestedSide === 'lay'
+          ? (selectedMarket.l ?? selectedMarket.lay)
+          : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
       const numericOdds = Number(rawOdds);
 
       if (!Number.isFinite(numericOdds) || numericOdds <= 1) {
@@ -319,17 +288,15 @@ export function CasinoUiProvider({
         return;
       }
 
-      setSlipMode(
-        mobile ? 'mobile' : 'desktop'
-      );
+      setSlipMode(mobile ? 'mobile' : 'desktop');
 
       // Set bet control
       betting.setBetControl({
         nat: String(
           selectedMarket.nat ??
-          selectedMarket.n ??
-          selectedMarket.name ??
-          nation
+            selectedMarket.n ??
+            selectedMarket.name ??
+            nation
         ),
 
         sid: String(providerId),
@@ -354,14 +321,7 @@ export function CasinoUiProvider({
 
       betting.setBetAmount(0);
     },
-    [
-      betting,
-      isSuspended,
-      isMobile,
-      gameid,
-      casinoData?.mid,
-      marketList,
-    ]
+    [betting, isSuspended, isMobile, gameid, casinoData?.mid, marketList]
   );
 
   // =========================================
@@ -378,10 +338,7 @@ export function CasinoUiProvider({
 
   const updateStake = useCallback(
     (value) => {
-      const amount = Math.max(
-        0,
-        Number(value) || 0
-      );
+      const amount = Math.max(0, Number(value) || 0);
 
       betting.updateAmount(amount);
     },
@@ -395,12 +352,7 @@ export function CasinoUiProvider({
   const adjustOdds = useCallback(
     (delta) => {
       betting.setBetOdds((previous) =>
-        Math.max(
-          1.01,
-          Number(
-            (Number(previous || 1.98) + delta).toFixed(2)
-          )
-        )
+        Math.max(1.01, Number((Number(previous || 1.98) + delta).toFixed(2)))
       );
     },
     [betting]
@@ -417,56 +369,41 @@ export function CasinoUiProvider({
 
     const oddsValue = Number(betting.betOdds);
 
-    if (
-      !control?.slug ||
-      !control?.roundId ||
-      !control?.selection
-    ) {
-      window.alert(
-        'Game, round or provider selection is missing.'
-      );
+    if (!control?.slug || !control?.roundId || !control?.selection) {
+      window.alert('Game, round or provider selection is missing.');
       return;
     }
 
-    if (
-      !Number.isFinite(stake) ||
-      stake < Number(control.min || 1)
-    ) {
-      window.alert(
-        `Minimum bet amount is ${control.min || 1}`
-      );
+    if (!Number.isFinite(stake) || stake < Number(control.min || 1)) {
+      window.alert(`Minimum bet amount is ${control.min || 1}`);
       return;
     }
 
-    if (
-      stake > Number(control.max || Infinity)
-    ) {
-      window.alert(
-        `Maximum bet amount is ${control.max}`
-      );
+    if (stake > Number(control.max || Infinity)) {
+      window.alert(`Maximum bet amount is ${control.max}`);
       return;
     }
 
-    if (
-      !Number.isFinite(oddsValue) ||
-      oddsValue <= 1
-    ) {
+    if (!Number.isFinite(oddsValue) || oddsValue <= 1) {
       window.alert('Invalid odds.');
       return;
     }
 
     // Re-check the selected market immediately before submitting.
     // This prevents a stale slip from placing a bet after the provider closes it.
-    const latestMarket = marketList.find((item) =>
-      String(item?.sid ?? item?.i ?? '') === String(control.selection)
+    const latestMarket = marketList.find(
+      (item) => String(item?.sid ?? item?.i ?? '') === String(control.selection)
     );
     const latestStatus = String(
       latestMarket?.gstatus ?? latestMarket?.status ?? ''
-    ).trim().toUpperCase();
+    )
+      .trim()
+      .toUpperCase();
     const latestVisible = isMarketVisible(latestMarket);
-    const latestRawOdds = control.type === 'lay'
-      ? (latestMarket?.l ?? latestMarket?.lay)
-      : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
+    const latestRawOdds =
+      control.type === 'lay'
+        ? (latestMarket?.l ?? latestMarket?.lay)
+        : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
     const latestOdds = Number(latestRawOdds);
 
     if (
@@ -478,7 +415,9 @@ export function CasinoUiProvider({
       latestOdds <= 1 ||
       latestOdds !== oddsValue
     ) {
-      window.alert('Market changed or is no longer available. Please select it again.');
+      window.alert(
+        'Market changed or is no longer available. Please select it again.'
+      );
       betting.resetBettingState();
       return;
     }
@@ -514,7 +453,6 @@ export function CasinoUiProvider({
       dispatch(getUser());
 
       window.alert('Bet placed successfully.');
-
     } catch (error) {
       console.error('CASINO BET ERROR:', error);
 
@@ -540,37 +478,23 @@ export function CasinoUiProvider({
       setRouletteBets((previous) => ({
         ...previous,
 
-        [cellId]:
-          (previous[cellId] || 0) + 100,
+        [cellId]: (previous[cellId] || 0) + 100,
       }));
 
-      openBetSlip(
-        `Roulette: ${spotName}`,
-        odds,
-        rouletteMode,
-        isMobile
-      );
+      openBetSlip(`Roulette: ${spotName}`, odds, rouletteMode, isMobile);
     },
-    [
-      isSuspended,
-      openBetSlip,
-      rouletteMode,
-      isMobile,
-    ]
+    [isSuspended, openBetSlip, rouletteMode, isMobile]
   );
 
   // =========================================
   // BET VALUES
   // =========================================
 
-  const stake =
-    Number(betting?.betAmount) || 0;
+  const stake = Number(betting?.betAmount) || 0;
 
-  const odds =
-    Number(betting?.betOdds) || 1.98;
+  const odds = Number(betting?.betOdds) || 1.98;
 
-  const isLay =
-    betting?.betControl?.type === 'lay';
+  const isLay = betting?.betControl?.type === 'lay';
 
   // =========================================
   // CONTEXT VALUE
@@ -591,35 +515,22 @@ export function CasinoUiProvider({
 
         mode: slipMode,
 
-        slug:
-          betting?.betControl?.slug ||
-          gameid ||
-          '',
+        slug: betting?.betControl?.slug || gameid || '',
 
-        roundId:
-          betting?.betControl?.roundId ||
-          casinoData?.mid ||
-          '',
+        roundId: betting?.betControl?.roundId || casinoData?.mid || '',
 
-        nation:
-          betting?.betControl?.nat || '',
+        nation: betting?.betControl?.nat || '',
 
         selection:
-          betting?.betControl?.selection ||
-          betting?.betControl?.sid ||
-          '',
+          betting?.betControl?.selection || betting?.betControl?.sid || '',
 
         odds,
 
         stake,
 
-        profit: isLay
-          ? stake
-          : Math.round(stake * (odds - 1)),
+        profit: isLay ? stake : Math.round(stake * (odds - 1)),
 
-        liability: isLay
-          ? Math.round(stake * (odds - 1))
-          : stake,
+        liability: isLay ? Math.round(stake * (odds - 1)) : stake,
 
         type: isLay ? 'lay' : 'back',
       },
@@ -667,9 +578,7 @@ export function CasinoUiProvider({
   );
 
   return (
-    <CasinoContext.Provider value={value}>
-      {children}
-    </CasinoContext.Provider>
+    <CasinoContext.Provider value={value}>{children}</CasinoContext.Provider>
   );
 }
 
@@ -681,9 +590,7 @@ export function useCasino() {
   const context = useContext(CasinoContext);
 
   if (!context) {
-    throw new Error(
-      'useCasino must be used inside CasinoUiProvider'
-    );
+    throw new Error('useCasino must be used inside CasinoUiProvider');
   }
 
   return context;

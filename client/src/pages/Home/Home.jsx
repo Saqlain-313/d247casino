@@ -77,10 +77,11 @@ function Home() {
           {tabs.map((tab, index) => (
             <div
               key={tab.name}
-              className={`flex cursor-pointer items-center justify-center px-4 py-2 whitespace-nowrap ${activeTab === tab.name
-                ? 'bg-secondary text-secondary'
-                : 'sidebar-menu-bg sidebar-menu-text'
-                } ${index < tabs.length - 1 ? 'border-r border-gray-400' : ''}`}
+              className={`flex cursor-pointer items-center justify-center px-4 py-2 whitespace-nowrap ${
+                activeTab === tab.name
+                  ? 'bg-secondary text-secondary'
+                  : 'sidebar-menu-bg sidebar-menu-text'
+              } ${index < tabs.length - 1 ? 'border-r border-gray-400' : ''}`}
               onClick={() => setActiveTab(tab.name)}
             >
               <span className='text-sm font-medium'>{tab.name}</span>

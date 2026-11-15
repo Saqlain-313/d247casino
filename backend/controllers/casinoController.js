@@ -185,7 +185,6 @@ export const getCasinoData = async (req, res) => {
   }
 };
 
-
 export const getCasinoBettingData = async (req, res) => {
   // Support both frontend query formats
   const eventName = req.query.eventName || req.query.type;
@@ -197,10 +196,7 @@ export const getCasinoBettingData = async (req, res) => {
     });
   }
 
-  if (
-    typeof eventName !== 'string' ||
-    !EVENT_NAME_PATTERN.test(eventName)
-  ) {
+  if (typeof eventName !== 'string' || !EVENT_NAME_PATTERN.test(eventName)) {
     return res.status(400).json({
       success: false,
       message: 'Invalid event name',
@@ -234,7 +230,6 @@ export const getCasinoBettingData = async (req, res) => {
       message: 'Casino Betting data fetched Successfully',
       data,
     });
-
   } catch (error) {
     if (error?.response?.status === 404) {
       return res.status(404).json({
@@ -243,10 +238,7 @@ export const getCasinoBettingData = async (req, res) => {
       });
     }
 
-    console.error(
-      'getCasinoBettingData error:',
-      error?.message || error
-    );
+    console.error('getCasinoBettingData error:', error?.message || error);
 
     return res.status(503).json({
       success: false,
@@ -254,7 +246,6 @@ export const getCasinoBettingData = async (req, res) => {
     });
   }
 };
-
 
 export const getCasinoResultData = async (req, res) => {
   const { eventName } = req.query;
@@ -274,17 +265,21 @@ export const getCasinoResultData = async (req, res) => {
   }
 
   try {
-    const data = await getWithCache(`${CACHE.result.prefix}:${eventName}`, async () => {
-      const response = await fetchCasinoResultApi(eventName);
+    const data = await getWithCache(
+      `${CACHE.result.prefix}:${eventName}`,
+      async () => {
+        const response = await fetchCasinoResultApi(eventName);
 
-      if (!response?.success) {
-        const error = new Error('Invalid Response from API');
-        error.provider = response;
-        throw error;
-      }
+        if (!response?.success) {
+          const error = new Error('Invalid Response from API');
+          error.provider = response;
+          throw error;
+        }
 
-      return response.data;
-    }, CACHE.result.ttl);
+        return response.data;
+      },
+      CACHE.result.ttl
+    );
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
@@ -330,7 +325,10 @@ export const getDirectCasinoResultByDate = async (req, res) => {
     const data = await getWithCache(
       `${CACHE.directResultByDate.prefix}:${date}:${eventName}`,
       async () => {
-        const response = await fetchDirectCasinoResultByDateApi(date, eventName);
+        const response = await fetchDirectCasinoResultByDateApi(
+          date,
+          eventName
+        );
 
         if (!response) {
           const error = new Error('Invalid provider response');
@@ -340,7 +338,11 @@ export const getDirectCasinoResultByDate = async (req, res) => {
 
         // If the provider wraps the payload in { success, data }, unwrap it.
         // Otherwise return the bare response as-is.
-        if (typeof response === 'object' && 'success' in response && 'data' in response) {
+        if (
+          typeof response === 'object' &&
+          'success' in response &&
+          'data' in response
+        ) {
           if (!response.success) {
             const error = new Error('Invalid Response from API');
             error.provider = response;
@@ -356,7 +358,10 @@ export const getDirectCasinoResultByDate = async (req, res) => {
 
     return res.status(200).json({ success: true, data });
   } catch (error) {
-    console.error('getDirectCasinoResultByDate error:', error?.message || error);
+    console.error(
+      'getDirectCasinoResultByDate error:',
+      error?.message || error
+    );
 
     return res.status(error.provider !== undefined ? 502 : 503).json({
       success: false,

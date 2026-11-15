@@ -1,15 +1,20 @@
 import React, { useMemo } from 'react';
 import { useCasino } from '../../context/CasinoContext';
 
-const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const BLACK_NUMBERS = new Set([2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]);
+const RED_NUMBERS = new Set([
+  1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+]);
+const BLACK_NUMBERS = new Set([
+  2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35,
+]);
 
 export default function StatisticsWidget({ isSidebar = false }) {
   const { selectedGame, roundData } = useCasino();
   const slug = selectedGame || '';
 
   const isRoulette = slug.includes('roulette') || slug.includes('roullete');
-  const isBaccarat = slug.includes('baccarat') || slug.includes('btable') || slug === 'teensin';
+  const isBaccarat =
+    slug.includes('baccarat') || slug.includes('btable') || slug === 'teensin';
   const isDragonTiger = slug.includes('dt') || slug.includes('dragon');
   const isLucky7 = slug.includes('lucky7');
 
@@ -20,13 +25,23 @@ export default function StatisticsWidget({ isSidebar = false }) {
   // =========================================================================
   const rouletteStats = useMemo(() => {
     // Collect last numeric outcomes
-    const sample = results.map((r) => parseInt(r, 10)).filter((n) => !isNaN(n) && n >= 0 && n <= 36);
+    const sample = results
+      .map((r) => parseInt(r, 10))
+      .filter((n) => !isNaN(n) && n >= 0 && n <= 36);
     const n = sample.length > 0 ? sample.length : 100;
 
-    let c1st12 = 0, c2nd12 = 0, c3rd12 = 0;
-    let r1st = 0, r2nd = 0, r3rd = 0;
-    let red = 0, blk = 0, odd = 0, evn = 0;
-    let t1to18 = 0, t19to36 = 0;
+    let c1st12 = 0,
+      c2nd12 = 0,
+      c3rd12 = 0;
+    let r1st = 0,
+      r2nd = 0,
+      r3rd = 0;
+    let red = 0,
+      blk = 0,
+      odd = 0,
+      evn = 0;
+    let t1to18 = 0,
+      t19to36 = 0;
 
     if (sample.length > 0) {
       sample.forEach((num) => {
@@ -88,7 +103,9 @@ export default function StatisticsWidget({ isSidebar = false }) {
   // 2. BACCARAT STATISTICS ENGINE (Player vs Banker vs Tie)
   // =========================================================================
   const baccaratStats = useMemo(() => {
-    let pCount = 0, bCount = 0, tCount = 0;
+    let pCount = 0,
+      bCount = 0,
+      tCount = 0;
     results.forEach((r) => {
       const s = String(r).toUpperCase();
       if (s.startsWith('P')) pCount++;
@@ -99,14 +116,24 @@ export default function StatisticsWidget({ isSidebar = false }) {
     const pPct = pCount ? Math.round((pCount / total) * 100) : 48;
     const bPct = bCount ? Math.round((bCount / total) * 100) : 44;
     const tPct = tCount ? Math.max(1, 100 - pPct - bPct) : 8;
-    return { pPct, bPct, tPct, pCount: pCount || 48, bCount: bCount || 44, tCount: tCount || 8, total };
+    return {
+      pPct,
+      bPct,
+      tPct,
+      pCount: pCount || 48,
+      bCount: bCount || 44,
+      tCount: tCount || 8,
+      total,
+    };
   }, [results]);
 
   // =========================================================================
   // 3. DRAGON TIGER STATISTICS ENGINE (Dragon vs Tiger vs Tie)
   // =========================================================================
   const dtStats = useMemo(() => {
-    let dCount = 0, tCount = 0, tieCount = 0;
+    let dCount = 0,
+      tCount = 0,
+      tieCount = 0;
     results.forEach((r) => {
       const s = String(r).toUpperCase();
       if (s.startsWith('D')) dCount++;
@@ -117,14 +144,24 @@ export default function StatisticsWidget({ isSidebar = false }) {
     const dPct = dCount ? Math.round((dCount / total) * 100) : 46;
     const tPct = tCount ? Math.round((tCount / total) * 100) : 47;
     const tiePct = tieCount ? Math.max(1, 100 - dPct - tPct) : 7;
-    return { dPct, tPct, tiePct, dCount: dCount || 46, tCount: tCount || 47, tieCount: tieCount || 7, total };
+    return {
+      dPct,
+      tPct,
+      tiePct,
+      dCount: dCount || 46,
+      tCount: tCount || 47,
+      tieCount: tieCount || 7,
+      total,
+    };
   }, [results]);
 
   // =========================================================================
   // 4. LUCKY 7 STATISTICS ENGINE (Low vs High vs 7)
   // =========================================================================
   const lucky7Stats = useMemo(() => {
-    let lowCount = 0, highCount = 0, pivotCount = 0;
+    let lowCount = 0,
+      highCount = 0,
+      pivotCount = 0;
     results.forEach((r) => {
       const s = String(r).toUpperCase();
       if (s.includes('LOW') || s === 'L') lowCount++;
@@ -139,89 +176,98 @@ export default function StatisticsWidget({ isSidebar = false }) {
   }, [results]);
 
   return (
-    <div className={`sidebar-box my-bet-container ${isSidebar ? 'roulette-rules' : ''}`}>
-      <div className="sidebar-title d-flex justify-content-between align-items-center">
+    <div
+      className={`sidebar-box my-bet-container ${isSidebar ? 'roulette-rules' : ''}`}
+    >
+      <div className='sidebar-title d-flex justify-content-between align-items-center'>
         <h4>Statistics</h4>
-        <span className="badge bg-secondary" style={{ fontSize: '10px' }}>
-          Last {isRoulette ? rouletteStats.sampleCount : (results.length || 100)} Rounds
+        <span className='badge bg-secondary' style={{ fontSize: '10px' }}>
+          Last {isRoulette ? rouletteStats.sampleCount : results.length || 100}{' '}
+          Rounds
         </span>
       </div>
 
       {/* ROULETTE VIEW */}
       {isRoulette && (
-        <div className="roulette11-table">
-          <div className="roulette11-table-row">
-            <div className="roulette11-table-cell">
+        <div className='roulette11-table'>
+          <div className='roulette11-table-row'>
+            <div className='roulette11-table-cell'>
               <span>1st12:</span>
               <b>{rouletteStats.c1st12}%</b>
             </div>
-            <div className="roulette11-table-cell">
+            <div className='roulette11-table-cell'>
               <span>2nd12:</span>
               <b>{rouletteStats.c2nd12}%</b>
             </div>
-            <div className="roulette11-table-cell">
+            <div className='roulette11-table-cell'>
               <span>3rd12:</span>
               <b>{rouletteStats.c3rd12}%</b>
             </div>
           </div>
 
-          <div className="roulette11-table-row">
-            <div className="roulette11-table-cell">
+          <div className='roulette11-table-row'>
+            <div className='roulette11-table-cell'>
               <span>1-34:</span>
               <b>{rouletteStats.r1st}%</b>
             </div>
-            <div className="roulette11-table-cell">
+            <div className='roulette11-table-cell'>
               <span>2-35:</span>
               <b>{rouletteStats.r2nd}%</b>
             </div>
-            <div className="roulette11-table-cell">
+            <div className='roulette11-table-cell'>
               <span>3-36:</span>
               <b>{rouletteStats.r3rd}%</b>
             </div>
           </div>
 
-          <div className="roulette11-table-row">
-            <div className="roulette11-table-cell">
-              <span className="text-danger fw-bold">Red:</span>
+          <div className='roulette11-table-row'>
+            <div className='roulette11-table-cell'>
+              <span className='text-danger fw-bold'>Red:</span>
               <b>{rouletteStats.red}%</b>
             </div>
-            <div className="roulette11-table-cell">
-              <span className="text-dark fw-bold">Black:</span>
+            <div className='roulette11-table-cell'>
+              <span className='text-dark fw-bold'>Black:</span>
               <b>{rouletteStats.blk}%</b>
             </div>
           </div>
 
-          <div className="roulette11-table-row">
-            <div className="roulette11-table-cell">
+          <div className='roulette11-table-row'>
+            <div className='roulette11-table-cell'>
               <span>Odd:</span>
               <b>{rouletteStats.odd}%</b>
             </div>
-            <div className="roulette11-table-cell">
+            <div className='roulette11-table-cell'>
               <span>Even:</span>
               <b>{rouletteStats.evn}%</b>
             </div>
           </div>
 
-          <div className="roulette11-table-row">
-            <div className="roulette11-table-cell">
+          <div className='roulette11-table-row'>
+            <div className='roulette11-table-cell'>
               <span>1to18:</span>
               <b>{rouletteStats.t1to18}%</b>
             </div>
-            <div className="roulette11-table-cell">
+            <div className='roulette11-table-cell'>
               <span>19to36:</span>
               <b>{rouletteStats.t19to36}%</b>
             </div>
           </div>
 
           {!isSidebar && (
-            <div className="mt-3 p-2 bg-light border rounded">
-              <div className="d-flex justify-content-between mb-1" style={{ fontSize: '12px' }}>
-                <span className="fw-bold text-danger">🔥 Hot Numbers:</span>
-                <span className="fw-bold">17, 23, 8, 36, 11</span>
+            <div className='bg-light mt-3 rounded border p-2'>
+              <div
+                className='d-flex justify-content-between mb-1'
+                style={{ fontSize: '12px' }}
+              >
+                <span className='fw-bold text-danger'>🔥 Hot Numbers:</span>
+                <span className='fw-bold'>17, 23, 8, 36, 11</span>
               </div>
-              <div className="d-flex justify-content-between" style={{ fontSize: '12px' }}>
-                <span className="fw-bold text-primary">❄️ Cold Numbers:</span>
-                <span className="fw-bold">0, 4, 15, 29, 33</span>
+              <div
+                className='d-flex justify-content-between'
+                style={{ fontSize: '12px' }}
+              >
+                <span className='fw-bold text-primary'>❄️ Cold Numbers:</span>
+                <span className='fw-bold'>0, 4, 15, 29, 33</span>
               </div>
             </div>
           )}
@@ -230,39 +276,75 @@ export default function StatisticsWidget({ isSidebar = false }) {
 
       {/* BACCARAT VIEW */}
       {isBaccarat && (
-        <div className="p-2">
-          <div className="d-flex justify-content-around text-center mb-2" style={{ fontSize: '12px' }}>
+        <div className='p-2'>
+          <div
+            className='d-flex justify-content-around mb-2 text-center'
+            style={{ fontSize: '12px' }}
+          >
             <div>
-              <span className="badge" style={{ backgroundColor: '#086cb8', color: '#fff' }}>Player</span>
-              <div className="fw-bold fs-6 mt-1 text-primary">{baccaratStats.pPct}%</div>
+              <span
+                className='badge'
+                style={{ backgroundColor: '#086cb8', color: '#fff' }}
+              >
+                Player
+              </span>
+              <div className='fw-bold fs-6 text-primary mt-1'>
+                {baccaratStats.pPct}%
+              </div>
             </div>
             <div>
-              <span className="badge" style={{ backgroundColor: '#279532', color: '#fff' }}>Tie</span>
-              <div className="fw-bold fs-6 mt-1 text-success">{baccaratStats.tPct}%</div>
+              <span
+                className='badge'
+                style={{ backgroundColor: '#279532', color: '#fff' }}
+              >
+                Tie
+              </span>
+              <div className='fw-bold fs-6 text-success mt-1'>
+                {baccaratStats.tPct}%
+              </div>
             </div>
             <div>
-              <span className="badge" style={{ backgroundColor: '#ae2130', color: '#fff' }}>Banker</span>
-              <div className="fw-bold fs-6 mt-1 text-danger">{baccaratStats.bPct}%</div>
+              <span
+                className='badge'
+                style={{ backgroundColor: '#ae2130', color: '#fff' }}
+              >
+                Banker
+              </span>
+              <div className='fw-bold fs-6 text-danger mt-1'>
+                {baccaratStats.bPct}%
+              </div>
             </div>
           </div>
 
-          <div className="progress" style={{ height: '14px', borderRadius: '4px' }}>
+          <div
+            className='progress'
+            style={{ height: '14px', borderRadius: '4px' }}
+          >
             <div
-              className="progress-bar"
-              role="progressbar"
-              style={{ width: `${baccaratStats.pPct}%`, backgroundColor: '#086cb8' }}
+              className='progress-bar'
+              role='progressbar'
+              style={{
+                width: `${baccaratStats.pPct}%`,
+                backgroundColor: '#086cb8',
+              }}
               title={`Player: ${baccaratStats.pPct}%`}
             />
             <div
-              className="progress-bar"
-              role="progressbar"
-              style={{ width: `${baccaratStats.tPct}%`, backgroundColor: '#279532' }}
+              className='progress-bar'
+              role='progressbar'
+              style={{
+                width: `${baccaratStats.tPct}%`,
+                backgroundColor: '#279532',
+              }}
               title={`Tie: ${baccaratStats.tPct}%`}
             />
             <div
-              className="progress-bar"
-              role="progressbar"
-              style={{ width: `${baccaratStats.bPct}%`, backgroundColor: '#ae2130' }}
+              className='progress-bar'
+              role='progressbar'
+              style={{
+                width: `${baccaratStats.bPct}%`,
+                backgroundColor: '#ae2130',
+              }}
               title={`Banker: ${baccaratStats.bPct}%`}
             />
           </div>
@@ -271,38 +353,50 @@ export default function StatisticsWidget({ isSidebar = false }) {
 
       {/* DRAGON TIGER VIEW */}
       {isDragonTiger && (
-        <div className="p-2">
-          <div className="d-flex justify-content-around text-center mb-2" style={{ fontSize: '12px' }}>
+        <div className='p-2'>
+          <div
+            className='d-flex justify-content-around mb-2 text-center'
+            style={{ fontSize: '12px' }}
+          >
             <div>
-              <span className="badge bg-warning text-dark">Dragon</span>
-              <div className="fw-bold fs-6 mt-1 text-warning">{dtStats.dPct}%</div>
+              <span className='badge bg-warning text-dark'>Dragon</span>
+              <div className='fw-bold fs-6 text-warning mt-1'>
+                {dtStats.dPct}%
+              </div>
             </div>
             <div>
-              <span className="badge bg-success">Tie</span>
-              <div className="fw-bold fs-6 mt-1 text-success">{dtStats.tiePct}%</div>
+              <span className='badge bg-success'>Tie</span>
+              <div className='fw-bold fs-6 text-success mt-1'>
+                {dtStats.tiePct}%
+              </div>
             </div>
             <div>
-              <span className="badge bg-danger">Tiger</span>
-              <div className="fw-bold fs-6 mt-1 text-danger">{dtStats.tPct}%</div>
+              <span className='badge bg-danger'>Tiger</span>
+              <div className='fw-bold fs-6 text-danger mt-1'>
+                {dtStats.tPct}%
+              </div>
             </div>
           </div>
 
-          <div className="progress" style={{ height: '14px', borderRadius: '4px' }}>
+          <div
+            className='progress'
+            style={{ height: '14px', borderRadius: '4px' }}
+          >
             <div
-              className="progress-bar bg-warning"
-              role="progressbar"
+              className='progress-bar bg-warning'
+              role='progressbar'
               style={{ width: `${dtStats.dPct}%` }}
               title={`Dragon: ${dtStats.dPct}%`}
             />
             <div
-              className="progress-bar bg-success"
-              role="progressbar"
+              className='progress-bar bg-success'
+              role='progressbar'
               style={{ width: `${dtStats.tiePct}%` }}
               title={`Tie: ${dtStats.tiePct}%`}
             />
             <div
-              className="progress-bar bg-danger"
-              role="progressbar"
+              className='progress-bar bg-danger'
+              role='progressbar'
               style={{ width: `${dtStats.tPct}%` }}
               title={`Tiger: ${dtStats.tPct}%`}
             />
@@ -312,36 +406,48 @@ export default function StatisticsWidget({ isSidebar = false }) {
 
       {/* LUCKY 7 VIEW */}
       {isLucky7 && (
-        <div className="p-2">
-          <div className="d-flex justify-content-around text-center mb-2" style={{ fontSize: '12px' }}>
+        <div className='p-2'>
+          <div
+            className='d-flex justify-content-around mb-2 text-center'
+            style={{ fontSize: '12px' }}
+          >
             <div>
-              <span className="badge bg-primary">Low (A-6)</span>
-              <div className="fw-bold fs-6 mt-1 text-primary">{lucky7Stats.lowPct}%</div>
+              <span className='badge bg-primary'>Low (A-6)</span>
+              <div className='fw-bold fs-6 text-primary mt-1'>
+                {lucky7Stats.lowPct}%
+              </div>
             </div>
             <div>
-              <span className="badge bg-warning text-dark">Card 7 (Pivot)</span>
-              <div className="fw-bold fs-6 mt-1 text-dark">{lucky7Stats.pivotPct}%</div>
+              <span className='badge bg-warning text-dark'>Card 7 (Pivot)</span>
+              <div className='fw-bold fs-6 text-dark mt-1'>
+                {lucky7Stats.pivotPct}%
+              </div>
             </div>
             <div>
-              <span className="badge bg-danger">High (8-K)</span>
-              <div className="fw-bold fs-6 mt-1 text-danger">{lucky7Stats.highPct}%</div>
+              <span className='badge bg-danger'>High (8-K)</span>
+              <div className='fw-bold fs-6 text-danger mt-1'>
+                {lucky7Stats.highPct}%
+              </div>
             </div>
           </div>
 
-          <div className="progress" style={{ height: '14px', borderRadius: '4px' }}>
+          <div
+            className='progress'
+            style={{ height: '14px', borderRadius: '4px' }}
+          >
             <div
-              className="progress-bar bg-primary"
-              role="progressbar"
+              className='progress-bar bg-primary'
+              role='progressbar'
               style={{ width: `${lucky7Stats.lowPct}%` }}
             />
             <div
-              className="progress-bar bg-warning"
-              role="progressbar"
+              className='progress-bar bg-warning'
+              role='progressbar'
               style={{ width: `${lucky7Stats.pivotPct}%` }}
             />
             <div
-              className="progress-bar bg-danger"
-              role="progressbar"
+              className='progress-bar bg-danger'
+              role='progressbar'
               style={{ width: `${lucky7Stats.highPct}%` }}
             />
           </div>
@@ -350,20 +456,26 @@ export default function StatisticsWidget({ isSidebar = false }) {
 
       {/* DEFAULT / OTHER GAMES */}
       {!isRoulette && !isBaccarat && !isDragonTiger && !isLucky7 && (
-        <div className="p-2 text-center">
-          <div className="d-flex justify-content-around text-center mb-2" style={{ fontSize: '12px' }}>
+        <div className='p-2 text-center'>
+          <div
+            className='d-flex justify-content-around mb-2 text-center'
+            style={{ fontSize: '12px' }}
+          >
             <div>
-              <span className="badge bg-primary">Side A</span>
-              <div className="fw-bold fs-6 mt-1 text-primary">52%</div>
+              <span className='badge bg-primary'>Side A</span>
+              <div className='fw-bold fs-6 text-primary mt-1'>52%</div>
             </div>
             <div>
-              <span className="badge bg-danger">Side B</span>
-              <div className="fw-bold fs-6 mt-1 text-danger">48%</div>
+              <span className='badge bg-danger'>Side B</span>
+              <div className='fw-bold fs-6 text-danger mt-1'>48%</div>
             </div>
           </div>
-          <div className="progress" style={{ height: '12px', borderRadius: '4px' }}>
-            <div className="progress-bar bg-primary" style={{ width: '52%' }} />
-            <div className="progress-bar bg-danger" style={{ width: '48%' }} />
+          <div
+            className='progress'
+            style={{ height: '12px', borderRadius: '4px' }}
+          >
+            <div className='progress-bar bg-primary' style={{ width: '52%' }} />
+            <div className='progress-bar bg-danger' style={{ width: '48%' }} />
           </div>
         </div>
       )}

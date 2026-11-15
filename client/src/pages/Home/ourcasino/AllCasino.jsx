@@ -2,9 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchCasinoData } from '../../../redux/reducer/casinoSlice';
-import {
-  mapCasinoGames
-} from '../../../utils/casinoCategories';
+import { mapCasinoGames } from '../../../utils/casinoCategories';
 const casinosprev = [
   {
     id: 1,
@@ -377,8 +375,7 @@ function AllCasino() {
 
   const casinos = mapCasinoGames(data);
 
-
-    console.log('Filtered casinos:', casinos);
+  console.log('Filtered casinos:', casinos);
 
   if (casinos.length === 0) {
     if (loader.games) {
@@ -402,7 +399,7 @@ function AllCasino() {
           className='flex flex-col items-center p-0.5'
           onClick={() => {
             // if (PLAYABLE_SLUGS.has(casino.slug)) {
-              navigate(`/casino-bet/${casino.name}/${casino.slug}`);
+            navigate(`/casino-bet/${casino.name}/${casino.slug}`);
             // }
           }}
         >
@@ -417,8 +414,6 @@ function AllCasino() {
           </span>
         </div>
       ))}
-
-
     </div>
   );
 }

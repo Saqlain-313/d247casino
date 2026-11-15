@@ -1,6 +1,7 @@
 import Round from '../models/CasinoRound.js';
 
-const isActive = (s) => ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
+const isActive = (s) =>
+  ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
 
 export const saveCasinoRoundSnapshot = async (slug, data) => {
   if (!data?.mid) return null;

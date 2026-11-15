@@ -20,7 +20,12 @@ function RunnerIcon({ mid, sid, name }) {
   const [imageFailed, setImageFailed] = useState(false);
 
   if (!mid || !sid || imageFailed) {
-    return <FaHorse className='shrink-0 text-2xl text-[#536575]' aria-hidden='true' />;
+    return (
+      <FaHorse
+        className='shrink-0 text-2xl text-[#536575]'
+        aria-hidden='true'
+      />
+    );
   }
 
   return (
@@ -103,10 +108,7 @@ export default function HorseRacingMarkets({
     previousOddsRef.current = currentOdds;
   }, [bettingData, markets]);
 
-  useEffect(
-    () => () => window.clearTimeout(clearChangedTimerRef.current),
-    []
-  );
+  useEffect(() => () => window.clearTimeout(clearChangedTimerRef.current), []);
 
   const handleOddsSelect = (market, runner, odd) => {
     const odds = Number(odd?.odds);
@@ -134,7 +136,9 @@ export default function HorseRacingMarkets({
     <div className='mt-1 min-w-0'>
       <header className='flex min-h-24 items-center justify-between gap-4 rounded-t-md bg-[linear-gradient(110deg,#102c2a,#253d43_55%,#17232c)] px-4 py-3 text-white sm:px-7'>
         <div className='flex items-center gap-3'>
-          <span className='text-3xl' aria-hidden='true'>🐎</span>
+          <span className='text-3xl' aria-hidden='true'>
+            🐎
+          </span>
           <div>
             <div className='text-lg font-bold tracking-wide sm:text-2xl'>
               {venue}
@@ -159,7 +163,10 @@ export default function HorseRacingMarkets({
         </div>
       )}
       {error && (
-        <div className='bg-white px-4 py-4 text-center text-red-700' role='alert'>
+        <div
+          className='bg-white px-4 py-4 text-center text-red-700'
+          role='alert'
+        >
           {error}
         </div>
       )}
@@ -200,8 +207,9 @@ export default function HorseRacingMarkets({
                   .filter((odd) => odd.otype === 'lay')
                   .slice(0, 3);
                 const removed =
-                  String(runner.gstatus || runner.status || '').toUpperCase() ===
-                  'REMOVED';
+                  String(
+                    runner.gstatus || runner.status || ''
+                  ).toUpperCase() === 'REMOVED';
                 const runnerNumber =
                   runner.psrno || runner.sno || runnerIndex + 1;
                 const jockey = getRunnerDetail(runner, [
@@ -269,7 +277,9 @@ export default function HorseRacingMarkets({
                               key={`back-${index}`}
                               type='button'
                               disabled={!odd || Number(odd.odds) <= 0}
-                              onClick={() => odd && handleOddsSelect(market, runner, odd)}
+                              onClick={() =>
+                                odd && handleOddsSelect(market, runner, odd)
+                              }
                               className={`flex min-h-[58px] flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
                                 index === 0
                                   ? 'bg-[#b8d9ed]'
@@ -299,7 +309,9 @@ export default function HorseRacingMarkets({
                               key={`lay-${index}`}
                               type='button'
                               disabled={!odd || Number(odd.odds) <= 0}
-                              onClick={() => odd && handleOddsSelect(market, runner, odd)}
+                              onClick={() =>
+                                odd && handleOddsSelect(market, runner, odd)
+                              }
                               className={`flex min-h-[58px] flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
                                 index === 0
                                   ? 'bg-[#faa9ba]'

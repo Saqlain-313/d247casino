@@ -1,6 +1,7 @@
 // controllers/tennisController.js
 import dotenv from 'dotenv';
-import { fetchMatchList, fetchMatchData } from '../services/matchApi/index.js';
+
+import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
 
 dotenv.config();
 
@@ -8,7 +9,7 @@ export const fetchTennisData = async (req, res) => {
   try {
     const data = await fetchMatchList(2);
 
-    console.log("tenis data", data)
+    console.log('tenis data', data);
 
     const t1Data = data.data.t1 || [];
     const t2Data = data.data.t2 || [];

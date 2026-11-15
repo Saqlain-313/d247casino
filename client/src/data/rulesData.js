@@ -14289,7 +14289,7 @@ Payout&nbsp;:&nbsp;10.0</p>
                                                 <p>Players will be declared winners only if their jodi Number matches the result of the opening draw.</p>
                                                 <p>Only single-digit payout will be applicable.</p>
                                             </div></div>`,
-  "3cardj": (title) => `<div><style type="text/css">
+  '3cardj': (title) => `<div><style type="text/css">
     .rules-section .row.row5 {
         margin-left: -5px;
         margin-right: -5px;
@@ -14431,109 +14431,109 @@ Payout&nbsp;:&nbsp;10.0</p>
 };
 
 export const CASINO_TITLES = {
-  goal2: "Goal 2 Rules",
-  worli3: "Matka Market Rules",
-  dolidana: "Doli Dana Rules",
-  mogambo: "Mogambo Rules",
-  lucky5: "Lucky 6 Rules",
-  roulette12: "Beach Roulette Rules",
-  roulette13: "Roulette Rules",
-  roulette11: "VIP Roulette Rules",
-  poison: "Teenpatti Poison One Day Rules",
-  teenunique: "Unique Teenpatti Rules",
-  poison20: "Teenpatti Poison 20-20 Rules",
-  joker120: "Unlimited Joker 20-20 Rules",
-  joker20: "Teenpatti Joker 20-20 Rules",
-  joker1: "Unlimited Joker Oneday Rules",
-  teen20c: "20-20 Teenpatti C Rules",
-  btable2: "Bollywood Casino 2 Rules",
-  ourroullete: "Unique Roulette Rules",
-  superover3: "Mini SuperOver Rules",
-  goal: "Goal Rules",
-  ab4: "ANDAR BAHAR 150 CARDS Rules",
-  lucky15: "Lucky 15 Rules",
-  superover2: "super over2 Rules",
-  teen41: "Queen Top Open Teenpatti Rules",
-  teen42: "Jack Top Open Teenpatti Rules",
-  sicbo2: "Sic Bo 2 Rules",
-  teen33: "Instant Teenpatti 3.0 Rules",
-  sicbo: "Sic Bo Rules",
-  ballbyball: "Ball By Ball Rules",
-  teen32: "Instant Teenpatti 2.0 Rules",
-  teen: "Teenpatti 1-day Rules",
-  teen20: "20-20 Teenpatti Rules",
-  teen9: "Teenpatti Test Rules",
-  teen8: "Teenpatti Open Rules",
-  poker: "Poker 1-Day Rules",
-  poker20: "20-20 Poker Rules",
-  poker6: "Poker 6 Players Rules",
-  baccarat: "Baccarat Rules",
-  baccarat2: "Baccarat 2 Rules",
-  dt20: "20-20 Dragon Tiger Rules",
-  dt6: "1 Day Dragon Tiger Rules",
-  dtl20: "20-20 D T L Rules",
-  dt202: "20-20 Dragon Tiger 2 Rules",
-  card32: "32 Cards A Rules",
-  card32eu: "32 Cards B Rules",
-  abj: "Andar Bahar 2 Rules",
-  lucky7: "Lucky 7 - A Rules",
-  lucky7eu: "Lucky 7 - B Rules",
-  aaa: "Amar Akbar Anthony Rules",
-  btable: "Bollywood Casino Rules",
-  lottcard: "Lottery Rules",
-  cricketv3: "five five cricket Rules",
-  cmatch20: "Cricket Match 20-20 Rules",
-  teen6: "Teenpatti - 2.0 Rules",
-  race20: "Race 20 Rules",
-  lucky7eu2: "Lucky 7 - C Rules",
-  superover: "super over Rules",
-  trap: "The Trap Rules",
-  patti2: "2 Cards Teenpatti Rules",
-  teensin: "29Card Baccarat Rules",
-  teenmuf: "Muflis Teenpatti Rules",
-  race17: "Race to 17 Rules",
-  teen20b: "20-20 Teenpatti B Rules",
-  trio: "Trio Rules",
-  notenum: "Note Number Rules",
-  teen120: "1 CARD 20-20 Rules",
-  teen1: "1 CARD ONE-DAY Rules",
-  ab3: "ANDAR BAHAR 50 CARDS Rules",
-  aaa2: "Amar Akbar Anthony 2 Rules",
-  race2: "Race to 2nd Rules",
-  teen3: "Instant Teenpatti Rules",
-  dum10: "Dus ka Dum Rules",
-  cmeter1: "1 Card Meter Rules",
-  pteen: "Premium Teenpatti 1-day Rules",
-  pteen20: "Premium 20-20 Teenpatti Rules",
-  pbaccarat: "Premium Baccarat Rules",
-  pdt20: "Premium 20-20 Dragon Tiger Rules",
-  pdt6: "Premium 1 Day Dragon Tiger Rules",
-  pcard32: "Premium 32 Cards Rules",
-  plucky7: "Premium Lucky 7 Rules",
-  vlucky7: "V-Lucky 7 - A Rules",
-  vtrio: "V-Trio Rules",
-  vdtl20: "V-20-20 D T L Rules",
-  vteenmuf: "V-Muflis Teenpatti Rules",
-  vaaa: "V-Amar Akbar Anthony Rules",
-  vbtable: "V-Bollywood Casino Rules",
-  vdt6: "V-1 Day Dragon Tiger Rules",
-  vteen: "V-Teenpatti 1-day Rules",
-  vteen20: "V-20-20 Teenpatti Rules",
-  ab20: "Andar Bahar Rules",
-  worli: "Worli Matka Rules",
-  worli2: "Instant Worli Rules",
-  "3cardj": "3 Cards Judgement Rules",
-  queen: "Queen Rules",
+  goal2: 'Goal 2 Rules',
+  worli3: 'Matka Market Rules',
+  dolidana: 'Doli Dana Rules',
+  mogambo: 'Mogambo Rules',
+  lucky5: 'Lucky 6 Rules',
+  roulette12: 'Beach Roulette Rules',
+  roulette13: 'Roulette Rules',
+  roulette11: 'VIP Roulette Rules',
+  poison: 'Teenpatti Poison One Day Rules',
+  teenunique: 'Unique Teenpatti Rules',
+  poison20: 'Teenpatti Poison 20-20 Rules',
+  joker120: 'Unlimited Joker 20-20 Rules',
+  joker20: 'Teenpatti Joker 20-20 Rules',
+  joker1: 'Unlimited Joker Oneday Rules',
+  teen20c: '20-20 Teenpatti C Rules',
+  btable2: 'Bollywood Casino 2 Rules',
+  ourroullete: 'Unique Roulette Rules',
+  superover3: 'Mini SuperOver Rules',
+  goal: 'Goal Rules',
+  ab4: 'ANDAR BAHAR 150 CARDS Rules',
+  lucky15: 'Lucky 15 Rules',
+  superover2: 'super over2 Rules',
+  teen41: 'Queen Top Open Teenpatti Rules',
+  teen42: 'Jack Top Open Teenpatti Rules',
+  sicbo2: 'Sic Bo 2 Rules',
+  teen33: 'Instant Teenpatti 3.0 Rules',
+  sicbo: 'Sic Bo Rules',
+  ballbyball: 'Ball By Ball Rules',
+  teen32: 'Instant Teenpatti 2.0 Rules',
+  teen: 'Teenpatti 1-day Rules',
+  teen20: '20-20 Teenpatti Rules',
+  teen9: 'Teenpatti Test Rules',
+  teen8: 'Teenpatti Open Rules',
+  poker: 'Poker 1-Day Rules',
+  poker20: '20-20 Poker Rules',
+  poker6: 'Poker 6 Players Rules',
+  baccarat: 'Baccarat Rules',
+  baccarat2: 'Baccarat 2 Rules',
+  dt20: '20-20 Dragon Tiger Rules',
+  dt6: '1 Day Dragon Tiger Rules',
+  dtl20: '20-20 D T L Rules',
+  dt202: '20-20 Dragon Tiger 2 Rules',
+  card32: '32 Cards A Rules',
+  card32eu: '32 Cards B Rules',
+  abj: 'Andar Bahar 2 Rules',
+  lucky7: 'Lucky 7 - A Rules',
+  lucky7eu: 'Lucky 7 - B Rules',
+  aaa: 'Amar Akbar Anthony Rules',
+  btable: 'Bollywood Casino Rules',
+  lottcard: 'Lottery Rules',
+  cricketv3: 'five five cricket Rules',
+  cmatch20: 'Cricket Match 20-20 Rules',
+  teen6: 'Teenpatti - 2.0 Rules',
+  race20: 'Race 20 Rules',
+  lucky7eu2: 'Lucky 7 - C Rules',
+  superover: 'super over Rules',
+  trap: 'The Trap Rules',
+  patti2: '2 Cards Teenpatti Rules',
+  teensin: '29Card Baccarat Rules',
+  teenmuf: 'Muflis Teenpatti Rules',
+  race17: 'Race to 17 Rules',
+  teen20b: '20-20 Teenpatti B Rules',
+  trio: 'Trio Rules',
+  notenum: 'Note Number Rules',
+  teen120: '1 CARD 20-20 Rules',
+  teen1: '1 CARD ONE-DAY Rules',
+  ab3: 'ANDAR BAHAR 50 CARDS Rules',
+  aaa2: 'Amar Akbar Anthony 2 Rules',
+  race2: 'Race to 2nd Rules',
+  teen3: 'Instant Teenpatti Rules',
+  dum10: 'Dus ka Dum Rules',
+  cmeter1: '1 Card Meter Rules',
+  pteen: 'Premium Teenpatti 1-day Rules',
+  pteen20: 'Premium 20-20 Teenpatti Rules',
+  pbaccarat: 'Premium Baccarat Rules',
+  pdt20: 'Premium 20-20 Dragon Tiger Rules',
+  pdt6: 'Premium 1 Day Dragon Tiger Rules',
+  pcard32: 'Premium 32 Cards Rules',
+  plucky7: 'Premium Lucky 7 Rules',
+  vlucky7: 'V-Lucky 7 - A Rules',
+  vtrio: 'V-Trio Rules',
+  vdtl20: 'V-20-20 D T L Rules',
+  vteenmuf: 'V-Muflis Teenpatti Rules',
+  vaaa: 'V-Amar Akbar Anthony Rules',
+  vbtable: 'V-Bollywood Casino Rules',
+  vdt6: 'V-1 Day Dragon Tiger Rules',
+  vteen: 'V-Teenpatti 1-day Rules',
+  vteen20: 'V-20-20 Teenpatti Rules',
+  ab20: 'Andar Bahar Rules',
+  worli: 'Worli Matka Rules',
+  worli2: 'Instant Worli Rules',
+  '3cardj': '3 Cards Judgement Rules',
+  queen: 'Queen Rules',
 };
 
 export function getCasinoRulesModalTitle(eventName, defaultName) {
-  return CASINO_TITLES[eventName] || `${defaultName || "Casino"} Rules`;
+  return CASINO_TITLES[eventName] || `${defaultName || 'Casino'} Rules`;
 }
 
 export function getCasinoRulesModalHtml(slug, name) {
   const ruleFn = INDIVIDUAL_GAME_RULES[slug];
   if (ruleFn) {
-    return typeof ruleFn === "function" ? ruleFn(name) : ruleFn;
+    return typeof ruleFn === 'function' ? ruleFn(name) : ruleFn;
   }
   return `<div class="rules-section"><ul class="pl-4 pr-4 list-style"><li>Rules for ${name} (${slug}) are currently active and governed by official casino guidelines.</li></ul></div>`;
 }
@@ -14590,18 +14590,18 @@ export const SIDEBAR_TABLES = {
 };
 
 export function getCasinoRulesSidebarTable(slug, name) {
-  if (slug === "dolidana") {
+  if (slug === 'dolidana') {
     return SIDEBAR_TABLES.dolidana;
   }
-  if (slug === "vteenmuf" || slug === "teenmuf") {
+  if (slug === 'vteenmuf' || slug === 'teenmuf') {
     return SIDEBAR_TABLES.muflis;
   }
   if (
-    slug.includes("teen") ||
-    slug.includes("joker") ||
-    slug.includes("poison")
+    slug.includes('teen') ||
+    slug.includes('joker') ||
+    slug.includes('poison')
   ) {
     return SIDEBAR_TABLES.teenpatti;
   }
-  return "";
+  return '';
 }

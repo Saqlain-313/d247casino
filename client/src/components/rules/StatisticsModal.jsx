@@ -19,10 +19,10 @@ export default function StatisticsModal() {
 
   return (
     <div
-      className="modal fade show"
-      id="casino-statistics-modal"
-      tabIndex="-1"
-      role="dialog"
+      className='modal fade show'
+      id='casino-statistics-modal'
+      tabIndex='-1'
+      role='dialog'
       style={{
         display: 'block',
         backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -40,9 +40,12 @@ export default function StatisticsModal() {
         }
       }}
     >
-      <div className="modal-dialog modal-lg modal-dialog-centered" style={{ maxWidth: '600px' }}>
+      <div
+        className='modal-dialog modal-lg modal-dialog-centered'
+        style={{ maxWidth: '600px' }}
+      >
         <div
-          className="modal-content shadow-lg"
+          className='modal-content shadow-lg'
           style={{
             borderRadius: '4px',
             overflow: 'hidden',
@@ -51,7 +54,7 @@ export default function StatisticsModal() {
           }}
         >
           <div
-            className="modal-header d-flex justify-content-between align-items-center"
+            className='modal-header d-flex justify-content-between align-items-center'
             style={{
               backgroundColor: '#0088cc',
               color: '#ffffff',
@@ -59,13 +62,16 @@ export default function StatisticsModal() {
               borderBottom: 'none',
             }}
           >
-            <h5 className="modal-title m-0 fw-bold" style={{ fontSize: '18px', color: '#ffffff' }}>
+            <h5
+              className='modal-title fw-bold m-0'
+              style={{ fontSize: '18px', color: '#ffffff' }}
+            >
               Statistics
             </h5>
             <button
-              type="button"
-              id="stats-modal-close-btn"
-              aria-label="Close"
+              type='button'
+              id='stats-modal-close-btn'
+              aria-label='Close'
               onClick={() => setStatisticsModalOpen(false)}
               style={{
                 background: 'none',
@@ -82,7 +88,7 @@ export default function StatisticsModal() {
             </button>
           </div>
 
-          <div className="modal-body p-3" style={{ background: '#f8f9fa' }}>
+          <div className='modal-body p-3' style={{ background: '#f8f9fa' }}>
             <StatisticsWidget isSidebar={false} />
           </div>
         </div>
@@ -90,4 +96,3 @@ export default function StatisticsModal() {
     </div>
   );
 }
-

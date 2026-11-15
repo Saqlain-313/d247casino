@@ -1,12 +1,11 @@
-
 /**
  * routes/casinoRoutes.js
  * Mount: app.use('/api', casinoRoutes);
  */
 
 import { Router } from 'express';
-import * as c from '../controllers/casinobetController.js';
 
+import * as c from '../controllers/casinobetController.js';
 import { authMiddleware } from '../middleware/authMiddleware.js';
 
 const router = Router();

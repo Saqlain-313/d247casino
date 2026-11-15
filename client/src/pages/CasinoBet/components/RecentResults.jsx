@@ -50,28 +50,28 @@ const RecentResults = memo(function RecentResults({
   const items = allItems.slice(0, 10);
 
   return (
-    <div className="mb-25 lg:mb-2">
-      <div className="bg-secondary text-secondary flex items-center justify-between p-1 text-[15px] font-bold">
+    <div className='mb-25 lg:mb-2'>
+      <div className='bg-secondary text-secondary flex items-center justify-between p-1 text-[15px] font-bold'>
         <span>Last Result</span>
         <Link
-          to="/casino-results"
-          className="text-[13px] font-semibold hover:underline"
+          to='/casino-results'
+          className='text-[13px] font-semibold hover:underline'
         >
           View All
         </Link>
       </div>
 
-      <div className="min-h-[52px] overflow-x-auto bg-white px-1 py-1.5">
+      <div className='min-h-[52px] overflow-x-auto bg-white px-1 py-1.5'>
         {directResultsLoading && items.length === 0 ? (
-          <div className="py-2 text-center text-xs text-gray-500">
+          <div className='py-2 text-center text-xs text-gray-500'>
             Loading results...
           </div>
         ) : directResultsError && items.length === 0 ? (
-          <div className="py-2 text-center text-xs text-red-500">
+          <div className='py-2 text-center text-xs text-red-500'>
             Unable to load results
           </div>
         ) : items.length ? (
-          <div className="flex w-full justify-end gap-1.5">
+          <div className='flex w-full justify-end gap-1.5'>
             {items.map((item, index) => {
               const fullName = String(item?.nat || '').trim();
               const label = goalGame
@@ -84,7 +84,7 @@ const RecentResults = memo(function RecentResults({
 
               return (
                 <button
-                  type="button"
+                  type='button'
                   onClick={() =>
                     onItemClick?.({
                       ...item,
@@ -92,9 +92,15 @@ const RecentResults = memo(function RecentResults({
                     })
                   }
                   key={`${item?.mid ?? 'result'}-${index}`}
-                  title={goalGame ? (fullName || 'No result name') : `Result ${label}`}
-                  aria-label={goalGame ? `Result: ${fullName || 'Unknown'}` : `Result ${label}`}
-                  className={`!box-border !flex !h-9 !w-9 !min-h-9 !min-w-9 !max-h-9 !max-w-9 !shrink-0 !aspect-square !items-center !justify-center !rounded-full !border-0 !p-0 !text-center !text-sm !font-extrabold !uppercase !leading-none ${colorClass}`}
+                  title={
+                    goalGame ? fullName || 'No result name' : `Result ${label}`
+                  }
+                  aria-label={
+                    goalGame
+                      ? `Result: ${fullName || 'Unknown'}`
+                      : `Result ${label}`
+                  }
+                  className={`!box-border !flex !aspect-square !h-9 !max-h-9 !min-h-9 !w-9 !max-w-9 !min-w-9 !shrink-0 !items-center !justify-center !rounded-full !border-0 !p-0 !text-center !text-sm !leading-none !font-extrabold !uppercase ${colorClass}`}
                 >
                   {label}
                 </button>
@@ -102,7 +108,7 @@ const RecentResults = memo(function RecentResults({
             })}
           </div>
         ) : (
-          <div className="py-2 text-center text-xs text-gray-500">
+          <div className='py-2 text-center text-xs text-gray-500'>
             No results available
           </div>
         )}

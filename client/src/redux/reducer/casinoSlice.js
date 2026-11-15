@@ -53,7 +53,6 @@ export const fetchCasinoBatingData = createAsyncThunk(
       console.log('[SUCCESS] Casino data:', response.data);
 
       return response.data?.data;
-
     } catch (error) {
       if (
         error.name === 'AbortError' ||
@@ -66,13 +65,11 @@ export const fetchCasinoBatingData = createAsyncThunk(
       console.error('[CASINO ERROR]', error);
 
       return rejectWithValue(
-        error.response?.data?.message ||
-        'Failed to fetch betting data'
+        error.response?.data?.message || 'Failed to fetch betting data'
       );
     }
   }
 );
-
 
 // Async thunk to fetch casino result
 
@@ -81,7 +78,9 @@ export const fetchCasinoResultData = createAsyncThunk(
   'casino/fetchCasinoResultData',
   async (eventName, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/casino-betting-result?eventName=${eventName}`);
+      const response = await api.get(
+        `/casino-betting-result?eventName=${eventName}`
+      );
       return { data: response.data.data, eventName };
     } catch (error) {
       if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {

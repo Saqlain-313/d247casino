@@ -1,37 +1,33 @@
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import dns from 'dns';
 import dotenv from 'dotenv';
 import express from 'express';
 import http from 'http';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dns from 'dns';
 
 import connectDB from './config/db.js';
-
+import { connectRedis } from './config/redis.js';
 import { cronJobGame1p } from './controllers/cronJobs.js';
-
 import downlineRoutes from './routes/admin/downlineRoutes.js';
 import manualResultRoutes from './routes/admin/manualResultRoutes.js';
 import marketAnalizeRoutes from './routes/admin/marketAnalizeRoutes.js';
 import matchSettingsRoutes from './routes/admin/matchSettingsRoute.js';
 import subRouteRoutes from './routes/admin/subAdminRoutes.js';
-
 import betRoute from './routes/betRoute.js';
+import cashoutRoute from './routes/cashoutRoute.js';
+import casinobetRoutes from './routes/casinobetRoutes.js';
 import casinoRoutes from './routes/casinoRoutes.js';
 import crickeRoute from './routes/cricketRoutes.js';
 import horseRacingRoutes from './routes/horseRacingRoutes.js';
+import nonDeclaredRoutes from './routes/nonDeclaredRoutes.js';
 import soccerRoutes from './routes/soccerRoutes.js';
 import tennisRoutes from './routes/tennisRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import cashoutRoute from './routes/cashoutRoute.js';
-import nonDeclaredRoutes from './routes/nonDeclaredRoutes.js';
-import casinobetRoutes from './routes/casinobetRoutes.js'
-
 import { setupWebSocket } from './socket/bettingSocket.js';
-import { connectRedis } from './config/redis.js';
 
 // Environment
 dotenv.config();
@@ -105,17 +101,13 @@ if (APP_TYPE === 'dashboard') {
   app.use(express.static(path.join(__dirname, '../dashboard/dist')));
 
   app.get('*', (req, res) => {
-    res.sendFile(
-      path.join(__dirname, '../dashboard/dist/index.html')
-    );
+    res.sendFile(path.join(__dirname, '../dashboard/dist/index.html'));
   });
 } else {
   app.use(express.static(path.join(__dirname, '../client/dist')));
 
   app.get('*', (req, res) => {
-    res.sendFile(
-      path.join(__dirname, '../client/dist/index.html')
-    );
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });
 }
 
@@ -158,7 +150,6 @@ const startServer = async () => {
         `${APP_TYPE} server running on port ${PORT} (${isLocal ? 'local' : 'prod'})`
       );
     });
-
   } catch (error) {
     console.error('[SERVER STARTUP ERROR]', error);
     process.exit(1);

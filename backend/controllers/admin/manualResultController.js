@@ -7,8 +7,8 @@ import {
   isOddEvenHistoryWin,
   normalizeFancy1Result,
   normalizeOddEvenResult,
-  settleFancyBet,
   settleFancy1Bet,
+  settleFancyBet,
   settleOddEvenBet,
   voidFancyBet,
 } from '../../services/fancyBetSettlementService.js';
@@ -295,15 +295,22 @@ export const settleManualResult = async (req, res) => {
       });
     }
 
-    if (isYesNoBet && !isControlResult && !normalizeFancy1Result(final_result)) {
+    if (
+      isYesNoBet &&
+      !isControlResult &&
+      !normalizeFancy1Result(final_result)
+    ) {
       return res.status(400).json({
         success: false,
-        message:
-          'fancy1 markets require a Yes/No result (yes, no, 1, or 0)',
+        message: 'fancy1 markets require a Yes/No result (yes, no, 1, or 0)',
       });
     }
 
-    if (isOddEvenBet && !isControlResult && !normalizeOddEvenResult(final_result)) {
+    if (
+      isOddEvenBet &&
+      !isControlResult &&
+      !normalizeOddEvenResult(final_result)
+    ) {
       return res.status(400).json({
         success: false,
         message:
@@ -437,10 +444,7 @@ export const settleManualResult = async (req, res) => {
             : await voidSportsBet(bet);
 
           if (!voidResult.success) {
-            console.error(
-              `Failed to void bet ${bet._id}:`,
-              voidResult.message
-            );
+            console.error(`Failed to void bet ${bet._id}:`, voidResult.message);
             continue;
           }
 

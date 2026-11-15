@@ -183,8 +183,6 @@ export const getFancyMasterBook = createAsyncThunk(
   }
 );
 
-
-
 export const getBetHistory = createAsyncThunk(
   'bet/getBetHistory',
   async (
@@ -226,12 +224,9 @@ export const getBetHistory = createAsyncThunk(
         params.append('selectedVoid', selectedVoid);
       }
 
-      const response = await api.get(
-        `/user/bet/history?${params.toString()}`,
-        {
-          withCredentials: true,
-        }
-      );
+      const response = await api.get(`/user/bet/history?${params.toString()}`, {
+        withCredentials: true,
+      });
 
       console.log('Bet History Response:', response.data);
 
@@ -250,7 +245,6 @@ export const getBetHistory = createAsyncThunk(
     }
   }
 );
-
 
 export const getTransactionHistory = createAsyncThunk(
   'bet/getTransHistory',
@@ -366,30 +360,27 @@ const betSlice = createSlice({
         state.loading = false;
         state.errorMessage = payload?.message || 'Something went wrong';
       })
-    
-.addCase(getBetHistory.pending, (state) => {
-  state.loading = true;
-  state.errorMessage = '';
-  state.successMessage = '';
-})
 
-.addCase(getBetHistory.fulfilled, (state, { payload }) => {
-  state.loading = false;
+      .addCase(getBetHistory.pending, (state) => {
+        state.loading = true;
+        state.errorMessage = '';
+        state.successMessage = '';
+      })
 
-  state.betHistory = Array.isArray(payload?.data)
-    ? payload.data
-    : [];
+      .addCase(getBetHistory.fulfilled, (state, { payload }) => {
+        state.loading = false;
 
-  state.pagination = payload?.pagination || {};
-  state.successMessage = payload?.message || '';
-})
+        state.betHistory = Array.isArray(payload?.data) ? payload.data : [];
 
-.addCase(getBetHistory.rejected, (state, { payload }) => {
-  state.loading = false;
-  state.betHistory = [];
-  state.errorMessage =
-    payload?.message || 'Something went wrong';
-})
+        state.pagination = payload?.pagination || {};
+        state.successMessage = payload?.message || '';
+      })
+
+      .addCase(getBetHistory.rejected, (state, { payload }) => {
+        state.loading = false;
+        state.betHistory = [];
+        state.errorMessage = payload?.message || 'Something went wrong';
+      })
 
       .addCase(getTransactionHistory.pending, (state) => {
         state.loading = true;

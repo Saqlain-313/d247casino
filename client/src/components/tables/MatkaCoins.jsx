@@ -14,27 +14,32 @@ export default function MatkaCoins() {
   const { selectedChip, setSelectedChip } = useCasino();
 
   return (
-    <div className="matka-coins">
-      <div className="matka-coin-title">
+    <div className='matka-coins'>
+      <div className='matka-coin-title'>
         <span>SELECT COIN:</span>
         <button
-          type="button"
-          className="btn btn-sm btn-outline-light ms-2"
+          type='button'
+          className='btn btn-sm btn-outline-light ms-2'
           onClick={() => setSelectedChip(100)}
         >
           Reset
         </button>
       </div>
 
-      <div className="matka-total-coin">
-        <div className="bet-chip-holder" style={{ '--g-chip-inner-color': '#138cf5' }}>
-          <div className="casino-coin active">
-            <span className="fw-bold">{selectedChip >= 1000 ? `${selectedChip / 1000}K` : selectedChip}</span>
+      <div className='matka-total-coin'>
+        <div
+          className='bet-chip-holder'
+          style={{ '--g-chip-inner-color': '#138cf5' }}
+        >
+          <div className='casino-coin active'>
+            <span className='fw-bold'>
+              {selectedChip >= 1000 ? `${selectedChip / 1000}K` : selectedChip}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="matka-other-coins d-flex gap-1 flex-wrap">
+      <div className='matka-other-coins d-flex flex-wrap gap-1'>
         {MATKA_CHIPS.map((chip) => {
           const isActive = selectedChip === chip.val;
           return (
@@ -54,7 +59,9 @@ export default function MatkaCoins() {
                 color: '#fff',
                 fontWeight: 'bold',
                 fontSize: '12px',
-                border: isActive ? '2px solid #fdcf13' : '1px solid rgba(255,255,255,0.4)',
+                border: isActive
+                  ? '2px solid #fdcf13'
+                  : '1px solid rgba(255,255,255,0.4)',
                 boxShadow: isActive ? '0 0 8px #fdcf13' : 'none',
               }}
               title={`Chip ₹${chip.val}`}
@@ -67,4 +74,3 @@ export default function MatkaCoins() {
     </div>
   );
 }
-

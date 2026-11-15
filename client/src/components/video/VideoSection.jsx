@@ -7,4 +7,3 @@ export default function VideoSection() {
   const { isVirtual } = useCasino();
   return isVirtual ? <VirtualVideoPlayer /> : <LiveVideoPlayer />;
 }
-

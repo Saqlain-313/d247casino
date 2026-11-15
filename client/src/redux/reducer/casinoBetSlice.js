@@ -1,5 +1,5 @@
-
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+
 import api from '../api';
 
 // --------------------------------------------------
@@ -20,7 +20,10 @@ const getErrorMessage = (error) => {
 // --------------------------------------------------
 export const placeCasinoBet = createAsyncThunk(
   'casinoBet/placeBet',
-  async ({ slug, autoRetry = true, ...formData }, { rejectWithValue, dispatch }) => {
+  async (
+    { slug, autoRetry = true, ...formData },
+    { rejectWithValue, dispatch }
+  ) => {
     const send = (body) =>
       api.post(`/casino/${slug}/bet`, body, { withCredentials: true });
 
@@ -102,10 +105,9 @@ export const getCasinoBook = createAsyncThunk(
   'casinoBet/getBook',
   async ({ slug, roundId }, { rejectWithValue }) => {
     try {
-      const response = await api.get(
-        `/casino/${slug}/book/${roundId}`,
-        { withCredentials: true }
-      );
+      const response = await api.get(`/casino/${slug}/book/${roundId}`, {
+        withCredentials: true,
+      });
 
       return response.data;
     } catch (error) {
@@ -123,18 +125,15 @@ export const getMyCasinoBets = createAsyncThunk(
   async (slugOrParams, { rejectWithValue }) => {
     try {
       const slug =
-        typeof slugOrParams === 'string'
-          ? slugOrParams
-          : slugOrParams?.slug;
+        typeof slugOrParams === 'string' ? slugOrParams : slugOrParams?.slug;
 
       if (!slug) {
         return rejectWithValue('Casino slug is required');
       }
 
-      const response = await api.get(
-        `/casino/${slug}/my-bets`,
-        { withCredentials: true }
-      );
+      const response = await api.get(`/casino/${slug}/my-bets`, {
+        withCredentials: true,
+      });
 
       return response.data;
     } catch (error) {
@@ -151,10 +150,9 @@ export const getCasinoStats = createAsyncThunk(
   'casinoBet/getStats',
   async (slug, { rejectWithValue }) => {
     try {
-      const response = await api.get(
-        `/casino/${slug}/stats`,
-        { withCredentials: true }
-      );
+      const response = await api.get(`/casino/${slug}/stats`, {
+        withCredentials: true,
+      });
 
       return response.data;
     } catch (error) {
@@ -171,16 +169,13 @@ export const getDirectCasinoResultByDate = createAsyncThunk(
   'casinoBet/getDirectCasinoResultByDate',
   async ({ date, eventName }, { rejectWithValue }) => {
     try {
-      const response = await api.get(
-        '/casino/direct-result-by-date',
-        {
-          params: {
-            date,
-            eventName,
-          },
-          withCredentials: true,
-        }
-      );
+      const response = await api.get('/casino/direct-result-by-date', {
+        params: {
+          date,
+          eventName,
+        },
+        withCredentials: true,
+      });
 
       return response.data;
     } catch (error) {
@@ -411,14 +406,15 @@ const betSlice = createSlice({
 
       .addCase(getDirectCasinoResultByDate.fulfilled, (state, action) => {
         state.directCasinoResultLoading = false;
-        state.directCasinoResult =
-          action.payload?.data ?? action.payload;
+        state.directCasinoResult = action.payload?.data ?? action.payload;
       })
 
       .addCase(getDirectCasinoResultByDate.rejected, (state, action) => {
         state.directCasinoResultLoading = false;
         state.directCasinoResultError =
-          action.payload || action.error?.message || 'Failed to fetch casino result';
+          action.payload ||
+          action.error?.message ||
+          'Failed to fetch casino result';
       });
   },
 });

@@ -23,7 +23,8 @@ const CATEGORY_RULES = [
   { name: 'Race', test: ({ name }) => /\brace/i.test(name) },
   {
     name: 'Sports',
-    test: ({ name }) => /cricket|super\s*over|\bgoal\b|ball by ball/i.test(name),
+    test: ({ name }) =>
+      /cricket|super\s*over|\bgoal\b|ball by ball/i.test(name),
   },
   {
     name: 'Teenpatti',

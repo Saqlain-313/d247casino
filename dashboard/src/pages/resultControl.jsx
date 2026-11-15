@@ -19,7 +19,10 @@ const isValidOddEvenResult = (value) => {
 };
 
 const getGameColor = (gameType) => {
-  if (FANCY_SCORE_GAME_TYPES.includes(gameType) || YES_NO_GAME_TYPES.includes(gameType)) {
+  if (
+    FANCY_SCORE_GAME_TYPES.includes(gameType) ||
+    YES_NO_GAME_TYPES.includes(gameType)
+  ) {
     return 'bg-orange-100 text-orange-800';
   }
   if (ODD_EVEN_GAME_TYPES.includes(gameType)) {
@@ -151,9 +154,16 @@ const ResultControl = () => {
 
     if (YES_NO_GAME_TYPES.includes(game.gameType) && !isControlResult) {
       const normalized = String(finalResult).trim().toLowerCase();
-      const validYesNo = ['yes', 'no', 'y', 'n', '1', '0', 'true', 'false'].includes(
-        normalized
-      );
+      const validYesNo = [
+        'yes',
+        'no',
+        'y',
+        'n',
+        '1',
+        '0',
+        'true',
+        'false',
+      ].includes(normalized);
       if (!validYesNo) {
         toast.error('fancy1 markets require a Yes or No result');
         return;
@@ -662,7 +672,13 @@ const ResultControl = () => {
                               <tr>
                                 <th className='px-1 py-1 text-left'>User</th>
                                 <th className='px-1 py-1 text-left'>
-                                  {isScoreFancy ? 'Market / Score' : isFancy1Bet ? 'Proposition' : isOddEvenBet ? 'Market / Side' : 'Selection'}
+                                  {isScoreFancy
+                                    ? 'Market / Score'
+                                    : isFancy1Bet
+                                      ? 'Proposition'
+                                      : isOddEvenBet
+                                        ? 'Market / Side'
+                                        : 'Selection'}
                                 </th>
                                 <th className='px-1 py-1 text-center'>Type</th>
                                 <th className='px-1 py-1 text-right'>P/L</th>
@@ -688,7 +704,7 @@ const ResultControl = () => {
                                         <span className='text-gray-600'>
                                           {b.marketName}
                                         </span>{' '}
-                                        <span className='font-bold uppercase text-violet-700'>
+                                        <span className='font-bold text-violet-700 uppercase'>
                                           {b.teamName}
                                         </span>
                                       </span>
@@ -696,7 +712,7 @@ const ResultControl = () => {
                                       <span>
                                         {b.teamName}
                                         {isFancy1Bet && (
-                                          <span className='ml-1 uppercase text-orange-600'>
+                                          <span className='ml-1 text-orange-600 uppercase'>
                                             ({b.otype})
                                           </span>
                                         )}

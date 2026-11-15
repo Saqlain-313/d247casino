@@ -13,38 +13,58 @@ export default function MatkaTabs() {
   const bazaars =
     selectedGame === 'worli2'
       ? [
-          { id: 'bazaar-1', name: 'Instant Worli Fast', closeTime: '00:45', countdown: timeFormatted },
+          {
+            id: 'bazaar-1',
+            name: 'Instant Worli Fast',
+            closeTime: '00:45',
+            countdown: timeFormatted,
+          },
         ]
       : [
-          { id: 'bazaar-1', name: 'Kalyan Morning', closeTime: '10:45 AM', countdown: timeFormatted },
-          { id: 'bazaar-2', name: 'Time Syndicate', closeTime: '01:30 PM', countdown: '12:45' },
-          { id: 'bazaar-3', name: 'Milan Day', closeTime: '03:15 PM', countdown: '25:10' },
+          {
+            id: 'bazaar-1',
+            name: 'Kalyan Morning',
+            closeTime: '10:45 AM',
+            countdown: timeFormatted,
+          },
+          {
+            id: 'bazaar-2',
+            name: 'Time Syndicate',
+            closeTime: '01:30 PM',
+            countdown: '12:45',
+          },
+          {
+            id: 'bazaar-3',
+            name: 'Milan Day',
+            closeTime: '03:15 PM',
+            countdown: '25:10',
+          },
         ];
 
   return (
-    <div className="matka-tabs">
-      <ul className="nav nav-pills">
+    <div className='matka-tabs'>
+      <ul className='nav nav-pills'>
         {bazaars.map((b) => {
           const isActive = activeBazaar === b.id;
           return (
-            <li className="nav-item" key={b.id}>
+            <li className='nav-item' key={b.id}>
               <a
                 className={`nav-link ${isActive ? 'active' : ''}`}
-                href="javascript:void(0)"
+                href='javascript:void(0)'
                 onClick={(e) => {
                   e.preventDefault();
                   setActiveBazaar(b.id);
                 }}
               >
                 <span>{b.name}</span>
-                <div className="remaining-time">
+                <div className='remaining-time'>
                   <img
-                    src="/assets/img/clock.png"
+                    src='/assets/img/clock.png'
                     onError={(e) => {
                       e.currentTarget.src =
                         'https://cdn.926assets.com/g3ver/v107/static/front/img/clock.png';
                     }}
-                    alt="clock"
+                    alt='clock'
                   />
                   <span>{isActive ? b.countdown : b.closeTime}</span>
                 </div>
@@ -56,4 +76,3 @@ export default function MatkaTabs() {
     </div>
   );
 }
-

@@ -47,7 +47,9 @@ const formatExplicitDateTime = (value) => {
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-  }).format(parsed).replace(',', '');
+  })
+    .format(parsed)
+    .replace(',', '');
 };
 
 const ResultPopup = ({ item, onClose, gameId }) => {
@@ -67,7 +69,11 @@ const ResultPopup = ({ item, onClose, gameId }) => {
   const resultName = String(item.nat || item.name || item.selection || winner);
 
   const explicitDateTime =
-    item.matchDateTime || item.match_datetime || item.dateTime || item.matchTime || item.match_time;
+    item.matchDateTime ||
+    item.match_datetime ||
+    item.dateTime ||
+    item.matchTime ||
+    item.match_time;
   const explicitDate =
     item.resultDate || item.date || item.matchDate || item.match_date;
   const dateText = formatDate(explicitDate);
@@ -83,45 +89,44 @@ const ResultPopup = ({ item, onClose, gameId }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3"
+      className='fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3'
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose?.();
       }}
     >
       <section
-        role="dialog"
-        aria-modal="true"
+        role='dialog'
+        aria-modal='true'
         aria-label={`${gameId || 'Casino'} result`}
-        className="w-full max-w-[760px] overflow-hidden rounded-sm bg-white shadow-2xl"
+        className='w-full max-w-[760px] overflow-hidden rounded-sm bg-white shadow-2xl'
       >
-        <header className="flex items-center justify-between bg-[#0788c9] px-4 py-3 text-white">
-          <h2 className="text-xl font-bold">
+        <header className='flex items-center justify-between bg-[#0788c9] px-4 py-3 text-white'>
+          <h2 className='text-xl font-bold'>
             {(item.ename || item.cname || gameId || 'Casino').toString()} Result
           </h2>
-          
-<button
-  type="button"
-  onClick={onClose}
-  aria-label="Close result"
-  className="!flex !h-12 !w-12 !shrink-0 !items-center !justify-center !border-0 !bg-transparent !p-0 !text-white hover:!opacity-75"
->
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
-    className="!h-9 !w-9"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="3"
-    strokeLinecap="round"
-  >
-    <path d="M18 6 6 18M6 6l12 12" />
-  </svg>
-</button>
 
+          <button
+            type='button'
+            onClick={onClose}
+            aria-label='Close result'
+            className='!flex !h-12 !w-12 !shrink-0 !items-center !justify-center !border-0 !bg-transparent !p-0 !text-white hover:!opacity-75'
+          >
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              viewBox='0 0 24 24'
+              className='!h-9 !w-9'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='3'
+              strokeLinecap='round'
+            >
+              <path d='M18 6 6 18M6 6l12 12' />
+            </svg>
+          </button>
         </header>
 
-        <div className="max-h-[80vh] overflow-y-auto p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm md:text-lg">
+        <div className='max-h-[80vh] overflow-y-auto p-4'>
+          <div className='flex flex-wrap items-center justify-between gap-2 text-sm md:text-lg'>
             <p>
               <strong>Round Id:</strong> {String(roundId)}
             </p>
@@ -131,32 +136,32 @@ const ResultPopup = ({ item, onClose, gameId }) => {
           </div>
 
           {goalGame ? (
-            <div className="flex min-h-[260px] flex-col items-center justify-center gap-5 py-8 text-center">
-              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#315d3b] text-5xl font-extrabold uppercase text-[#ffd52a]">
+            <div className='flex min-h-[260px] flex-col items-center justify-center gap-5 py-8 text-center'>
+              <div className='flex h-28 w-28 items-center justify-center rounded-full bg-[#315d3b] text-5xl font-extrabold text-[#ffd52a] uppercase'>
                 {resultName.trim().charAt(0).toUpperCase() || '-'}
               </div>
               <div>
-                <p className="text-xl font-extrabold uppercase text-black md:text-2xl">
+                <p className='text-xl font-extrabold text-black uppercase md:text-2xl'>
                   Goal scored by
                 </p>
-                <p className="mt-2 text-2xl font-black uppercase text-[#0788c9] md:text-3xl">
+                <p className='mt-2 text-2xl font-black text-[#0788c9] uppercase md:text-3xl'>
                   {resultName}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[220px] flex-col items-center justify-center gap-4 py-8 text-center">
-              <div className="text-sm font-semibold uppercase text-gray-500">
+            <div className='flex min-h-[220px] flex-col items-center justify-center gap-4 py-8 text-center'>
+              <div className='text-sm font-semibold text-gray-500 uppercase'>
                 Winning Result
               </div>
-              <div className="flex h-24 min-w-24 items-center justify-center rounded-full bg-[#315d3b] px-5 text-3xl font-black text-yellow-300">
+              <div className='flex h-24 min-w-24 items-center justify-center rounded-full bg-[#315d3b] px-5 text-3xl font-black text-yellow-300'>
                 {resultLabel}
               </div>
-              <p className="text-xl font-bold uppercase">{winner}</p>
+              <p className='text-xl font-bold uppercase'>{winner}</p>
             </div>
           )}
 
-          <div className="border-t border-gray-200 pt-3 text-center text-xs text-gray-500">
+          <div className='border-t border-gray-200 pt-3 text-center text-xs text-gray-500'>
             Result information supplied by the casino result API.
           </div>
         </div>
