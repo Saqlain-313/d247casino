@@ -6,9 +6,9 @@ import {
   fetchCasinoResult as apiFetchCasinoResult,
   fetchCricketFancyResult as apiFetchCricketFancyResult,
   fetchMatchList as apiFetchMatchList,
+  getProviderName,
   getResult as apiGetResult,
   sendBetIncoming as apiSendBetIncoming,
-  getProviderName
 } from '../services/matchApi/index.js';
 
 dotenv.config();
@@ -36,7 +36,8 @@ import betModel from '../models/betModel.js';
 import SubAdmin from '../models/subAdminModel.js';
 import TransactionHistory from '../models/transtionHistoryModel.js';
 import {
-  cachedData, clients,
+  cachedData,
+  clients,
   sendBalanceUpdates,
   sendExposureUpdates,
   sendOpenBetsUpdates,
@@ -45,7 +46,7 @@ import { getDateRangeUTC } from '../utils/dateUtils.js';
 import {
   calculateAllExposure,
   FANCY_GAME_TYPES,
-  validateFancyBetBalance
+  validateFancyBetBalance,
 } from '../utils/exposureUtils.js';
 import { validateBetWithNewBetOffset } from '../utils/marketCalculationUtils.js';
 import { isCasinoGame } from './casinoController.js';
@@ -868,7 +869,7 @@ const placeBet = async (req, res) => {
       tno,
     } = req.body;
 
-    console.log(req.body,"[BET] Received bet request from userId:", id);
+    console.log(req.body, '[BET] Received bet request from userId:', id);
 
     // Validate required fields
     if (!gameId || !sid || !price || !xValue || !gameName || !teamName) {
@@ -2932,7 +2933,6 @@ export const updateResultOfCasinoBets = async (req, res) => {
     });
 
     await Promise.all(socketUpdates);
-    console.timeEnd('CASINO_SOCKET_UPDATES');
     console.log(
       ` WebSocket updates sent for ${allProcessedUserIds.length} users`
     );
@@ -3377,9 +3377,7 @@ export const updateFancyBetResult = async (req, res) => {
 
               for (const plan of rowPlans) {
                 if (plan.isVoid) {
-                  console.log(
-                    ` [FANCY BETHISTORY] Voided: ${plan._id}`
-                  );
+                  console.log(` [FANCY BETHISTORY] Voided: ${plan._id}`);
                 } else {
                   console.log(
                     ` [FANCY BETHISTORY] Settled: ${plan._id} Status:${plan.status} P/L:${plan.profitLossChange}`
@@ -3941,8 +3939,7 @@ export const reconcileOrphanedBetHistory = async () => {
               historyTeam &&
               betResult &&
               historyTeam.toLowerCase() === betResult.toLowerCase();
-            isWin =
-              historyRecord.otype === 'back' ? teamMatches : !teamMatches;
+            isWin = historyRecord.otype === 'back' ? teamMatches : !teamMatches;
           }
 
           let historyStatus;

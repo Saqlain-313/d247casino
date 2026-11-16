@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -31,8 +29,14 @@ function PlaceBet({
 }) {
   console.log('selectedBet', selectedBet);
   const dispatch = useDispatch();
-  const { loading, errorMessage, successMessage, pendingBetAmounts, pendingBet, cashoutPL } =
-    useSelector((state) => state.bet);
+  const {
+    loading,
+    errorMessage,
+    successMessage,
+    pendingBetAmounts,
+    pendingBet,
+    cashoutPL,
+  } = useSelector((state) => state.bet);
   const { userInfo } = useSelector((state) => state.auth);
 
   const DEFAULT_GAME_STAKES = [

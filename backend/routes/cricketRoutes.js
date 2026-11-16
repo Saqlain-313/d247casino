@@ -4,7 +4,7 @@ import {
   fetchCrirketBettingData,
   getCricketData,
   getDiamondEvents,
-  getDiamondEventsData
+  getDiamondEventsData,
 } from '../controllers/cricketController.js';
 // import { proxyLiveStream } from "../controllers/videoProxy.js";
 

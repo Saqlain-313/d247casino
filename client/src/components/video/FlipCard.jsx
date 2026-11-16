@@ -11,7 +11,7 @@ export default function FlipCard({
 }) {
   const [localFlip, setLocalFlip] = useState(false);
 
-  const effectiveFlipped = onToggle ? isFlipped : (isFlipped || localFlip);
+  const effectiveFlipped = onToggle ? isFlipped : isFlipped || localFlip;
 
   const handleClick = (e) => {
     e.stopPropagation();
@@ -34,13 +34,13 @@ export default function FlipCard({
         flexShrink: 0,
         ...style,
       }}
-      title="Click to flip card"
+      title='Click to flip card'
     >
       <div className={`flip-card-inner ${effectiveFlipped ? 'flip' : ''}`}>
-        <div className="flip-card-front">
-          <img src="/assets/img/cards/1.jpg" alt="Back" />
+        <div className='flip-card-front'>
+          <img src='/assets/img/cards/1.jpg' alt='Back' />
         </div>
-        <div className="flip-card-back">
+        <div className='flip-card-back'>
           <img
             src={`/assets/img/cards/${card}.jpg`}
             onError={(e) => {
@@ -53,4 +53,3 @@ export default function FlipCard({
     </div>
   );
 }
-

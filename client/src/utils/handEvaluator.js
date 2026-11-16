@@ -5,18 +5,41 @@
 
 // Card ranks from 2 to 14 (Ace = 14)
 const RANK_VALUES = {
-  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-  '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+  2: 2,
+  3: 3,
+  4: 4,
+  5: 5,
+  6: 6,
+  7: 7,
+  8: 8,
+  9: 9,
+  10: 10,
+  J: 11,
+  Q: 12,
+  K: 13,
+  A: 14,
 };
 
 // DTL specific rank: Ace is 1, King is 13
 const DTL_RANK_VALUES = {
-  'A': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7,
-  '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13
+  A: 1,
+  2: 2,
+  3: 3,
+  4: 4,
+  5: 5,
+  6: 6,
+  7: 7,
+  8: 8,
+  9: 9,
+  10: 10,
+  J: 11,
+  Q: 12,
+  K: 13,
 };
 
 export function parseCard(cardStr) {
-  if (!cardStr || typeof cardStr !== 'string') return { rank: 2, suit: 'S', code: '2SS' };
+  if (!cardStr || typeof cardStr !== 'string')
+    return { rank: 2, suit: 'S', code: '2SS' };
   const str = cardStr.trim();
   // Handle cards like '10DD', 'JSS', 'ADD', '8HH', '7CC'
   let rankStr = '';
@@ -44,7 +67,8 @@ export function parseCard(cardStr) {
  * 1: High Card
  */
 export function evaluateTeenPattiHand(cardStrings) {
-  if (!cardStrings || cardStrings.length < 3) return { type: 1, typeName: 'High Card', rank: 0 };
+  if (!cardStrings || cardStrings.length < 3)
+    return { type: 1, typeName: 'High Card', rank: 0 };
   const cards = cardStrings.map(parseCard).sort((a, b) => b.rank - a.rank);
 
   const [c1, c2, c3] = cards;
@@ -52,7 +76,12 @@ export function evaluateTeenPattiHand(cardStrings) {
 
   // Check Trio
   if (c1.rank === c2.rank && c2.rank === c3.rank) {
-    return { type: 6, typeName: 'Trio', score: 60000 + c1.rank * 100, highRank: c1.rank };
+    return {
+      type: 6,
+      typeName: 'Trio',
+      score: 60000 + c1.rank * 100,
+      highRank: c1.rank,
+    };
   }
 
   // Check Sequence (A-2-3 is lowest or second highest; standard A-K-Q is 14-13-12)
@@ -61,44 +90,81 @@ export function evaluateTeenPattiHand(cardStrings) {
   const isStraight = isNormalSeq || isA23;
 
   if (isStraight && isFlush) {
-    return { type: 5, typeName: 'Pure Sequence', score: 50000 + (isA23 ? 3 : c1.rank) * 100, highRank: isA23 ? 3 : c1.rank };
+    return {
+      type: 5,
+      typeName: 'Pure Sequence',
+      score: 50000 + (isA23 ? 3 : c1.rank) * 100,
+      highRank: isA23 ? 3 : c1.rank,
+    };
   }
 
   if (isStraight) {
-    return { type: 4, typeName: 'Sequence', score: 40000 + (isA23 ? 3 : c1.rank) * 100, highRank: isA23 ? 3 : c1.rank };
+    return {
+      type: 4,
+      typeName: 'Sequence',
+      score: 40000 + (isA23 ? 3 : c1.rank) * 100,
+      highRank: isA23 ? 3 : c1.rank,
+    };
   }
 
   if (isFlush) {
-    return { type: 3, typeName: 'Color', score: 30000 + c1.rank * 100 + c2.rank * 10 + c3.rank, highRank: c1.rank };
+    return {
+      type: 3,
+      typeName: 'Color',
+      score: 30000 + c1.rank * 100 + c2.rank * 10 + c3.rank,
+      highRank: c1.rank,
+    };
   }
 
   // Check Pair
   if (c1.rank === c2.rank) {
-    return { type: 2, typeName: 'Pair', score: 20000 + c1.rank * 100 + c3.rank, highRank: c1.rank };
+    return {
+      type: 2,
+      typeName: 'Pair',
+      score: 20000 + c1.rank * 100 + c3.rank,
+      highRank: c1.rank,
+    };
   }
   if (c2.rank === c3.rank) {
-    return { type: 2, typeName: 'Pair', score: 20000 + c2.rank * 100 + c1.rank, highRank: c2.rank };
+    return {
+      type: 2,
+      typeName: 'Pair',
+      score: 20000 + c2.rank * 100 + c1.rank,
+      highRank: c2.rank,
+    };
   }
   if (c1.rank === c3.rank) {
-    return { type: 2, typeName: 'Pair', score: 20000 + c1.rank * 100 + c2.rank, highRank: c1.rank };
+    return {
+      type: 2,
+      typeName: 'Pair',
+      score: 20000 + c1.rank * 100 + c2.rank,
+      highRank: c1.rank,
+    };
   }
 
   // High Card
-  return { type: 1, typeName: 'High Card', score: 10000 + c1.rank * 100 + c2.rank * 10 + c3.rank, highRank: c1.rank };
+  return {
+    type: 1,
+    typeName: 'High Card',
+    score: 10000 + c1.rank * 100 + c2.rank * 10 + c3.rank,
+    highRank: c1.rank,
+  };
 }
 
 export function compareTeenPatti(cardsA, cardsB) {
   const handA = evaluateTeenPattiHand(cardsA);
   const handB = evaluateTeenPattiHand(cardsB);
 
-  if (handA.score > handB.score) return { winner: 'A', handA, handB, isTie: false };
-  if (handB.score > handA.score) return { winner: 'B', handA, handB, isTie: false };
+  if (handA.score > handB.score)
+    return { winner: 'A', handA, handB, isTie: false };
+  if (handB.score > handA.score)
+    return { winner: 'B', handA, handB, isTie: false };
   return { winner: 'TIE', handA, handB, isTie: true }; // Official push on main bet tie
 }
 
 // Suit ranking for 3 Baccarat Condition 4: Spades > Hearts > Clubs > Diamonds
-const SUIT_RANK = { 'S': 4, 'H': 3, 'C': 2, 'D': 1 };
-const FACE_RANKS = { 'K': 13, 'Q': 12, 'J': 11 };
+const SUIT_RANK = { S: 4, H: 3, C: 2, D: 1 };
+const FACE_RANKS = { K: 13, Q: 12, J: 11 };
 
 function getBaccaratCardPoints(rankStr) {
   if (['10', 'J', 'Q', 'K'].includes(rankStr)) return 0;
@@ -135,8 +201,10 @@ export function evaluate3Baccarat(cardsA, cardsB) {
   if (isTrioA && !isTrioB) return { winner: 'A', criteria: 1, reason: 'Trio' };
   if (!isTrioA && isTrioB) return { winner: 'B', criteria: 1, reason: 'Trio' };
   if (isTrioA && isTrioB) {
-    if (pA[0].rank > pB[0].rank) return { winner: 'A', criteria: 1, reason: 'Higher Trio' };
-    if (pB[0].rank > pA[0].rank) return { winner: 'B', criteria: 1, reason: 'Higher Trio' };
+    if (pA[0].rank > pB[0].rank)
+      return { winner: 'A', criteria: 1, reason: 'Higher Trio' };
+    if (pB[0].rank > pA[0].rank)
+      return { winner: 'B', criteria: 1, reason: 'Higher Trio' };
   }
 
   // Criteria 2: All 3 face cards
@@ -144,38 +212,75 @@ export function evaluate3Baccarat(cardsA, cardsB) {
   const allFaceA = pA.every(isFace);
   const allFaceB = pB.every(isFace);
 
-  if (allFaceA && !allFaceB) return { winner: 'A', criteria: 2, reason: 'All Face Cards' };
-  if (!allFaceA && allFaceB) return { winner: 'B', criteria: 2, reason: 'All Face Cards' };
+  if (allFaceA && !allFaceB)
+    return { winner: 'A', criteria: 2, reason: 'All Face Cards' };
+  if (!allFaceA && allFaceB)
+    return { winner: 'B', criteria: 2, reason: 'All Face Cards' };
   if (allFaceA && allFaceB) {
-    const sortFaces = (arr) => [...arr].sort((x, y) => {
-      const rDiff = FACE_RANKS[y.rankStr] - FACE_RANKS[x.rankStr];
-      if (rDiff !== 0) return rDiff;
-      return (SUIT_RANK[y.suit] || 0) - (SUIT_RANK[x.suit] || 0);
-    });
+    const sortFaces = (arr) =>
+      [...arr].sort((x, y) => {
+        const rDiff = FACE_RANKS[y.rankStr] - FACE_RANKS[x.rankStr];
+        if (rDiff !== 0) return rDiff;
+        return (SUIT_RANK[y.suit] || 0) - (SUIT_RANK[x.suit] || 0);
+      });
     const sortedA = sortFaces(pA);
     const sortedB = sortFaces(pB);
     for (let i = 0; i < 3; i++) {
-      const diff = FACE_RANKS[sortedA[i].rankStr] - FACE_RANKS[sortedB[i].rankStr];
-      if (diff > 0) return { winner: 'A', criteria: 2, reason: 'Higher Face Card' };
-      if (diff < 0) return { winner: 'B', criteria: 2, reason: 'Higher Face Card' };
-      const sDiff = (SUIT_RANK[sortedA[i].suit] || 0) - (SUIT_RANK[sortedB[i].suit] || 0);
-      if (sDiff > 0) return { winner: 'A', criteria: 2, reason: 'Higher Suit Face Card' };
-      if (sDiff < 0) return { winner: 'B', criteria: 2, reason: 'Higher Suit Face Card' };
+      const diff =
+        FACE_RANKS[sortedA[i].rankStr] - FACE_RANKS[sortedB[i].rankStr];
+      if (diff > 0)
+        return { winner: 'A', criteria: 2, reason: 'Higher Face Card' };
+      if (diff < 0)
+        return { winner: 'B', criteria: 2, reason: 'Higher Face Card' };
+      const sDiff =
+        (SUIT_RANK[sortedA[i].suit] || 0) - (SUIT_RANK[sortedB[i].suit] || 0);
+      if (sDiff > 0)
+        return { winner: 'A', criteria: 2, reason: 'Higher Suit Face Card' };
+      if (sDiff < 0)
+        return { winner: 'B', criteria: 2, reason: 'Higher Suit Face Card' };
     }
   }
 
   // Criteria 3: Higher Baccarat Value (sum modulo 10)
-  const bacValA = pA.reduce((sum, c) => sum + getBaccaratCardPoints(c.rankStr), 0) % 10;
-  const bacValB = pB.reduce((sum, c) => sum + getBaccaratCardPoints(c.rankStr), 0) % 10;
+  const bacValA =
+    pA.reduce((sum, c) => sum + getBaccaratCardPoints(c.rankStr), 0) % 10;
+  const bacValB =
+    pB.reduce((sum, c) => sum + getBaccaratCardPoints(c.rankStr), 0) % 10;
 
-  if (bacValA > bacValB) return { winner: 'A', criteria: 3, valA: bacValA, valB: bacValB, reason: 'Higher Baccarat Value' };
-  if (bacValB > bacValA) return { winner: 'B', criteria: 3, valA: bacValA, valB: bacValB, reason: 'Higher Baccarat Value' };
+  if (bacValA > bacValB)
+    return {
+      winner: 'A',
+      criteria: 3,
+      valA: bacValA,
+      valB: bacValB,
+      reason: 'Higher Baccarat Value',
+    };
+  if (bacValB > bacValA)
+    return {
+      winner: 'B',
+      criteria: 3,
+      valA: bacValA,
+      valB: bacValB,
+      reason: 'Higher Baccarat Value',
+    };
 
   // Condition 1: Player having more face cards wins
   const faceCountA = pA.filter(isFace).length;
   const faceCountB = pB.filter(isFace).length;
-  if (faceCountA > faceCountB) return { winner: 'A', criteria: 3, condition: 1, reason: 'More Face Cards' };
-  if (faceCountB > faceCountA) return { winner: 'B', criteria: 3, condition: 1, reason: 'More Face Cards' };
+  if (faceCountA > faceCountB)
+    return {
+      winner: 'A',
+      criteria: 3,
+      condition: 1,
+      reason: 'More Face Cards',
+    };
+  if (faceCountB > faceCountA)
+    return {
+      winner: 'B',
+      criteria: 3,
+      condition: 1,
+      reason: 'More Face Cards',
+    };
 
   // Condition 2: If face cards equal (> 0), higher value face card wins
   if (faceCountA > 0) {
@@ -190,37 +295,87 @@ export function evaluate3Baccarat(cardsA, cardsB) {
       return (SUIT_RANK[y.suit] || 0) - (SUIT_RANK[x.suit] || 0);
     });
     for (let i = 0; i < facesA.length; i++) {
-      const diff = FACE_RANKS[facesA[i].rankStr] - FACE_RANKS[facesB[i].rankStr];
-      if (diff > 0) return { winner: 'A', criteria: 3, condition: 2, reason: 'Higher Face Card' };
-      if (diff < 0) return { winner: 'B', criteria: 3, condition: 2, reason: 'Higher Face Card' };
-      const sDiff = (SUIT_RANK[facesA[i].suit] || 0) - (SUIT_RANK[facesB[i].suit] || 0);
-      if (sDiff > 0) return { winner: 'A', criteria: 3, condition: 2, reason: 'Higher Suit Face Card' };
-      if (sDiff < 0) return { winner: 'B', criteria: 3, condition: 2, reason: 'Higher Suit Face Card' };
+      const diff =
+        FACE_RANKS[facesA[i].rankStr] - FACE_RANKS[facesB[i].rankStr];
+      if (diff > 0)
+        return {
+          winner: 'A',
+          criteria: 3,
+          condition: 2,
+          reason: 'Higher Face Card',
+        };
+      if (diff < 0)
+        return {
+          winner: 'B',
+          criteria: 3,
+          condition: 2,
+          reason: 'Higher Face Card',
+        };
+      const sDiff =
+        (SUIT_RANK[facesA[i].suit] || 0) - (SUIT_RANK[facesB[i].suit] || 0);
+      if (sDiff > 0)
+        return {
+          winner: 'A',
+          criteria: 3,
+          condition: 2,
+          reason: 'Higher Suit Face Card',
+        };
+      if (sDiff < 0)
+        return {
+          winner: 'B',
+          criteria: 3,
+          condition: 2,
+          reason: 'Higher Suit Face Card',
+        };
     }
   }
 
   // Condition 3: Neither player has face cards -> Player with higher value point card wins
-  const sortPoints = (arr) => [...arr].sort((x, y) => {
-    const pX = getBaccaratCardPoints(x.rankStr);
-    const pY = getBaccaratCardPoints(y.rankStr);
-    if (pY !== pX) return pY - pX;
-    return (SUIT_RANK[y.suit] || 0) - (SUIT_RANK[x.suit] || 0);
-  });
+  const sortPoints = (arr) =>
+    [...arr].sort((x, y) => {
+      const pX = getBaccaratCardPoints(x.rankStr);
+      const pY = getBaccaratCardPoints(y.rankStr);
+      if (pY !== pX) return pY - pX;
+      return (SUIT_RANK[y.suit] || 0) - (SUIT_RANK[x.suit] || 0);
+    });
   const ptsA = sortPoints(pA);
   const ptsB = sortPoints(pB);
 
   for (let i = 0; i < 3; i++) {
     const pX = getBaccaratCardPoints(ptsA[i].rankStr);
     const pY = getBaccaratCardPoints(ptsB[i].rankStr);
-    if (pX > pY) return { winner: 'A', criteria: 3, condition: 3, reason: 'Higher Value Point Card' };
-    if (pY > pX) return { winner: 'B', criteria: 3, condition: 3, reason: 'Higher Value Point Card' };
+    if (pX > pY)
+      return {
+        winner: 'A',
+        criteria: 3,
+        condition: 3,
+        reason: 'Higher Value Point Card',
+      };
+    if (pY > pX)
+      return {
+        winner: 'B',
+        criteria: 3,
+        condition: 3,
+        reason: 'Higher Value Point Card',
+      };
   }
 
   // Condition 4: Same point cards -> Suit of high card decides
   const highSuitA = SUIT_RANK[ptsA[0].suit] || 0;
   const highSuitB = SUIT_RANK[ptsB[0].suit] || 0;
-  if (highSuitA >= highSuitB) return { winner: 'A', criteria: 3, condition: 4, reason: 'Suit of High Card' };
-  return { winner: 'B', criteria: 3, condition: 4, reason: 'Suit of High Card' };
+  if (highSuitA >= highSuitB)
+    return {
+      winner: 'A',
+      criteria: 3,
+      condition: 4,
+      reason: 'Suit of High Card',
+    };
+  return {
+    winner: 'B',
+    criteria: 3,
+    condition: 4,
+    reason: 'Suit of High Card',
+  };
 }
 
 /**
@@ -310,8 +465,12 @@ export function evaluateTrio(c1, c2, c3) {
   const evenCount = 3 - oddCount;
 
   // 3 Card Judgement: at least one card in set must appear
-  const has124 = cards.some((c) => c.dtlRank === 1 || c.dtlRank === 2 || c.dtlRank === 4);
-  const hasJQK = cards.some((c) => c.dtlRank === 11 || c.dtlRank === 12 || c.dtlRank === 13);
+  const has124 = cards.some(
+    (c) => c.dtlRank === 1 || c.dtlRank === 2 || c.dtlRank === 4
+  );
+  const hasJQK = cards.some(
+    (c) => c.dtlRank === 11 || c.dtlRank === 12 || c.dtlRank === 13
+  );
 
   // Exact combinations according to V-Trio rules:
   const isTrio = hand.typeName === 'Trio';
@@ -322,7 +481,17 @@ export function evaluateTrio(c1, c2, c3) {
 
   return {
     handType: hand.typeName,
-    shortType: isTrio ? 'Trio' : isStraightFlush ? 'Straight Flush' : isStraight ? 'Straight' : isFlush ? 'Flush' : isPair ? 'Pair' : 'High Card',
+    shortType: isTrio
+      ? 'Trio'
+      : isStraightFlush
+        ? 'Straight Flush'
+        : isStraight
+          ? 'Straight'
+          : isFlush
+            ? 'Flush'
+            : isPair
+              ? 'Pair'
+              : 'High Card',
     totalSum,
     // Session 21
     isSession21: totalSum === 21,
@@ -347,12 +516,18 @@ export function evaluateTrio(c1, c2, c3) {
  * Poker Evaluator (Player A vs Player B)
  */
 export function evaluatePoker(cardsA = [], cardsB = []) {
-  const pA = (cardsA.length ? cardsA : ['KSS', '10HH']).map(parseCard).sort((a, b) => b.rank - a.rank);
-  const pB = (cardsB.length ? cardsB : ['QDD', '9CC']).map(parseCard).sort((a, b) => b.rank - a.rank);
+  const pA = (cardsA.length ? cardsA : ['KSS', '10HH'])
+    .map(parseCard)
+    .sort((a, b) => b.rank - a.rank);
+  const pB = (cardsB.length ? cardsB : ['QDD', '9CC'])
+    .map(parseCard)
+    .sort((a, b) => b.rank - a.rank);
   const isPairA = pA[0]?.rank === pA[1]?.rank;
   const isPairB = pB[0]?.rank === pB[1]?.rank;
-  const scoreA = (pA[0]?.rank || 2) * 20 + (pA[1]?.rank || 2) + (isPairA ? 1000 : 0);
-  const scoreB = (pB[0]?.rank || 2) * 20 + (pB[1]?.rank || 2) + (isPairB ? 1000 : 0);
+  const scoreA =
+    (pA[0]?.rank || 2) * 20 + (pA[1]?.rank || 2) + (isPairA ? 1000 : 0);
+  const scoreB =
+    (pB[0]?.rank || 2) * 20 + (pB[1]?.rank || 2) + (isPairB ? 1000 : 0);
   if (scoreA > scoreB) return 'A';
   if (scoreB > scoreA) return 'B';
   return 'Tie';
@@ -402,12 +577,16 @@ export function compareMuflisTeenPatti(cardsA, cardsB) {
   const handB = evaluateTeenPattiHand(cardsB);
 
   // Lower hand type number wins (type 1 is High Card, type 6 is Trio)
-  if (handA.type < handB.type) return { winner: 'A', handA, handB, isTie: false };
-  if (handB.type < handA.type) return { winner: 'B', handA, handB, isTie: false };
+  if (handA.type < handB.type)
+    return { winner: 'A', handA, handB, isTie: false };
+  if (handB.type < handA.type)
+    return { winner: 'B', handA, handB, isTie: false };
 
   // If types are same: lower score wins (e.g. 5-3-2 beats 8-7-6)
-  if (handA.score < handB.score) return { winner: 'A', handA, handB, isTie: false };
-  if (handB.score < handA.score) return { winner: 'B', handA, handB, isTie: false };
+  if (handA.score < handB.score)
+    return { winner: 'A', handA, handB, isTie: false };
+  if (handB.score < handA.score)
+    return { winner: 'B', handA, handB, isTie: false };
 
   return { winner: 'TIE', handA, handB, isTie: true };
 }
@@ -471,16 +650,25 @@ export function evaluateLucky5(cardStr) {
  * Baccarat Evaluator (Player vs Banker, sum modulo 10)
  */
 export function evaluateBaccarat(playerCards = [], bankerCards = []) {
-  const pCards = (playerCards.length ? playerCards : ['6DD', '8HH']).map(parseCard);
-  const bCards = (bankerCards.length ? bankerCards : ['9DD', '10SS']).map(parseCard);
+  const pCards = (playerCards.length ? playerCards : ['6DD', '8HH']).map(
+    parseCard
+  );
+  const bCards = (bankerCards.length ? bankerCards : ['9DD', '10SS']).map(
+    parseCard
+  );
 
-  const pPoints = pCards.reduce((acc, c) => acc + getBaccaratCardPoints(c.rankStr), 0) % 10;
-  const bPoints = bCards.reduce((acc, c) => acc + getBaccaratCardPoints(c.rankStr), 0) % 10;
+  const pPoints =
+    pCards.reduce((acc, c) => acc + getBaccaratCardPoints(c.rankStr), 0) % 10;
+  const bPoints =
+    bCards.reduce((acc, c) => acc + getBaccaratCardPoints(c.rankStr), 0) % 10;
 
-  const isPlayerPair = pCards.length >= 2 && pCards[0].rankStr === pCards[1].rankStr;
-  const isBankerPair = bCards.length >= 2 && bCards[0].rankStr === bCards[1].rankStr;
+  const isPlayerPair =
+    pCards.length >= 2 && pCards[0].rankStr === pCards[1].rankStr;
+  const isBankerPair =
+    bCards.length >= 2 && bCards[0].rankStr === bCards[1].rankStr;
   const isTie = pPoints === bPoints;
-  const winner = pPoints > bPoints ? 'Player' : bPoints > pPoints ? 'Banker' : 'Tie';
+  const winner =
+    pPoints > bPoints ? 'Player' : bPoints > pPoints ? 'Banker' : 'Tie';
 
   return {
     winner,
@@ -532,8 +720,12 @@ export function evaluateCard32(c8, c9, c10, c11) {
 /**
  * European Roulette Evaluator (0 to 36)
  */
-const ROULETTE_REDS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const ROULETTE_BLACKS = new Set([2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]);
+const ROULETTE_REDS = new Set([
+  1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+]);
+const ROULETTE_BLACKS = new Set([
+  2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35,
+]);
 
 export function evaluateRoulette(num) {
   const n = typeof num === 'number' ? num : parseInt(num, 10) || 0;
@@ -544,8 +736,20 @@ export function evaluateRoulette(num) {
   const isOdd = !isZero && n % 2 !== 0;
   const isLow = !isZero && n >= 1 && n <= 18;
   const isHigh = !isZero && n >= 19 && n <= 36;
-  const dozen = isZero ? null : n <= 12 ? '1st Dozen' : n <= 24 ? '2nd Dozen' : '3rd Dozen';
-  const column = isZero ? null : n % 3 === 1 ? '1st Col' : n % 3 === 2 ? '2nd Col' : '3rd Col';
+  const dozen = isZero
+    ? null
+    : n <= 12
+      ? '1st Dozen'
+      : n <= 24
+        ? '2nd Dozen'
+        : '3rd Dozen';
+  const column = isZero
+    ? null
+    : n % 3 === 1
+      ? '1st Col'
+      : n % 3 === 2
+        ? '2nd Col'
+        : '3rd Col';
 
   return {
     number: n,
@@ -602,9 +806,14 @@ export function compare2Cards(cardsA = [], cardsB = []) {
  * Worli Matka Evaluator
  */
 export function evaluateWorli(singleDigit, pana) {
-  const digit = typeof singleDigit === 'number' ? singleDigit : parseInt(singleDigit, 10) || 0;
+  const digit =
+    typeof singleDigit === 'number'
+      ? singleDigit
+      : parseInt(singleDigit, 10) || 0;
   const panaStr = String(pana || '128');
-  const d1 = panaStr[0], d2 = panaStr[1], d3 = panaStr[2];
+  const d1 = panaStr[0],
+    d2 = panaStr[1],
+    d3 = panaStr[2];
   const isTriple = d1 === d2 && d2 === d3;
   const isDouble = !isTriple && (d1 === d2 || d2 === d3 || d1 === d3);
 
@@ -628,10 +837,15 @@ export function evaluateAndarBahar(mainCard, andarCards = [], baharCards = []) {
   const bIdx = baharCards.findIndex((c) => parseCard(c).rankStr === m);
 
   if (aIdx !== -1 && (bIdx === -1 || aIdx <= bIdx)) {
-    return { winner: 'Andar', winningSide: 'A', totalCards: (aIdx + 1) * 2 - 1 };
+    return {
+      winner: 'Andar',
+      winningSide: 'A',
+      totalCards: (aIdx + 1) * 2 - 1,
+    };
   }
-  return { winner: 'Bahar', winningSide: 'B', totalCards: (bIdx !== -1 ? bIdx + 1 : 2) * 2 };
+  return {
+    winner: 'Bahar',
+    winningSide: 'B',
+    totalCards: (bIdx !== -1 ? bIdx + 1 : 2) * 2,
+  };
 }
-
-
-

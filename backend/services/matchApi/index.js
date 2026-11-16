@@ -1,4 +1,3 @@
-
 import dotenv from 'dotenv';
 
 import { createProviderA } from './providerA.js';
@@ -58,15 +57,13 @@ export const fetchMatchData = (gameId, sportId) =>
   callProvider('fetchMatchData', gameId, sportId);
 
 // Result APIs
-export const getResult = (payload) =>
-  callProvider('getResult', payload);
+export const getResult = (payload) => callProvider('getResult', payload);
 
 export const sendBetIncoming = (payload) =>
   callProvider('sendBetIncoming', payload);
 
 // Casino APIs
-export const fetchCasinoTables = () =>
-  callProvider('fetchCasinoTables');
+export const fetchCasinoTables = () => callProvider('fetchCasinoTables');
 
 export const fetchCasinoData = (eventName) =>
   callProvider('fetchCasinoData', eventName);
@@ -91,11 +88,9 @@ export const fetchStFancyByEvent = (eventId) =>
   callProvider('fetchStFancyByEvent', eventId);
 
 // Other APIs
-export const fetchScore = (gmid, sid) =>
-  callProvider('fetchScore', gmid, sid);
+export const fetchScore = (gmid, sid) => callProvider('fetchScore', gmid, sid);
 
-export const fetchAllIframes = (gmid) =>
-  callProvider('fetchAllIframes', gmid);
+export const fetchAllIframes = (gmid) => callProvider('fetchAllIframes', gmid);
 
 // Provider information
 export const getProviderName = () => PROVIDER;

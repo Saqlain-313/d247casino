@@ -1,10 +1,8 @@
 const CASINO_TV_BASE_URL = (
-  import.meta.env.VITE_CASINO_TV_BASE_URL ||
-  'https://scoreapi.nautical7.com'
+  import.meta.env.VITE_CASINO_TV_BASE_URL || 'https://scoreapi.nautical7.com'
 ).replace(/\/+$/, '');
 
-const CASINO_TV_KEY =
-  import.meta.env.VITE_CASINO_TV_KEY || '';
+const CASINO_TV_KEY = import.meta.env.VITE_CASINO_TV_KEY || '';
 
 export const getVideoStreamUrl = (eventName) => {
   if (!eventName) {

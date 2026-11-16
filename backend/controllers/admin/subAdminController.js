@@ -48,9 +48,7 @@ const updateAdmin = async (id) => {
     const directDownlines = await SubAdmin.find({
       invite: admin.code,
     })
-      .select(
-        'role baseBalance totalExposure exposure bettingProfitLoss'
-      )
+      .select('role baseBalance totalExposure exposure bettingProfitLoss')
       .lean();
 
     //  CLEAN SEPARATION: Calculate each type separately
@@ -89,7 +87,12 @@ const updateAdmin = async (id) => {
         const [plRows, pendingBets] = await Promise.all([
           betHistoryModel.aggregate([
             { $match: { userId: { $in: batchIds }, status: { $in: [1, 2] } } },
-            { $group: { _id: '$userId', totalPL: { $sum: '$profitLossChange' } } },
+            {
+              $group: {
+                _id: '$userId',
+                totalPL: { $sum: '$profitLossChange' },
+              },
+            },
           ]),
           betModel.find({ userId: { $in: batchIds }, status: 0 }).lean(),
         ]);
@@ -212,7 +215,9 @@ export const updateAllUplines = async (userIdOrArray) => {
     // A parent sums its children's stored totals, so deeper levels go first
     const levels = [...new Set(levelById.values())].sort((a, b) => b - a);
     for (const level of levels) {
-      const ids = [...levelById].filter(([, l]) => l === level).map(([id]) => id);
+      const ids = [...levelById]
+        .filter(([, l]) => l === level)
+        .map(([id]) => id);
       for (let i = 0; i < ids.length; i += 10) {
         await Promise.all(ids.slice(i, i + 10).map((id) => updateAdmin(id)));
       }
@@ -484,7 +489,6 @@ export const getAllUsersWithCompleteInfo = async (req, res) => {
 //   }
 // };
 
-
 export const createSubAdmin = async (req, res) => {
   try {
     const { id, role } = req;
@@ -728,10 +732,10 @@ export const deleteSubAdmin = async (req, res) => {
       role === 'supperadmin'
         ? { _id: { $ne: id }, role: { $ne: 'user' }, status: { $ne: 'delete' } }
         : {
-          invite: editUser.code,
-          role: { $ne: 'user' },
-          status: { $ne: 'delete' },
-        };
+            invite: editUser.code,
+            role: { $ne: 'user' },
+            status: { $ne: 'delete' },
+          };
 
     const allUsers = await SubAdmin.find(filter)
       .limit(limitNum)
@@ -916,7 +920,6 @@ export const forgotpasswordSubAdmin = async (req, res) => {
       success: true,
       message: 'Password updated successfully',
     });
-
   } catch (error) {
     console.error('Forgot Password Error:', error);
 
@@ -1124,15 +1127,15 @@ export const getDeleteUser = async (req, res) => {
     const filter =
       role === 'supperadmin'
         ? {
-          _id: { $ne: id },
-          // role: { $ne: "user" },
-          status: 'delete',
-        }
+            _id: { $ne: id },
+            // role: { $ne: "user" },
+            status: 'delete',
+          }
         : {
-          invite: admin.code,
-          // role: { $ne: "user" },
-          status: 'delete',
-        };
+            invite: admin.code,
+            // role: { $ne: "user" },
+            status: 'delete',
+          };
 
     const allUsers = await SubAdmin.find(filter)
       .limit(limitNum)
@@ -1188,15 +1191,15 @@ export const restoreDeleteUser = async (req, res) => {
     const filter =
       role === 'supperadmin'
         ? {
-          _id: { $ne: id },
-          role: { $ne: 'user' },
-          status: 'delete',
-        }
+            _id: { $ne: id },
+            role: { $ne: 'user' },
+            status: 'delete',
+          }
         : {
-          invite: admin.code,
-          role: { $ne: 'user' },
-          status: 'delete',
-        };
+            invite: admin.code,
+            role: { $ne: 'user' },
+            status: 'delete',
+          };
 
     const allUsers = await SubAdmin.find(filter)
       .limit(limitNum)
@@ -1234,16 +1237,16 @@ export const getAllUser = async (req, res) => {
     let filter =
       role === 'supperadmin'
         ? {
-          _id: { $ne: id },
-          role: { $ne: 'user' },
-          status: { $ne: 'delete' },
-          invite: admin.code,
-        }
+            _id: { $ne: id },
+            role: { $ne: 'user' },
+            status: { $ne: 'delete' },
+            invite: admin.code,
+          }
         : {
-          invite: admin.code,
-          role: { $ne: 'user' },
-          status: { $ne: 'delete' },
-        };
+            invite: admin.code,
+            role: { $ne: 'user' },
+            status: { $ne: 'delete' },
+          };
 
     if (searchQuery) {
       filter = {
@@ -1290,11 +1293,11 @@ export const getAllOnlyUser = async (req, res) => {
     let filter =
       role === 'supperadmin'
         ? {
-          _id: { $ne: id },
-          role: 'user',
-          status: { $ne: 'delete' },
-          invite: admin.code,
-        }
+            _id: { $ne: id },
+            role: 'user',
+            status: { $ne: 'delete' },
+            invite: admin.code,
+          }
         : { invite: admin.code, role: 'user', status: { $ne: 'delete' } };
 
     // 🔍 Add search by userName if searchQuery exists
@@ -1622,15 +1625,15 @@ export const updatePartnership = async (req, res) => {
     const filter =
       role === 'supperadmin'
         ? {
-          _id: { $ne: id },
-          role: { $ne: 'user' },
-          status: { $ne: 'delete' },
-        }
+            _id: { $ne: id },
+            role: { $ne: 'user' },
+            status: { $ne: 'delete' },
+          }
         : {
-          invite: admin.code,
-          role: { $ne: 'user' },
-          status: { $ne: 'delete' },
-        };
+            invite: admin.code,
+            role: { $ne: 'user' },
+            status: { $ne: 'delete' },
+          };
 
     const allUsers = await SubAdmin.find(filter);
 

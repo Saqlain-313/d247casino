@@ -18,7 +18,7 @@ export function createProviderB() {
     name: 'providerB',
 
     async fetchMatchList(sportId) {
-      console.log("sportId", sportId)
+      console.log('sportId', sportId);
       const sportPath = SPORT_ID_TO_PATH[sportId];
 
       if (sportPath) {
@@ -27,7 +27,6 @@ export function createProviderB() {
         );
         const raw = response.data;
 
-        console.log("rowwww", row)
         if (raw && !raw.success) {
           if (raw.t1 || raw.t2) {
             return {
@@ -196,7 +195,7 @@ export function createProviderB() {
         `${API_URL}/diamond/casino/detail_result?key=${API_KEY}&type=${gtype}&mid=${mid}`
       );
 
-      console.log(response,"malik")
+      console.log(response, 'malik');
       return response.data;
     },
 

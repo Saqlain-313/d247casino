@@ -1,6 +1,7 @@
 // controllers/horseRacingController.js
 import dotenv from 'dotenv';
-import { fetchMatchList, fetchMatchData } from '../services/matchApi/index.js';
+
+import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
 
 dotenv.config();
 
@@ -9,10 +10,8 @@ export const fetchHorseRacingData = async (req, res) => {
   try {
     const data = await fetchMatchList(10);
 
-  
-
     const t1Data = data.data.t1 || [];
-      console.log('Horse Racing Data:', t1Data);
+    console.log('Horse Racing Data:', t1Data);
     const venues = [];
     for (const country of t1Data) {
       if (!country.children) continue;

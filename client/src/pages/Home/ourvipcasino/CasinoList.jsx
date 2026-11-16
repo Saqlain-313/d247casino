@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Casino from './Casino';
@@ -37,35 +36,20 @@ function CasinoList() {
   const filteredCasinos =
     activeCategory === 'All Casino'
       ? casinos
-      : casinos.filter(
-          (casino) => casino.category === activeCategory
-        );
+      : casinos.filter((casino) => casino.category === activeCategory);
 
   return (
     <>
-      <div className="flex w-full flex-col md:flex-row md:p-0.5">
-
+      <div className='flex w-full flex-col md:flex-row md:p-0.5'>
         {/* Casino Categories Sidebar */}
-        <div
-          className="
-            scrollbar-hide
-            flex flex-col
-            w-full
-            shrink-0
-            bg-[#2D4051]
-            overflow-x-auto
-            md:w-[200px]
-            md:overflow-x-hidden
-            md:overflow-y-visible
-          "
-        >
+        <div className='scrollbar-hide flex w-full shrink-0 flex-col overflow-x-auto bg-[#2D4051] md:w-[200px] md:overflow-x-hidden md:overflow-y-visible'>
           {casinoCategories.map((item) => {
             const isActive = activeCategory === item.name;
 
             return (
               <button
                 key={item.id}
-                type="button"
+                type='button'
                 onClick={() => setActiveCategory(item.name)}
                 style={{
                   display: 'flex',
@@ -76,22 +60,10 @@ function CasinoList() {
                   flexShrink: 0,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: isActive
-                    ? '#2677A6'
-                    : '#2D4051',
+                  backgroundColor: isActive ? '#2677A6' : '#2D4051',
                   color: '#ffffff',
                 }}
-                className="
-                  px-2
-                  text-[18px]
-                  md:text-[20px]
-                  font-semibold
-                  whitespace-nowrap
-                  cursor-pointer
-                  transition-colors
-                  duration-200
-                  hover:bg-[#354D61]
-                "
+                className='cursor-pointer px-2 text-[18px] font-semibold whitespace-nowrap transition-colors duration-200 hover:bg-[#354D61] md:text-[20px]'
               >
                 {item.name}
               </button>
@@ -100,10 +72,9 @@ function CasinoList() {
         </div>
 
         {/* Casino Grid */}
-        <div className="w-full min-w-0 md:w-5/6">
+        <div className='w-full min-w-0 md:w-5/6'>
           <Casino casinos={filteredCasinos} />
         </div>
-
       </div>
     </>
   );

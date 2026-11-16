@@ -5,9 +5,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { host } from '../../redux/api';
 import {
-    getPendingBet,
-    getPendingBetAmo,
-    messageClear
+  getPendingBet,
+  getPendingBetAmo,
+  messageClear,
 } from '../../redux/reducer/betReducer';
 import { fetchSoccerBatingData } from '../../redux/reducer/soccerSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';

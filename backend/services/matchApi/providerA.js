@@ -23,17 +23,12 @@ export function createProviderA() {
     //   return response.data;
     // },
     async fetchMatchList(sportId) {
-      console.log("sportId******", sportId)
-      const response = await axios.get(
-        `${API_URL}/diamond/events/${sportId}`,
-        {
-          headers: {
-            "X-API-Key": API_KEY,
-          },
-        }
-      );
+      const response = await axios.get(`${API_URL}/diamond/events/${sportId}`, {
+        headers: {
+          'X-API-Key': API_KEY,
+        },
+      });
 
-      console.log("API_URL Response******", response)
       return response.data.data;
     },
 
@@ -48,7 +43,7 @@ export function createProviderA() {
         `${API_URL}/diamond/odds/${sportId}_${eventName}`,
         {
           headers: {
-            "X-API-Key": API_KEY,
+            'X-API-Key': API_KEY,
           },
         }
       );
@@ -159,10 +154,15 @@ export function createProviderA() {
 
     async fetchCasinoResult(eventName) {
       const response = await axios.get(
-        `${API_URL}/diamond/casino/result/${encodeURIComponent(eventName)}?key=${API_KEY}`,
+        `${API_URL}/diamond/direct-casino/result/${encodeURIComponent(eventName)}?key=${API_KEY}`,
         { timeout: 10000 }
       );
-      return response.data;
+
+      // direct-casino result wraps the payload as { fetchedAt, eventName, data: { success, data } }.
+      // Downstream (settlement cron, /api/casino-betting-result) expects { success, data: { res } },
+      // so unwrap once here. Bare { success, ... } responses pass through untouched.
+      const raw = response.data;
+      return raw?.success === undefined && raw?.data ? raw.data : raw;
     },
 
     async fetchDirectCasinoResultByDate(date, eventName) {
@@ -170,7 +170,7 @@ export function createProviderA() {
         `${API_URL}/diamond/direct-casino/result/${encodeURIComponent(date)}/${encodeURIComponent(eventName)}`,
         {
           headers: {
-            "X-API-Key": API_KEY,
+            'X-API-Key': API_KEY,
           },
           timeout: 10000,
         }

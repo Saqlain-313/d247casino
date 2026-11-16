@@ -8,7 +8,7 @@ import { getUser } from '../../redux/reducer/authReducer';
 import {
   getPendingBet,
   getPendingBetAmo,
-  messageClear
+  messageClear,
 } from '../../redux/reducer/betReducer';
 import { fetchCricketBatingData } from '../../redux/reducer/cricketSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
@@ -51,7 +51,7 @@ function CricketBet() {
 
   // ✅ gameId ko formData mein bhi rakh do (agar kahin use ho raha ho)
   const [formData, setFormData] = useState({
-    gameId: streamGmid,          // ✅ FIX: gameId add kiya
+    gameId: streamGmid, // ✅ FIX: gameId add kiya
     game: eventName,
     sid: 4,
     otype: '',
@@ -523,7 +523,7 @@ function CricketBet() {
               team2={team2}
               item={item}
               eventName={eventName}
-              gameId={streamGmid}              // ✅ FIX: gameId pass
+              gameId={streamGmid} // ✅ FIX: gameId pass
               sid={4}
               marketName={selectedBet?.marketName}
               gameType={selectedBet?.gameType}
@@ -555,7 +555,7 @@ function CricketBet() {
               team1={team1}
               team2={team2}
               eventName={eventName}
-              gameId={streamGmid}            // ✅ FIX: gameId pass
+              gameId={streamGmid} // ✅ FIX: gameId pass
               sid={4}
               marketName={selectedBet?.marketName}
               gameType={selectedBet?.gameType}

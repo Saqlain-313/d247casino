@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { FaArrowRight, FaCheck } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
@@ -22,8 +21,9 @@ function MatchOdds({
 }) {
   const dispatch = useDispatch();
 
-  const { eventName, cashoutValues, cashoutLoading, cashoutPL } =
-    useSelector((state) => state.bet);
+  const { eventName, cashoutValues, cashoutLoading, cashoutPL } = useSelector(
+    (state) => state.bet
+  );
 
   const [showCashoutOptions, setShowCashoutOptions] = useState(false);
   const [cashedOutBetIds, setCashedOutBetIds] = useState(new Set());
@@ -51,9 +51,7 @@ function MatchOdds({
         max: sec.max,
         min: sec.min,
         mname:
-          matchOddsList[0].mname === 'MATCH_ODDS'
-            ? 'Match Odds'
-            : 'Winner',
+          matchOddsList[0].mname === 'MATCH_ODDS' ? 'Match Odds' : 'Winner',
         status: matchOddsList[0].status,
       }))
     : [];
@@ -68,8 +66,7 @@ function MatchOdds({
   ];
 
   const getHistoryMarketBets = (marketName) => {
-    const mname =
-      marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+    const mname = marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
 
     if (!Array.isArray(eventName) || !gameid) return [];
 
@@ -79,13 +76,10 @@ function MatchOdds({
 
         const gt = (b.gameType || '').toLowerCase();
 
-        return MATCH_ODDS_GAME_TYPES.some(
-          (t) => t.toLowerCase() === gt
-        );
+        return MATCH_ODDS_GAME_TYPES.some((t) => t.toLowerCase() === gt);
       })
       .map((b) => ({
-        gameType:
-          b.gameType === 'MATCH_ODDS' ? 'Match Odds' : b.gameType,
+        gameType: b.gameType === 'MATCH_ODDS' ? 'Match Odds' : b.gameType,
         marketName: b.marketName,
         teamName: b.teamName,
         otype: b.otype,
@@ -107,22 +101,17 @@ function MatchOdds({
         )
       : [];
 
-  const uniqueMarketBetsForCashout =
-    marketBetsForCashout.filter(
-      (bet, index, arr) =>
-        index ===
-        arr.findIndex(
-          (b) =>
-            String(b.betId || b._id) ===
-            String(bet.betId || bet._id)
-        )
-    );
+  const uniqueMarketBetsForCashout = marketBetsForCashout.filter(
+    (bet, index, arr) =>
+      index ===
+      arr.findIndex(
+        (b) => String(b.betId || b._id) === String(bet.betId || bet._id)
+      )
+  );
 
-  const hasCashoutAvailable =
-    uniqueMarketBetsForCashout.length > 0;
+  const hasCashoutAvailable = uniqueMarketBetsForCashout.length > 0;
 
-  const marketCashoutPL =
-    cashoutPL?.[oddsData?.[0]?.mname] || 0;
+  const marketCashoutPL = cashoutPL?.[oddsData?.[0]?.mname] || 0;
 
   const mergedCashoutValue =
     uniqueMarketBetsForCashout.reduce((sum, bet) => {
@@ -146,11 +135,7 @@ function MatchOdds({
 
     const results = await Promise.allSettled(
       betIds.map((betId) =>
-        api.post(
-          '/user/cashout/quote',
-          { betId },
-          { withCredentials: true }
-        )
+        api.post('/user/cashout/quote', { betId }, { withCredentials: true })
       )
     );
 
@@ -161,20 +146,17 @@ function MatchOdds({
         result.status === 'fulfilled' &&
         result.value?.data?.cashoutAvailable
       ) {
-        freshValues[result.value.data.betId] =
-          result.value.data.cashoutValue;
+        freshValues[result.value.data.betId] = result.value.data.cashoutValue;
       }
     }
 
     if (Object.keys(freshValues).length > 0) {
       dispatch(
         updateCashoutValues(
-          Object.entries(freshValues).map(
-            ([betId, cashoutValue]) => ({
-              betId,
-              cashoutValue,
-            })
-          )
+          Object.entries(freshValues).map(([betId, cashoutValue]) => ({
+            betId,
+            cashoutValue,
+          }))
         )
       );
     }
@@ -194,8 +176,7 @@ function MatchOdds({
         setCashedOutBetIds((prev) => new Set(prev).add(id));
       } else {
         toast.error(
-          result.payload?.message ||
-            'Cashout failed. Please try again.'
+          result.payload?.message || 'Cashout failed. Please try again.'
         );
       }
     }
@@ -227,29 +208,20 @@ function MatchOdds({
 
     const amountBets =
       pendingBetAmounts?.filter(
-        (item) =>
-          item.gameType === 'Match Odds' ||
-          item.gameType === marketName
+        (item) => item.gameType === 'Match Odds' || item.gameType === marketName
       ) || [];
 
-    return historyBets.length > 0
-      ? historyBets
-      : amountBets;
+    return historyBets.length > 0 ? historyBets : amountBets;
   };
 
   const getMarketCashoutPL = (marketName) => {
-    const mname =
-      marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+    const mname = marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
 
     return cashoutPL?.[mname] || 0;
   };
 
   // Net outcome
-  const computeNetOutcome = (
-    team,
-    marketBets,
-    mCashoutPL = 0
-  ) => {
+  const computeNetOutcome = (team, marketBets, mCashoutPL = 0) => {
     let netOutcome = 0;
 
     marketBets.forEach((bet) => {
@@ -277,11 +249,7 @@ function MatchOdds({
     const stakeNum = parseFloat(bet.stake);
     const oddsNum = parseFloat(bet.odds);
 
-    if (
-      isNaN(stakeNum) ||
-      isNaN(oddsNum) ||
-      stakeNum <= 0
-    ) {
+    if (isNaN(stakeNum) || isNaN(oddsNum) || stakeNum <= 0) {
       return null;
     }
 
@@ -290,20 +258,12 @@ function MatchOdds({
     return {
       teamName: bet.team,
       otype: bet.type,
-      totalBetAmount: isLay
-        ? stakeNum
-        : stakeNum * (oddsNum - 1),
-      totalPrice: isLay
-        ? stakeNum * (oddsNum - 1)
-        : stakeNum,
+      totalBetAmount: isLay ? stakeNum : stakeNum * (oddsNum - 1),
+      totalPrice: isLay ? stakeNum * (oddsNum - 1) : stakeNum,
     };
   };
 
-  const getProjectedNetOutcome = (
-    team,
-    marketName,
-    bet
-  ) => {
+  const getProjectedNetOutcome = (team, marketName, bet) => {
     const pendingLeg = buildPendingBetLeg(bet);
 
     if (!pendingLeg) return null;
@@ -322,29 +282,20 @@ function MatchOdds({
     const marketBets = getMarketBets(marketName);
 
     const matchedTeamBet = marketBets.find(
-      (item) =>
-        item.teamName?.toLowerCase() === team?.toLowerCase()
+      (item) => item.teamName?.toLowerCase() === team?.toLowerCase()
     );
 
     const otherTeamBet = marketBets[0];
 
-    const otype =
-      matchedTeamBet?.otype || otherTeamBet?.otype || '';
+    const otype = matchedTeamBet?.otype || otherTeamBet?.otype || '';
 
     const totalBetAmount =
-      matchedTeamBet?.totalBetAmount ||
-      otherTeamBet?.totalBetAmount ||
-      '';
+      matchedTeamBet?.totalBetAmount || otherTeamBet?.totalBetAmount || '';
 
     const totalPrice =
-      matchedTeamBet?.totalPrice ||
-      otherTeamBet?.totalPrice ||
-      '';
+      matchedTeamBet?.totalPrice || otherTeamBet?.totalPrice || '';
 
-    const teamName =
-      matchedTeamBet?.teamName ||
-      otherTeamBet?.teamName ||
-      '';
+    const teamName = matchedTeamBet?.teamName || otherTeamBet?.teamName || '';
 
     if (marketBets.length === 0) {
       if (mCashoutPL) {
@@ -370,11 +321,7 @@ function MatchOdds({
 
     return {
       isHedged: true,
-      netOutcome: computeNetOutcome(
-        team,
-        marketBets,
-        mCashoutPL
-      ),
+      netOutcome: computeNetOutcome(team, marketBets, mCashoutPL),
       otype,
       totalBetAmount,
       totalPrice,
@@ -383,22 +330,14 @@ function MatchOdds({
   };
 
   // Bet selection
-  const handleOddsClick = (
-    team,
-    rate,
-    type,
-    sid,
-    oname
-  ) => {
+  const handleOddsClick = (team, rate, type, sid, oname) => {
     if (onBetSelect && rate) {
       const allTeams = oddsData.map((item) => item.team);
 
-      const marketName =
-        matchOddsList?.[0]?.mname || 'MATCH_ODDS';
+      const marketName = matchOddsList?.[0]?.mname || 'MATCH_ODDS';
 
       const gameType =
-        marketName === 'MATCH_ODDS' ||
-        marketName === 'TOURNAMENT_WINNER'
+        marketName === 'MATCH_ODDS' || marketName === 'TOURNAMENT_WINNER'
           ? 'Match Odds'
           : 'Winner';
 
@@ -411,38 +350,27 @@ function MatchOdds({
         teams: allTeams,
         marketName,
         gameType,
-        maxAmount:
-          matchOddsList?.[0]?.max ||
-          matchOddsList?.[0]?.maxb ||
-          0,
+        maxAmount: matchOddsList?.[0]?.max || matchOddsList?.[0]?.maxb || 0,
         minAmount: matchOddsList?.[0]?.min || 0,
       });
     }
   };
 
-  const maxValue =
-    matchOddsList?.[0]?.max ||
-    matchOddsList?.[0]?.maxb ||
-    0;
+  const maxValue = matchOddsList?.[0]?.max || matchOddsList?.[0]?.maxb || 0;
 
   // Market suspended status
   const isMarketSuspended =
-    String(matchOddsList?.[0]?.status || '').toUpperCase() ===
-    'SUSPENDED';
+    String(matchOddsList?.[0]?.status || '').toUpperCase() === 'SUSPENDED';
 
   return (
-    <div className="w-full min-w-0 overflow-hidden bg-white">
-
+    <div className='w-full min-w-0 overflow-hidden bg-white'>
       {/* MATCH ODDS HEADER */}
-      <div className="flex h-[30px] items-center justify-between bg-[#4b5b6b] px-2 text-white">
-
-        <span className="text-[13px] font-bold">
-          MATCH_ODDS
-        </span>
+      <div className='flex h-[30px] items-center justify-between bg-[#4b5b6b] px-2 text-white'>
+        <span className='text-[13px] font-bold'>MATCH_ODDS</span>
 
         {hasCashoutAvailable && showCashoutOptions ? (
           <button
-            type="button"
+            type='button'
             disabled={!hasMergedValue || cashoutLoading}
             onClick={handleCashOutClick}
             className={`flex h-[25px] items-center gap-1 px-3 text-[11px] font-semibold text-white ${
@@ -451,7 +379,7 @@ function MatchOdds({
                 : 'cursor-not-allowed bg-[#198754] opacity-60'
             }`}
           >
-            <FaCheck className="text-[10px]" />
+            <FaCheck className='text-[10px]' />
 
             {hasMergedValue
               ? `₹ ${mergedCashoutValue.toFixed(2)}`
@@ -463,65 +391,52 @@ function MatchOdds({
           </button>
         ) : hasCashoutAvailable ? (
           <button
-            type="button"
+            type='button'
             onClick={() => {
               setShowCashoutOptions(true);
               fetchCashoutQuotes();
             }}
-            className="h-[25px] cursor-pointer bg-[#198754] px-3 text-[11px] font-semibold text-white"
+            className='h-[25px] cursor-pointer bg-[#198754] px-3 text-[11px] font-semibold text-white'
           >
             Cashout
           </button>
         ) : (
           <button
-            type="button"
+            type='button'
             disabled
-            className="h-[25px] cursor-not-allowed bg-[#198754] px-3 text-[11px] font-semibold text-white opacity-60"
+            className='h-[25px] cursor-not-allowed bg-[#198754] px-3 text-[11px] font-semibold text-white opacity-60'
           >
             Cashout
           </button>
         )}
-
       </div>
 
       {/* MAX / BACK / LAY HEADER */}
-      <div className="grid h-[24px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca]">
-
-        <div className="flex items-center px-1 text-[12px] font-bold text-[#097c93]">
+      <div className='grid h-[24px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca]'>
+        <div className='flex items-center px-1 text-[12px] font-bold text-[#097c93]'>
           Max: {maxValue}
         </div>
 
-        <div className="flex items-center justify-center border-l border-white bg-[#72bbef] text-[13px] font-bold text-[#333]">
+        <div className='flex items-center justify-center border-l border-white bg-[#72bbef] text-[13px] font-bold text-[#333]'>
           Back
         </div>
 
-        <div className="flex items-center justify-center border-l border-white bg-[#faa9ba] text-[13px] font-bold text-[#333]">
+        <div className='flex items-center justify-center border-l border-white bg-[#faa9ba] text-[13px] font-bold text-[#333]'>
           Lay
         </div>
-
       </div>
 
       {/* TEAM ROWS */}
       {oddsData.length > 0 ? (
-        <div className="relative">
-
+        <div className='relative'>
           {oddsData.map(({ team, odds, sid }, teamIndex) => {
-
             // First available Back and Lay odds
             const backOdds = (odds || [])
-              .filter(
-                (odd) =>
-                  odd.otype === 'back' &&
-                  Number(odd.odds) > 0
-              )
+              .filter((odd) => odd.otype === 'back' && Number(odd.odds) > 0)
               .slice(0, 1);
 
             const layOdds = (odds || [])
-              .filter(
-                (odd) =>
-                  odd.otype === 'lay' &&
-                  Number(odd.odds) > 0
-              )
+              .filter((odd) => odd.otype === 'lay' && Number(odd.odds) > 0)
               .slice(0, 1);
 
             const backItem = backOdds[0];
@@ -533,10 +448,8 @@ function MatchOdds({
               return (
                 <button
                   key={`${type}-${sid}`}
-                  type="button"
-                  disabled={
-                    isMarketSuspended || !formattedOdds
-                  }
+                  type='button'
+                  disabled={isMarketSuspended || !formattedOdds}
                   onClick={() => {
                     if (!isMarketSuspended && formattedOdds) {
                       handleOddsClick(
@@ -548,42 +461,34 @@ function MatchOdds({
                       );
                     }
                   }}
-                  className={`
-                    flex h-[33px] min-w-0 flex-col
-                    items-center justify-center
-                    border-l border-white/50
-                    ${
-                      isMarketSuspended
-                        ? type === 'back'
-                          ? 'bg-[#414d57]'
-                          : 'bg-[#57484d]'
-                        : type === 'back'
-                          ? 'bg-[#72bbef]'
-                          : 'bg-[#faa9ba]'
-                    }
-                    ${
-                      !isMarketSuspended && formattedOdds
-                        ? 'cursor-pointer hover:brightness-95'
-                        : 'cursor-not-allowed'
-                    }
-                  `}
+                  className={`flex h-[33px] min-w-0 flex-col items-center justify-center border-l border-white/50 ${
+                    isMarketSuspended
+                      ? type === 'back'
+                        ? 'bg-[#414d57]'
+                        : 'bg-[#57484d]'
+                      : type === 'back'
+                        ? 'bg-[#72bbef]'
+                        : 'bg-[#faa9ba]'
+                  } ${
+                    !isMarketSuspended && formattedOdds
+                      ? 'cursor-pointer hover:brightness-95'
+                      : 'cursor-not-allowed'
+                  } `}
                 >
                   {!isMarketSuspended && formattedOdds ? (
                     <>
-                      <span className="text-[13px] font-bold leading-[15px] text-[#333]">
+                      <span className='text-[13px] leading-[15px] font-bold text-[#333]'>
                         {formattedOdds}
                       </span>
 
-                      <span className="text-[9px] leading-[11px] text-[#333]">
+                      <span className='text-[9px] leading-[11px] text-[#333]'>
                         {formatStake(item.size)}
                       </span>
                     </>
                   ) : (
                     <span
                       className={`text-[12px] font-bold ${
-                        isMarketSuspended
-                          ? 'text-[#333]'
-                          : 'text-[#333]'
+                        isMarketSuspended ? 'text-[#333]' : 'text-[#333]'
                       }`}
                     >
                       -
@@ -596,13 +501,11 @@ function MatchOdds({
             return (
               <div
                 key={teamIndex}
-                className="grid min-h-[33px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca] hover:bg-[#f7f7f7]"
+                className='grid min-h-[33px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca] hover:bg-[#f7f7f7]'
               >
-
                 {/* TEAM NAME + P/L */}
-                <div className="flex min-w-0 flex-col justify-center px-1">
-
-                  <span className="truncate text-[12px] font-medium leading-[16px] text-[#333]">
+                <div className='flex min-w-0 flex-col justify-center px-1'>
+                  <span className='truncate text-[12px] leading-[16px] font-medium text-[#333]'>
                     {team}
                   </span>
 
@@ -620,14 +523,10 @@ function MatchOdds({
                       teamName,
                       isHedged,
                       netOutcome,
-                    } = getBetDetails(
-                      team,
-                      matchOddsList?.[0]?.mname
-                    );
+                    } = getBetDetails(team, matchOddsList?.[0]?.mname);
 
                     const isMatchedTeam =
-                      teamName?.toLowerCase() ===
-                      team?.toLowerCase();
+                      teamName?.toLowerCase() === team?.toLowerCase();
 
                     const existingBet =
                       isHedged ||
@@ -656,8 +555,7 @@ function MatchOdds({
 
                         if (isHedged && netOutcome !== null) {
                           displayValue = netOutcome;
-                          betColor =
-                            netOutcome >= 0 ? 'green' : 'red';
+                          betColor = netOutcome >= 0 ? 'green' : 'red';
                         } else {
                           betColor =
                             otype === 'lay'
@@ -689,13 +587,13 @@ function MatchOdds({
 
                         return (
                           <div
-                            className="flex gap-1 leading-3"
+                            className='flex gap-1 leading-3'
                             style={{ color: betColor }}
                           >
                             {displayValue !== '' &&
                               displayValue !== null &&
                               displayValue !== undefined && (
-                                <span className="flex items-center gap-0.5 text-[9px]">
+                                <span className='flex items-center gap-0.5 text-[9px]'>
                                   <FaArrowRight />
                                   {parseFloat(displayValue).toFixed(2)}
                                 </span>
@@ -704,7 +602,7 @@ function MatchOdds({
                             {suggestionValue !== null && (
                               <span
                                 style={{ color: suggestionColor }}
-                                className="text-[9px]"
+                                className='text-[9px]'
                               >
                                 ({suggestionValue.toFixed(2)})
                               </span>
@@ -715,7 +613,7 @@ function MatchOdds({
                         return (
                           <span
                             style={{ color: suggestionColor }}
-                            className="text-[9px] leading-3"
+                            className='text-[9px] leading-3'
                           >
                             ({suggestionValue.toFixed(2)})
                           </span>
@@ -727,8 +625,7 @@ function MatchOdds({
 
                       if (isHedged && netOutcome !== null) {
                         displayValue = netOutcome;
-                        betColor =
-                          netOutcome >= 0 ? 'green' : 'red';
+                        betColor = netOutcome >= 0 ? 'green' : 'red';
                       } else {
                         betColor =
                           otype === 'lay'
@@ -743,15 +640,11 @@ function MatchOdds({
 
                         displayValue = (() => {
                           if (otype === 'lay') {
-                            return isMatchedTeam
-                              ? totalPrice
-                              : totalBetAmount;
+                            return isMatchedTeam ? totalPrice : totalBetAmount;
                           }
 
                           if (otype === 'back') {
-                            return isMatchedTeam
-                              ? totalBetAmount
-                              : totalPrice;
+                            return isMatchedTeam ? totalBetAmount : totalPrice;
                           }
 
                           return '';
@@ -760,13 +653,13 @@ function MatchOdds({
 
                       return (
                         <div
-                          className="flex gap-1 leading-3"
+                          className='flex gap-1 leading-3'
                           style={{ color: betColor }}
                         >
                           {displayValue !== '' &&
                             displayValue !== null &&
                             displayValue !== undefined && (
-                              <span className="flex items-center gap-0.5 text-[9px]">
+                              <span className='flex items-center gap-0.5 text-[9px]'>
                                 <FaArrowRight />
                                 {parseFloat(displayValue).toFixed(2)}
                               </span>
@@ -777,7 +670,6 @@ function MatchOdds({
 
                     return null;
                   })()}
-
                 </div>
 
                 {/* BACK */}
@@ -785,27 +677,24 @@ function MatchOdds({
 
                 {/* LAY */}
                 {renderOddsCell(layItem, 'lay')}
-
               </div>
             );
           })}
 
           {/* SUSPENDED OVERLAY */}
           {isMarketSuspended && (
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex w-[136px] items-center justify-center">
-              <span className="whitespace-nowrap text-[13px] font-bold text-red-600">
+            <div className='pointer-events-none absolute inset-y-0 right-0 z-10 flex w-[136px] items-center justify-center'>
+              <span className='text-[13px] font-bold whitespace-nowrap text-red-600'>
                 SUSPENDED
               </span>
             </div>
           )}
-
         </div>
       ) : (
-        <div className="py-3 text-center text-[12px] text-gray-500">
+        <div className='py-3 text-center text-[12px] text-gray-500'>
           No match odds available
         </div>
       )}
-
     </div>
   );
 }

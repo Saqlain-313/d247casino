@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Casino from './Casino';
@@ -98,71 +97,44 @@ function CasinoList() {
   const filteredCasinos =
     activeCategory === 'All Casino'
       ? casinos
-      : casinos.filter(
-          (casino) => casino.category === activeCategory
-        );
+      : casinos.filter((casino) => casino.category === activeCategory);
 
   return (
     <>
-      <div className="flex w-full flex-col md:flex-row md:p-0.5">
+      <div className='flex w-full flex-col md:flex-row md:p-0.5'>
+        {/* Casino Categories Sidebar */}
 
         {/* Casino Categories Sidebar */}
-       
-{/* Casino Categories Sidebar */}
-<div
-  className="
-    scrollbar-hide
-    flex flex-col
-    w-full md:w-[200px]
-    shrink-0
-    bg-[#2D4051]
-    overflow-x-auto md:overflow-x-hidden
-    overflow-y-visible
-  "
->
-  {casinoCategories.map((item) => (
-    <button
-      key={item.id}
-      type="button"
-      onClick={() => setActiveCategory(item.name)}
-      style={{
-        display: 'flex',
-        width: '100%',
-        minWidth: '100%',
-        height: '43px',
-        minHeight: '43px',
-        flexShrink: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor:
-          activeCategory === item.name
-            ? '#2677A6'
-            : '#2D4051',
-        color: '#ffffff',
-      }}
-      className="
-        px-2
-        text-2xl
-        md:text-[20px]
-        font-semibold
-        whitespace-nowrap
-        cursor-pointer
-        transition-colors
-        duration-200
-        hover:bg-[#354D61]
-      "
-    >
-      {item.name}
-    </button>
-  ))}
-</div>
-
-
-        {/* Casino Grid */}
-        <div className="w-full min-w-0 md:w-5/6">
-          <Casino casinos={filteredCasinos} />
+        <div className='scrollbar-hide flex w-full shrink-0 flex-col overflow-x-auto overflow-y-visible bg-[#2D4051] md:w-[200px] md:overflow-x-hidden'>
+          {casinoCategories.map((item) => (
+            <button
+              key={item.id}
+              type='button'
+              onClick={() => setActiveCategory(item.name)}
+              style={{
+                display: 'flex',
+                width: '100%',
+                minWidth: '100%',
+                height: '43px',
+                minHeight: '43px',
+                flexShrink: 0,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor:
+                  activeCategory === item.name ? '#2677A6' : '#2D4051',
+                color: '#ffffff',
+              }}
+              className='cursor-pointer px-2 text-2xl font-semibold whitespace-nowrap transition-colors duration-200 hover:bg-[#354D61] md:text-[20px]'
+            >
+              {item.name}
+            </button>
+          ))}
         </div>
 
+        {/* Casino Grid */}
+        <div className='w-full min-w-0 md:w-5/6'>
+          <Casino casinos={filteredCasinos} />
+        </div>
       </div>
     </>
   );

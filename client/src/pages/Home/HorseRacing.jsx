@@ -13,7 +13,6 @@ function formatRaceTime(stime) {
 }
 
 export default function HorseRacing({ panel = false }) {
-  
   const { venues, loading, error } = useSelector((state) => state.horseRacing);
   const races = venues
     .flatMap((venue) =>
@@ -32,13 +31,11 @@ export default function HorseRacing({ panel = false }) {
       );
     });
 
-
-
-    console.log('Horse Racing Races:', races); // Debugging line to check the races data
+  console.log('Horse Racing Races:', races); // Debugging line to check the races data
 
   return (
     <section
-      className={`flex min-h-0 flex-col bg-white text-[#252a2e] z-[99999] ${
+      className={`z-[99999] flex min-h-0 flex-col bg-white text-[#252a2e] ${
         panel
           ? 'h-[calc(100vh-3rem)] w-[min(380px,100vw)] border border-gray-300 shadow-lg lg:w-[min(280px,calc(100vw-220px))]'
           : 'w-full border border-gray-300'

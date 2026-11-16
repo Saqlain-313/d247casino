@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+
 import redis, { connectRedis } from '../config/redis.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -22,7 +23,10 @@ export const redisCache = async (key, fetchFunction, ttl = 1) => {
   try {
     await connectRedis();
   } catch (err) {
-    console.error('[CACHE] Redis connect failed, calling provider directly:', err.message);
+    console.error(
+      '[CACHE] Redis connect failed, calling provider directly:',
+      err.message
+    );
     return fetchFunction();
   }
 
@@ -35,7 +39,10 @@ export const redisCache = async (key, fetchFunction, ttl = 1) => {
     }
     log('MISS', cacheKey);
   } catch (err) {
-    console.error('[CACHE] GET failed, calling provider directly:', err.message);
+    console.error(
+      '[CACHE] GET failed, calling provider directly:',
+      err.message
+    );
     return fetchFunction();
   }
 
@@ -44,7 +51,10 @@ export const redisCache = async (key, fetchFunction, ttl = 1) => {
   try {
     locked = await redis.set(lockKey, lockToken, { NX: true, PX: 15000 });
   } catch (err) {
-    console.error('[CACHE] LOCK failed, calling provider directly:', err.message);
+    console.error(
+      '[CACHE] LOCK failed, calling provider directly:',
+      err.message
+    );
     return fetchFunction();
   }
 
@@ -58,12 +68,17 @@ export const redisCache = async (key, fetchFunction, ttl = 1) => {
 
       // undefined ko JSON.stringify karne par undefined milta hai, cache nahi karenge
       if (data === undefined) {
-        console.warn('[CACHE] fetchFunction returned undefined, not caching:', cacheKey);
+        console.warn(
+          '[CACHE] fetchFunction returned undefined, not caching:',
+          cacheKey
+        );
         return data;
       }
 
       try {
-        const res = await redis.set(cacheKey, JSON.stringify(data), { EX: ttl });
+        const res = await redis.set(cacheKey, JSON.stringify(data), {
+          EX: ttl,
+        });
         log('SET', res, 'ttl:', ttl, cacheKey);
       } catch (err) {
         console.error('[CACHE] SET failed:', err.message);
@@ -72,7 +87,10 @@ export const redisCache = async (key, fetchFunction, ttl = 1) => {
       return data;
     } finally {
       try {
-        await redis.eval(RELEASE_LOCK, { keys: [lockKey], arguments: [lockToken] });
+        await redis.eval(RELEASE_LOCK, {
+          keys: [lockKey],
+          arguments: [lockToken],
+        });
       } catch (err) {
         console.error('[CACHE] Lock release failed:', err.message);
       }

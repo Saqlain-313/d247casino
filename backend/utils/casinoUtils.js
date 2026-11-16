@@ -397,7 +397,7 @@ const distributeCards = (cards, gameName, gameId = null) => {
   }
 
   // Try to get game type from gameId first, then from gameName
-  let gameType = gameId ? gameId : getGameType(gameName);
+  let gameType = gameId ? gameId : gameName;
 
   // Fallback to gameId if gameName mapping fails
   if (!gameType && gameId) {

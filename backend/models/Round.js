@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 
 const roundSchema = new mongoose.Schema(
@@ -36,9 +35,6 @@ const roundSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-roundSchema.index(
-  { slug: 1, roundId: 1 },
-  { unique: true }
-);
+roundSchema.index({ slug: 1, roundId: 1 }, { unique: true });
 
 export default mongoose.model('Round', roundSchema);

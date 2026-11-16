@@ -5,13 +5,11 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
-    getPendingBet,
-    getPendingBetAmo,
-    messageClear,
+  getPendingBet,
+  getPendingBetAmo,
+  messageClear,
 } from '../../redux/reducer/betReducer';
-import {
-    fetchHorseRacingBettingData,
-} from '../../redux/reducer/horseRacingSlice';
+import { fetchHorseRacingBettingData } from '../../redux/reducer/horseRacingSlice';
 import HorseRacingMarkets from './HorseRacingMarkets';
 import MatchedBet from './MatchedBet';
 import PlaceBet from './PlaceBet';
@@ -35,12 +33,10 @@ function HourseRacingBet() {
   const { pendingBetAmounts, successMessage, errorMessage } = useSelector(
     (state) => state.bet
   );
-  const horseRacingDataMatchesRoute =
-    String(bettingGameId) === String(gameid);
+  const horseRacingDataMatchesRoute = String(bettingGameId) === String(gameid);
   const bettingData = horseRacingDataMatchesRoute ? storedBettingData : [];
   const isBettingLoaded = horseRacingDataMatchesRoute && bettingLoaded;
-  const isBettingLoading =
-    !horseRacingDataMatchesRoute || bettingLoading;
+  const isBettingLoading = !horseRacingDataMatchesRoute || bettingLoading;
   const bettingDataError = horseRacingDataMatchesRoute ? bettingError : null;
   const hasHorseRacingMarkets =
     Array.isArray(bettingData) &&
@@ -68,22 +64,13 @@ function HourseRacingBet() {
   }, [dispatch, gameid]);
 
   useEffect(() => {
-    if (
-      !isBettingLoaded ||
-      bettingDataError ||
-      hasHorseRacingMarkets
-    ) {
+    if (!isBettingLoaded || bettingDataError || hasHorseRacingMarkets) {
       return undefined;
     }
 
     const redirectTimer = window.setTimeout(() => navigate('/'), 2500);
     return () => window.clearTimeout(redirectTimer);
-  }, [
-    isBettingLoaded,
-    bettingDataError,
-    hasHorseRacingMarkets,
-    navigate,
-  ]);
+  }, [isBettingLoaded, bettingDataError, hasHorseRacingMarkets, navigate]);
 
   useEffect(() => {
     dispatch(getUser());
@@ -100,10 +87,7 @@ function HourseRacingBet() {
     if (successMessage) {
       toast.success(successMessage);
       dispatch(messageClear());
-      clearSelectedBetTimer = window.setTimeout(
-        () => setSelectedBet(null),
-        0
-      );
+      clearSelectedBetTimer = window.setTimeout(() => setSelectedBet(null), 0);
       if (gameid) {
         dispatch(getPendingBetAmo(gameid));
         dispatch(getPendingBet(gameid));
@@ -138,7 +122,7 @@ function HourseRacingBet() {
 
   return (
     <div className='mt-0.5 flex min-w-0 gap-px'>
-      <main className='ml-0 min-w-0 w-full md:ml-1 lg:w-[calc(100%-352px)]'>
+      <main className='ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]'>
         <div className='bg-secondary text-secondary flex items-center gap-2 p-2 text-sm font-bold'>
           <FaHorse aria-hidden='true' />
           <span>{venue}</span>

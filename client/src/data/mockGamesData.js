@@ -5,13 +5,58 @@
  */
 
 export const DECK = [
-  "10CC", "10DD", "10HH", "10SS", "2CC", "2DD", "2HH", "2SS",
-  "3CC", "3DD", "3HH", "3SS", "4CC", "4DD", "4HH", "4SS",
-  "5CC", "5DD", "5HH", "5SS", "6CC", "6DD", "6HH", "6SS",
-  "7CC", "7DD", "7HH", "7SS", "8CC", "8DD", "8HH", "8SS",
-  "9CC", "9DD", "9HH", "9SS", "ACC", "ADD", "AHH", "ASS",
-  "JCC", "JDD", "JHH", "JSS", "KCC", "KDD", "KHH", "KSS",
-  "QCC", "QDD", "QHH", "QSS"
+  '10CC',
+  '10DD',
+  '10HH',
+  '10SS',
+  '2CC',
+  '2DD',
+  '2HH',
+  '2SS',
+  '3CC',
+  '3DD',
+  '3HH',
+  '3SS',
+  '4CC',
+  '4DD',
+  '4HH',
+  '4SS',
+  '5CC',
+  '5DD',
+  '5HH',
+  '5SS',
+  '6CC',
+  '6DD',
+  '6HH',
+  '6SS',
+  '7CC',
+  '7DD',
+  '7HH',
+  '7SS',
+  '8CC',
+  '8DD',
+  '8HH',
+  '8SS',
+  '9CC',
+  '9DD',
+  '9HH',
+  '9SS',
+  'ACC',
+  'ADD',
+  'AHH',
+  'ASS',
+  'JCC',
+  'JDD',
+  'JHH',
+  'JSS',
+  'KCC',
+  'KDD',
+  'KHH',
+  'KSS',
+  'QCC',
+  'QDD',
+  'QHH',
+  'QSS',
 ];
 
 function getRandomCard() {
@@ -24,7 +69,8 @@ function getRandomCards(count) {
 }
 
 export function generateMockRoundData(slug) {
-  const roundId = "30" + Math.floor(1000000000000 + Math.random() * 9000000000000);
+  const roundId =
+    '30' + Math.floor(1000000000000 + Math.random() * 9000000000000);
 
   // 1. Lucky 7 Variants (vlucky7, lucky7, lucky7eu, lucky7eu2, plucky7) - 1 Center Card
   if (
@@ -57,7 +103,19 @@ export function generateMockRoundData(slug) {
 
   // 2. Lucky 5 (Lucky 6) - 1 Center Card (Ace to Jack, Pivot 6)
   if (slug === 'lucky5') {
-    const lucky5Cards = ['ACC', '2DD', '3HH', '4SS', '5CC', '6DD', '7HH', '8SS', '9CC', '10DD', 'JHH'];
+    const lucky5Cards = [
+      'ACC',
+      '2DD',
+      '3HH',
+      '4SS',
+      '5CC',
+      '6DD',
+      '7HH',
+      '8SS',
+      '9CC',
+      '10DD',
+      'JHH',
+    ];
     const card = lucky5Cards[Math.floor(Math.random() * lucky5Cards.length)];
     return {
       roundId,
@@ -103,9 +161,24 @@ export function generateMockRoundData(slug) {
       cards: { center: [c1, c2, c3] },
       results: ['Pair', 'High Card', 'Flush', 'Straight', 'High Card', 'Pair'],
       markets: {
-        session21: { name: 'Session 21 (Yes/No)', back: '21.00', lay: '22.00', volume: '75k' },
-        judge124: { name: 'Judgement (1, 2, 4)', back: '1.98', lay: '2.02', volume: '60k' },
-        judgeJQK: { name: 'Judgement (J, Q, K)', back: '1.98', lay: '2.02', volume: '60k' },
+        session21: {
+          name: 'Session 21 (Yes/No)',
+          back: '21.00',
+          lay: '22.00',
+          volume: '75k',
+        },
+        judge124: {
+          name: 'Judgement (1, 2, 4)',
+          back: '1.98',
+          lay: '2.02',
+          volume: '60k',
+        },
+        judgeJQK: {
+          name: 'Judgement (J, Q, K)',
+          back: '1.98',
+          lay: '2.02',
+          volume: '60k',
+        },
         twoRed: { name: 'Two Red Only', back: '2.40', volume: '50k' },
         twoBlack: { name: 'Two Black Only', back: '2.40', volume: '50k' },
         twoOdd: { name: 'Two Odd Only', back: '2.40', volume: '50k' },
@@ -114,7 +187,11 @@ export function generateMockRoundData(slug) {
         flush: { name: 'Flush', back: '17.00', volume: '40k' },
         straight: { name: 'Straight', back: '24.00', volume: '30k' },
         trio: { name: 'Trio', back: '201.00', volume: '20k' },
-        straightFlush: { name: 'Straight Flush', back: '226.00', volume: '15k' },
+        straightFlush: {
+          name: 'Straight Flush',
+          back: '226.00',
+          volume: '15k',
+        },
       },
     };
   }
@@ -129,8 +206,18 @@ export function generateMockRoundData(slug) {
       results: ['Amar', 'Akbar', 'Amar', 'Anthony', 'Akbar', 'Amar'],
       markets: {
         amar: { name: 'Amar (A-6)', back: '2.12', lay: '2.16', volume: '120k' },
-        akbar: { name: 'Akbar (7-10)', back: '3.15', lay: '3.20', volume: '90k' },
-        anthony: { name: 'Anthony (J-K)', back: '4.25', lay: '4.30', volume: '60k' },
+        akbar: {
+          name: 'Akbar (7-10)',
+          back: '3.15',
+          lay: '3.20',
+          volume: '90k',
+        },
+        anthony: {
+          name: 'Anthony (J-K)',
+          back: '4.25',
+          lay: '4.30',
+          volume: '60k',
+        },
         even: { name: 'Even', back: '2.12', volume: '50k' },
         odd: { name: 'Odd', back: '1.83', volume: '50k' },
         red: { name: 'Red', back: '1.97', volume: '70k' },
@@ -263,14 +350,58 @@ export function generateMockRoundData(slug) {
       cards: { p8: [c1], p9: [c2], p10: [c3], p11: [c4] },
       results: ['P8', 'P9', 'P8', 'P10', 'P11', 'P8', 'P9'],
       markets: {
-        player8: { name: 'Player 8', back: '1.98', lay: '2.02', volume: '120k', baseScore: 8 },
-        player9: { name: 'Player 9', back: '2.50', lay: '2.60', volume: '95k', baseScore: 9 },
-        player10: { name: 'Player 10', back: '3.50', lay: '3.65', volume: '75k', baseScore: 10 },
-        player11: { name: 'Player 11', back: '4.50', lay: '4.70', volume: '50k', baseScore: 11 },
-        total8: { name: 'Player 8 Total Runs', back: '22.5', lay: '23.5', volume: '40k' },
-        total9: { name: 'Player 9 Total Runs', back: '22.5', lay: '23.5', volume: '40k' },
-        total10: { name: 'Player 10 Total Runs', back: '22.5', lay: '23.5', volume: '40k' },
-        total11: { name: 'Player 11 Total Runs', back: '22.5', lay: '23.5', volume: '40k' },
+        player8: {
+          name: 'Player 8',
+          back: '1.98',
+          lay: '2.02',
+          volume: '120k',
+          baseScore: 8,
+        },
+        player9: {
+          name: 'Player 9',
+          back: '2.50',
+          lay: '2.60',
+          volume: '95k',
+          baseScore: 9,
+        },
+        player10: {
+          name: 'Player 10',
+          back: '3.50',
+          lay: '3.65',
+          volume: '75k',
+          baseScore: 10,
+        },
+        player11: {
+          name: 'Player 11',
+          back: '4.50',
+          lay: '4.70',
+          volume: '50k',
+          baseScore: 11,
+        },
+        total8: {
+          name: 'Player 8 Total Runs',
+          back: '22.5',
+          lay: '23.5',
+          volume: '40k',
+        },
+        total9: {
+          name: 'Player 9 Total Runs',
+          back: '22.5',
+          lay: '23.5',
+          volume: '40k',
+        },
+        total10: {
+          name: 'Player 10 Total Runs',
+          back: '22.5',
+          lay: '23.5',
+          volume: '40k',
+        },
+        total11: {
+          name: 'Player 11 Total Runs',
+          back: '22.5',
+          lay: '23.5',
+          volume: '40k',
+        },
       },
     };
   }
@@ -320,8 +451,16 @@ export function generateMockRoundData(slug) {
         tie: { name: 'Tie', back: '9.00', volume: '40k' },
         playerPair: { name: 'Player Pair', back: '12.00', volume: '15k' },
         bankerPair: { name: 'Banker Pair', back: '12.00', volume: '15k' },
-        playerNatural: { name: 'Player Natural 9', back: '3.50', volume: '20k' },
-        bankerNatural: { name: 'Banker Natural 9', back: '3.50', volume: '20k' },
+        playerNatural: {
+          name: 'Player Natural 9',
+          back: '3.50',
+          volume: '20k',
+        },
+        bankerNatural: {
+          name: 'Banker Natural 9',
+          back: '3.50',
+          volume: '20k',
+        },
         anyPair: { name: 'Any Pair', back: '6.00', volume: '15k' },
         perfectPair: { name: 'Perfect Pair', back: '25.00', volume: '10k' },
       },
@@ -340,7 +479,12 @@ export function generateMockRoundData(slug) {
       cards: {},
       results: ['Small', 'Big', 'Big', 'Small', 'Triple', 'Big'],
       markets: {
-        small: { name: 'Small (4-10)', back: '1.98', lay: '2.02', volume: '240k' },
+        small: {
+          name: 'Small (4-10)',
+          back: '1.98',
+          lay: '2.02',
+          volume: '240k',
+        },
         big: { name: 'Big (11-17)', back: '1.98', lay: '2.02', volume: '240k' },
         odd: { name: 'Odd', back: '1.95', volume: '80k' },
         even: { name: 'Even', back: '1.95', volume: '80k' },
@@ -353,14 +497,31 @@ export function generateMockRoundData(slug) {
   // 14. Goal 2 (goal2) - Football Simulation
   if (slug === 'goal2') {
     const players = [
-      'Cristiano Ronaldo', 'Lionel Messi', 'Robert Lewandowski',
-      'Karim Benzema', 'Edinson Cavani', 'Luis Suarez',
-      'Neymar', 'Sergio Aguero', 'Olivier Giroud',
-      'Mohamed Salah', 'Kylian Mbappe', 'No Goal',
+      'Cristiano Ronaldo',
+      'Lionel Messi',
+      'Robert Lewandowski',
+      'Karim Benzema',
+      'Edinson Cavani',
+      'Luis Suarez',
+      'Neymar',
+      'Sergio Aguero',
+      'Olivier Giroud',
+      'Mohamed Salah',
+      'Kylian Mbappe',
+      'No Goal',
     ];
-    const methods = ['Shot Goal', 'Header Goal', 'Penalty Goal', 'Free Kick Goal', 'No Goal'];
+    const methods = [
+      'Shot Goal',
+      'Header Goal',
+      'Penalty Goal',
+      'Free Kick Goal',
+      'No Goal',
+    ];
     const pWinner = players[Math.floor(Math.random() * players.length)];
-    const mWinner = pWinner === 'No Goal' ? 'No Goal' : methods[Math.floor(Math.random() * (methods.length - 1))];
+    const mWinner =
+      pWinner === 'No Goal'
+        ? 'No Goal'
+        : methods[Math.floor(Math.random() * (methods.length - 1))];
     const rdesc = pWinner === 'No Goal' ? 'No Goal' : `${pWinner} - ${mWinner}`;
 
     return {
@@ -370,16 +531,53 @@ export function generateMockRoundData(slug) {
       goalMethodWinner: mWinner,
       cards: {},
       rdesc,
-      results: ['CR7 Shot', 'Messi Penalty', 'No Goal', 'Mbappe Shot', 'Lewandowski Header', 'No Goal'],
+      results: [
+        'CR7 Shot',
+        'Messi Penalty',
+        'No Goal',
+        'Mbappe Shot',
+        'Lewandowski Header',
+        'No Goal',
+      ],
       remark: 'Who Will Goal Next? Predict the scorer and method of goal!',
       markets: {
-        ronaldo: { name: 'Cristiano Ronaldo', back: '4.50', lay: '4.80', volume: '150k' },
-        messi: { name: 'Lionel Messi', back: '4.80', lay: '5.10', volume: '150k' },
+        ronaldo: {
+          name: 'Cristiano Ronaldo',
+          back: '4.50',
+          lay: '4.80',
+          volume: '150k',
+        },
+        messi: {
+          name: 'Lionel Messi',
+          back: '4.80',
+          lay: '5.10',
+          volume: '150k',
+        },
         noGoal: { name: 'No Goal', back: '3.20', lay: '3.40', volume: '200k' },
-        shotGoal: { name: 'Shot Goal', back: '1.85', lay: '1.92', volume: '250k' },
-        headerGoal: { name: 'Header Goal', back: '4.50', lay: '4.80', volume: '80k' },
-        penaltyGoal: { name: 'Penalty Goal', back: '6.00', lay: '6.50', volume: '50k' },
-        freeKickGoal: { name: 'Free Kick Goal', back: '12.00', lay: '13.00', volume: '30k' },
+        shotGoal: {
+          name: 'Shot Goal',
+          back: '1.85',
+          lay: '1.92',
+          volume: '250k',
+        },
+        headerGoal: {
+          name: 'Header Goal',
+          back: '4.50',
+          lay: '4.80',
+          volume: '80k',
+        },
+        penaltyGoal: {
+          name: 'Penalty Goal',
+          back: '6.00',
+          lay: '6.50',
+          volume: '50k',
+        },
+        freeKickGoal: {
+          name: 'Free Kick Goal',
+          back: '12.00',
+          lay: '13.00',
+          volume: '30k',
+        },
       },
     };
   }
@@ -394,7 +592,12 @@ export function generateMockRoundData(slug) {
       results: ['Goal', 'Miss', 'Goal', 'Goal', 'Save', 'Goal'],
       markets: {
         goal: { name: 'Goal', back: '1.95', lay: '2.05', volume: '300k' },
-        noGoal: { name: 'No Goal (Miss/Save)', back: '1.95', lay: '2.05', volume: '300k' },
+        noGoal: {
+          name: 'No Goal (Miss/Save)',
+          back: '1.95',
+          lay: '2.05',
+          volume: '300k',
+        },
         topLeft: { name: 'Top Left', back: '4.50', volume: '60k' },
         topRight: { name: 'Top Right', back: '4.50', volume: '60k' },
         bottomLeft: { name: 'Bottom Left', back: '4.50', volume: '60k' },
@@ -422,10 +625,22 @@ export function generateMockRoundData(slug) {
       markets: {
         batsman: { name: 'Batsman', back: '1.95', lay: '2.05', volume: '350k' },
         bowler: { name: 'Bowler', back: '1.95', lay: '2.05', volume: '350k' },
-        overRunsUnder: { name: 'Runs Under 10.5', back: '1.90', volume: '120k' },
+        overRunsUnder: {
+          name: 'Runs Under 10.5',
+          back: '1.90',
+          volume: '120k',
+        },
         overRunsOver: { name: 'Runs Over 10.5', back: '1.90', volume: '120k' },
-        boundaryYes: { name: 'Boundary in Over (Yes)', back: '1.65', volume: '140k' },
-        boundaryNo: { name: 'Boundary in Over (No)', back: '2.20', volume: '110k' },
+        boundaryYes: {
+          name: 'Boundary in Over (Yes)',
+          back: '1.65',
+          volume: '140k',
+        },
+        boundaryNo: {
+          name: 'Boundary in Over (No)',
+          back: '2.20',
+          volume: '110k',
+        },
       },
     };
   }
@@ -444,8 +659,18 @@ export function generateMockRoundData(slug) {
       },
       results: ['A', 'B', 'A', 'A', 'B', 'Tie', 'A'],
       markets: {
-        playerA: { name: 'Player A', back: '1.98', lay: '2.02', volume: '180k' },
-        playerB: { name: 'Player B', back: '1.98', lay: '2.02', volume: '180k' },
+        playerA: {
+          name: 'Player A',
+          back: '1.98',
+          lay: '2.02',
+          volume: '180k',
+        },
+        playerB: {
+          name: 'Player B',
+          back: '1.98',
+          lay: '2.02',
+          volume: '180k',
+        },
         tie: { name: 'Tie', back: '21.00', volume: '25k' },
         pairA: { name: 'Pair Player A', back: '3.50', volume: '40k' },
         pairB: { name: 'Pair Player B', back: '3.50', volume: '40k' },
@@ -467,7 +692,12 @@ export function generateMockRoundData(slug) {
         spade: { name: 'Spade ♠', back: '3.75', lay: '3.95', volume: '110k' },
         heart: { name: 'Heart ♥', back: '3.75', lay: '3.95', volume: '110k' },
         club: { name: 'Club ♣', back: '3.75', lay: '3.95', volume: '110k' },
-        diamond: { name: 'Diamond ♦', back: '3.75', lay: '3.95', volume: '110k' },
+        diamond: {
+          name: 'Diamond ♦',
+          back: '3.75',
+          lay: '3.95',
+          volume: '110k',
+        },
       },
     };
   }
@@ -481,8 +711,18 @@ export function generateMockRoundData(slug) {
       cards: { playerA: [c1], playerB: [c2] },
       results: ['A', 'B', 'A', 'A', 'B', 'A', 'B', 'B'],
       markets: {
-        playerA: { name: 'Player A', back: '1.98', lay: '2.02', volume: '300k' },
-        playerB: { name: 'Player B', back: '1.98', lay: '2.02', volume: '300k' },
+        playerA: {
+          name: 'Player A',
+          back: '1.98',
+          lay: '2.02',
+          volume: '300k',
+        },
+        playerB: {
+          name: 'Player B',
+          back: '1.98',
+          lay: '2.02',
+          volume: '300k',
+        },
         tie: { name: 'Tie', back: '11.00', volume: '30k' },
       },
     };
@@ -497,8 +737,18 @@ export function generateMockRoundData(slug) {
       cards: { playerA: [a1, a2], playerB: [b1, b2] },
       results: ['A', 'B', 'A', 'A', 'B'],
       markets: {
-        playerA: { name: 'Player A', back: '1.98', lay: '2.02', volume: '220k' },
-        playerB: { name: 'Player B', back: '1.98', lay: '2.02', volume: '220k' },
+        playerA: {
+          name: 'Player A',
+          back: '1.98',
+          lay: '2.02',
+          volume: '220k',
+        },
+        playerB: {
+          name: 'Player B',
+          back: '1.98',
+          lay: '2.02',
+          volume: '220k',
+        },
         pairA: { name: 'Pair A', back: '5.50', volume: '40k' },
         pairB: { name: 'Pair B', back: '5.50', volume: '40k' },
       },
@@ -527,8 +777,18 @@ export function generateMockRoundData(slug) {
       },
       results: ['B', 'A', 'B', 'B', 'A', 'A', 'B'],
       markets: {
-        playerA: { name: 'Player A', back: '1.98', lay: '2.02', volume: '260k' },
-        playerB: { name: 'Player B', back: '1.98', lay: '2.02', volume: '260k' },
+        playerA: {
+          name: 'Player A',
+          back: '1.98',
+          lay: '2.02',
+          volume: '260k',
+        },
+        playerB: {
+          name: 'Player B',
+          back: '1.98',
+          lay: '2.02',
+          volume: '260k',
+        },
         baccaratA: { name: '3 Baccarat A', back: '1.98', volume: '70k' },
         baccaratB: { name: '3 Baccarat B', back: '1.98', volume: '70k' },
         totalA: { name: 'Total A', back: '2.00', volume: '60k' },
@@ -552,10 +812,28 @@ export function generateMockRoundData(slug) {
       },
       results: ['B', 'A', 'B', 'B', 'A', 'B', 'A', 'B'],
       markets: {
-        playerAMain: { name: 'Player A Main', back: '1.98', lay: '2.02', volume: '250k' },
-        playerBMain: { name: 'Player B Main', back: '1.98', lay: '2.02', volume: '250k' },
-        playerBUnder21: { name: 'Player B Under 21', back: '1.98', volume: '100k' },
-        playerBOver21: { name: 'Player B Over 21', back: '1.98', volume: '100k' },
+        playerAMain: {
+          name: 'Player A Main',
+          back: '1.98',
+          lay: '2.02',
+          volume: '250k',
+        },
+        playerBMain: {
+          name: 'Player B Main',
+          back: '1.98',
+          lay: '2.02',
+          volume: '250k',
+        },
+        playerBUnder21: {
+          name: 'Player B Under 21',
+          back: '1.98',
+          volume: '100k',
+        },
+        playerBOver21: {
+          name: 'Player B Over 21',
+          back: '1.98',
+          volume: '100k',
+        },
       },
     };
   }
@@ -585,23 +863,23 @@ export function generateMockRoundData(slug) {
       results: isQueen
         ? ['Queen', 'King', 'Queen', 'Queen']
         : isTrap
-        ? ['Trap', 'Escape', 'Trap', 'Trap']
-        : isMogambo
-        ? ['Mogambo Khush', 'Mogambo Udaas']
-        : ['1', '5', '8', '3', '0', '7'],
+          ? ['Trap', 'Escape', 'Trap', 'Trap']
+          : isMogambo
+            ? ['Mogambo Khush', 'Mogambo Udaas']
+            : ['1', '5', '8', '3', '0', '7'],
       markets: {
         optA: {
           name: isQueen
             ? 'Queen'
             : isTrap
-            ? 'Trap'
-            : isMogambo
-            ? 'Khush Hua'
-            : isDum10
-            ? '1 to 5'
-            : isNote
-            ? '0 to 4'
-            : 'Low (1-5)',
+              ? 'Trap'
+              : isMogambo
+                ? 'Khush Hua'
+                : isDum10
+                  ? '1 to 5'
+                  : isNote
+                    ? '0 to 4'
+                    : 'Low (1-5)',
           back: '1.98',
           lay: '2.02',
           volume: '150k',
@@ -610,14 +888,14 @@ export function generateMockRoundData(slug) {
           name: isQueen
             ? 'King'
             : isTrap
-            ? 'Escape'
-            : isMogambo
-            ? 'Udaas'
-            : isDum10
-            ? '6 to 10'
-            : isNote
-            ? '5 to 9'
-            : 'High (6-10)',
+              ? 'Escape'
+              : isMogambo
+                ? 'Udaas'
+                : isDum10
+                  ? '6 to 10'
+                  : isNote
+                    ? '5 to 9'
+                    : 'High (6-10)',
           back: '1.98',
           lay: '2.02',
           volume: '150k',
@@ -640,8 +918,18 @@ export function generateMockRoundData(slug) {
       },
       results: ['A', 'B', 'A', 'B', 'B', 'A'],
       markets: {
-        playerA: { name: 'Player A', back: '1.98', lay: '2.02', volume: '300k' },
-        playerB: { name: 'Player B', back: '1.98', lay: '2.02', volume: '300k' },
+        playerA: {
+          name: 'Player A',
+          back: '1.98',
+          lay: '2.02',
+          volume: '300k',
+        },
+        playerB: {
+          name: 'Player B',
+          back: '1.98',
+          lay: '2.02',
+          volume: '300k',
+        },
         pairPlusA: { name: 'Pair Plus A', back: 'A', volume: '70k' },
         pairPlusB: { name: 'Pair Plus B', back: 'B', volume: '70k' },
       },
@@ -660,8 +948,18 @@ export function generateMockRoundData(slug) {
     },
     results: ['B', 'B', 'A', 'B', 'B', 'A', 'B', 'A'],
     markets: {
-      playerAMain: { name: 'Player A', back: '1.98', lay: '2.02', volume: '350k' },
-      playerBMain: { name: 'Player B', back: '1.98', lay: '2.02', volume: '350k' },
+      playerAMain: {
+        name: 'Player A',
+        back: '1.98',
+        lay: '2.02',
+        volume: '350k',
+      },
+      playerBMain: {
+        name: 'Player B',
+        back: '1.98',
+        lay: '2.02',
+        volume: '350k',
+      },
       baccaratA: { name: '3 Baccarat A', back: '1.98', volume: '80k' },
       baccaratB: { name: '3 Baccarat B', back: '1.98', volume: '80k' },
       totalA: { name: 'Total A', back: '2.00', volume: '60k' },

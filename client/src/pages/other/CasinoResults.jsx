@@ -533,11 +533,10 @@ function CasinoResults() {
                       colSpan={2}
                       className='border border-[#c7c8ca] p-2 text-center text-sm text-red-500'
                     >
-                      {
-                        typeof directCasinoResultError === 'string'
-                          ? directCasinoResultError
-                          : directCasinoResultError?.message || 'Unable to load casino results'
-                      }
+                      {typeof directCasinoResultError === 'string'
+                        ? directCasinoResultError
+                        : directCasinoResultError?.message ||
+                          'Unable to load casino results'}
                     </td>
                   </tr>
                 ) : filteredRows.length > 0 ? (

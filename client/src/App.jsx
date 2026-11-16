@@ -32,14 +32,14 @@ function App() {
             <Route path='cricket' element={<Cricket />} />
             <Route path='football' element={<Football />} />
             <Route path='tennis' element={<Tennis />} />
-            <Route
-  path="/casino-bet/:slug"
-  element={<CasinoBet />}
-/>
+            <Route path='/casino-bet/:slug' element={<CasinoBet />} />
             <Route path='cricket-bet/:game/:id' element={<CricketBet />} />
             <Route path='football-bet/:game/:id' element={<FootballBet />} />
             <Route path='tennis-bet/:game/:id' element={<TennisBet />} />
-            <Route path='hourse-racing-bet/:game/:id' element={<HourseRacingBet />} />
+            <Route
+              path='hourse-racing-bet/:game/:id'
+              element={<HourseRacingBet />}
+            />
             <Route path='account-statement' element={<AccountStatement />} />
             <Route path='current-bets' element={<CurrentBets />} />
             <Route path='activity-log' element={<ActivityLog />} />

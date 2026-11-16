@@ -21,9 +21,7 @@ export default function OddsBox({
   }
 
   const isSelected =
-    betSlip.isOpen &&
-    betSlip.nation === nation &&
-    betSlip.type === type;
+    betSlip.isOpen && betSlip.nation === nation && betSlip.type === type;
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -39,11 +37,10 @@ export default function OddsBox({
       onClick={isSuspended ? undefined : handleClick}
       style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
     >
-      <span className="casino-odds">{isSuspended ? '-' : odds}</span>
+      <span className='casino-odds'>{isSuspended ? '-' : odds}</span>
       {volume && !isSuspended && (
-        <span className="casino-volume">{volume}</span>
+        <span className='casino-volume'>{volume}</span>
       )}
     </div>
   );
 }
-

@@ -7,14 +7,8 @@ export default function TeamOutcomeLabels({
   getProjectedNetOutcome,
   isSelectedBetInMarket,
 }) {
-  const {
-    otype,
-    totalBetAmount,
-    totalPrice,
-    teamName,
-    isHedged,
-    netOutcome,
-  } = getBetDetails(team);
+  const { otype, totalBetAmount, totalPrice, teamName, isHedged, netOutcome } =
+    getBetDetails(team);
   const isMatchedTeam = teamName?.toLowerCase() === team?.toLowerCase();
   const existingBet =
     isHedged ||

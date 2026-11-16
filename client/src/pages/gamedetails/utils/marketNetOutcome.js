@@ -1,8 +1,7 @@
 export function computeNetOutcome(team, marketBets, mCashoutPL = 0) {
   let netOutcome = 0;
   marketBets.forEach((bet) => {
-    const isBetOnThisTeam =
-      bet.teamName?.toLowerCase() === team?.toLowerCase();
+    const isBetOnThisTeam = bet.teamName?.toLowerCase() === team?.toLowerCase();
     const betAmt = parseFloat(bet.totalBetAmount) || 0;
     const stake = parseFloat(bet.totalPrice) || 0;
 
@@ -61,8 +60,7 @@ export function createMarketNetOutcomeHelpers({
   const getMarketBets = () => {
     const historyBets = getHistoryMarketBets();
     const amountBets =
-      pendingBetAmounts?.filter((item) => matchesGameType(item.gameType)) ||
-      [];
+      pendingBetAmounts?.filter((item) => matchesGameType(item.gameType)) || [];
     return historyBets.length > 0 ? historyBets : amountBets;
   };
 
@@ -127,9 +125,7 @@ export function createMarketNetOutcomeHelpers({
 
   const isSelectedBetInMarket = (bet) => {
     if (!bet) return false;
-    return (
-      matchesGameType(bet.gameType) || matchesGameType(bet.marketName)
-    );
+    return matchesGameType(bet.gameType) || matchesGameType(bet.marketName);
   };
 
   return {

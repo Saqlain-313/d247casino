@@ -1,4 +1,5 @@
 import axios from 'axios';
+
 import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
@@ -16,7 +17,8 @@ const STALE_BET_MINUTES = Number(process.env.STALE_BET_MINUTES ?? 30);
 const getUid = (req) => req.id ?? req.user?._id; // placeBet used req.id, others req.user._id
 
 // Provider kabhi ACTIVE bhejta hai, kabhi OPEN
-const isActive = (s) => ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
+const isActive = (s) =>
+  ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
 
 // ======================================================================
 // Provider API helpers  (direct-casino endpoints)
@@ -27,7 +29,8 @@ const isActive = (s) => ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase(
 const pickLive = (body) => {
   const candidates = [body?.data, body?.data?.data, body];
   for (const c of candidates) {
-    if (c && typeof c === 'object' && c.mid !== undefined && c.mid !== null) return c;
+    if (c && typeof c === 'object' && c.mid !== undefined && c.mid !== null)
+      return c;
   }
   return null;
 };
@@ -46,7 +49,8 @@ export const fetchCasinoData = async (slug) => {
   const url = `${API_URL}/diamond/direct-casino/data/${encodeURIComponent(slug)}?key=${API_KEY}`;
   try {
     const response = await axios.get(url, { timeout: 15000 });
-    if (DEBUG) console.log('Casino DATA API:', JSON.stringify(response.data, null, 2));
+    if (DEBUG)
+      console.log('Casino DATA API:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('CASINO DATA API ERROR:', {
@@ -114,36 +118,57 @@ const localValidateBet = ({ side, selection, odds, stake }) => {
   if (!['back', 'lay'].includes(String(side || '').toLowerCase())) {
     errors.push('side must be back or lay');
   }
-  if (selection === undefined || selection === null || String(selection).trim() === '') {
+  if (
+    selection === undefined ||
+    selection === null ||
+    String(selection).trim() === ''
+  ) {
     errors.push('selection is required');
   }
-  if (!Number.isFinite(odds) || odds <= 1) errors.push('odds must be greater than 1');
-  if (!Number.isFinite(stake) || stake <= 0) errors.push('stake must be greater than 0');
+  if (!Number.isFinite(odds) || odds <= 1)
+    errors.push('odds must be greater than 1');
+  if (!Number.isFinite(stake) || stake <= 0)
+    errors.push('stake must be greater than 0');
   return errors;
 };
 
 // back: stake | lay: stake * (odds - 1)
 const localCalcExposure = ({ side, stake, odds }) => {
-  const exposure = String(side || '').toLowerCase() === 'lay' ? stake * (odds - 1) : stake;
+  const exposure =
+    String(side || '').toLowerCase() === 'lay' ? stake * (odds - 1) : stake;
   return Math.round(exposure * 100) / 100;
 };
 
 export const placeBet = async (req, res) => {
-  const slug = String(req.params.slug || '').trim().toLowerCase();
+  const slug = String(req.params.slug || '')
+    .trim()
+    .toLowerCase();
   const userId = getUid(req);
   const { roundId, side, selection } = req.body || {};
   const odds = Number(req.body?.odds);
   const stake = Number(req.body?.stake);
 
-  console.log('placeBet request:', { slug, userId, roundId, side, selection, odds, stake });
+  console.log('placeBet request:', {
+    slug,
+    userId,
+    roundId,
+    side,
+    selection,
+    odds,
+    stake,
+  });
 
   try {
     if (!userId) {
-      return res.status(401).json({ success: false, message: 'Unauthorized user' });
+      return res
+        .status(401)
+        .json({ success: false, message: 'Unauthorized user' });
     }
 
     if (!slug) {
-      return res.status(400).json({ success: false, message: 'Game slug is required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Game slug is required' });
     }
 
     // engine.familyOf par block nahi karte. Provider hi decide karta hai
@@ -164,21 +189,26 @@ export const placeBet = async (req, res) => {
     }
 
     if (!Number.isFinite(odds) || !Number.isFinite(stake) || stake <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid odds or stake' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid odds or stake' });
     }
 
     // Engine validation use karo, par "Game not supported" error ignore karo
     let errors = localValidateBet({ side, selection, odds, stake });
     if (family && typeof engine.validateBet === 'function') {
       try {
-        const engineErrors = engine.validateBet(slug, { side, selection, odds, stake }) || [];
+        const engineErrors =
+          engine.validateBet(slug, { side, selection, odds, stake }) || [];
         errors = engineErrors.filter((e) => !/not supported/i.test(String(e)));
       } catch (e) {
         console.warn('engine.validateBet failed:', e.message);
       }
     }
     if (errors.length) {
-      return res.status(400).json({ success: false, message: errors.join(', ') });
+      return res
+        .status(400)
+        .json({ success: false, message: errors.join(', ') });
     }
 
     // Provider ka CURRENT round: { message, data: { mid, gtype, sub } }
@@ -202,7 +232,9 @@ export const placeBet = async (req, res) => {
     }
 
     if (liveData.gtype && String(liveData.gtype).toLowerCase() !== slug) {
-      return res.status(400).json({ success: false, message: 'Invalid casino game type' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid casino game type' });
     }
 
     // Snapshot background me save hota hai (stats ke liye). Bet iske result par depend nahi karta.
@@ -226,12 +258,16 @@ export const placeBet = async (req, res) => {
     );
 
     if (!selectedMarket) {
-      return res.status(400).json({ success: false, message: 'Invalid selection for this round' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid selection for this round' });
     }
 
     // Sirf explicit band status reject hota hai. Unknown/missing gstatus allow hai.
     // Testing ke liye .env mein ALLOW_SUSPENDED_BETS=1 se ye check skip ho jata hai.
-    const gs = String(selectedMarket.gstatus ?? '').trim().toUpperCase();
+    const gs = String(selectedMarket.gstatus ?? '')
+      .trim()
+      .toUpperCase();
     const BLOCKED = ['SUSPENDED', 'CLOSED', 'INACTIVE', 'BALL RUNNING'];
     if (process.env.ALLOW_SUSPENDED_BETS !== '1' && BLOCKED.includes(gs)) {
       return res.status(400).json({
@@ -267,7 +303,9 @@ export const placeBet = async (req, res) => {
       exposure = localCalcExposure({ side, stake, odds });
     }
     if (!Number.isFinite(exposure) || exposure <= 0) {
-      return res.status(400).json({ success: false, message: 'Invalid bet exposure' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid bet exposure' });
     }
 
     // Atomic debit
@@ -278,7 +316,9 @@ export const placeBet = async (req, res) => {
     );
 
     if (!debited) {
-      return res.status(400).json({ success: false, message: 'Insufficient balance' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Insufficient balance' });
     }
 
     let bet;
@@ -345,10 +385,19 @@ const settleCore = async (slug, roundId, result) => {
       // pending -> settled is the idempotency guard (credit only once)
       const claimed = await Bet.findOneAndUpdate(
         { _id: bet._id, status: 'pending' },
-        { status: 'settled', outcome: s.outcome, payout: s.payout, net: s.net, settledAt: new Date() }
+        {
+          status: 'settled',
+          outcome: s.outcome,
+          payout: s.payout,
+          net: s.net,
+          settledAt: new Date(),
+        }
       );
       if (claimed && s.payout > 0) {
-        await User.updateOne({ _id: bet.userId }, { $inc: { balance: s.payout } });
+        await User.updateOne(
+          { _id: bet.userId },
+          { $inc: { balance: s.payout } }
+        );
       }
       settled++;
     } catch (e) {
@@ -366,7 +415,10 @@ const voidBet = async (bet) => {
     { status: 'void', payout: bet.exposure, net: 0, settledAt: new Date() }
   );
   if (claimed) {
-    await User.updateOne({ _id: bet.userId }, { $inc: { balance: bet.exposure } });
+    await User.updateOne(
+      { _id: bet.userId },
+      { $inc: { balance: bet.exposure } }
+    );
     return true;
   }
   return false;
@@ -378,7 +430,9 @@ export const settleRound = async (req, res) => {
   const { roundId, result } = req.body;
   try {
     if (!roundId || !result) {
-      return res.status(400).json({ success: false, message: 'roundId and result required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'roundId and result required' });
     }
     const out = await settleCore(slug, roundId, result);
     return res.json({ success: true, ...out });
@@ -393,18 +447,25 @@ export const settleRoundFromApi = async (req, res) => {
   const { slug } = req.params;
   const { roundId } = req.body;
   try {
-    if (!roundId) return res.status(400).json({ success: false, message: 'roundId required' });
+    if (!roundId)
+      return res
+        .status(400)
+        .json({ success: false, message: 'roundId required' });
 
     let list;
     try {
       list = await fetchCasinoResult(slug);
     } catch {
-      return res.status(503).json({ success: false, message: 'Result API unavailable' });
+      return res
+        .status(503)
+        .json({ success: false, message: 'Result API unavailable' });
     }
 
     const row = list.find((r) => String(r.mid) === String(roundId));
     if (!row) {
-      return res.status(404).json({ success: false, message: 'Result not available yet' });
+      return res
+        .status(404)
+        .json({ success: false, message: 'Result not available yet' });
     }
 
     const out = await settleCore(slug, roundId, normalizeResult(slug, row.win));
@@ -430,7 +491,9 @@ export const startResultPoller = (everyMs = 60 * 1000) => {
 
       for (const slug of slugs) {
         try {
-          const pending = (await Bet.distinct('roundId', { slug, status: 'pending' })).map(String);
+          const pending = (
+            await Bet.distinct('roundId', { slug, status: 'pending' })
+          ).map(String);
           if (!pending.length) continue;
 
           const list = await fetchCasinoResult(slug); // newest first
@@ -451,12 +514,16 @@ export const startResultPoller = (everyMs = 60 * 1000) => {
       // Result API me jo round ab nahi dikhta uski purani pending bets refund
       if (STALE_BET_MINUTES > 0) {
         const cutoff = new Date(Date.now() - STALE_BET_MINUTES * 60 * 1000);
-        const stale = await Bet.find({ status: 'pending', createdAt: { $lt: cutoff } });
+        const stale = await Bet.find({
+          status: 'pending',
+          createdAt: { $lt: cutoff },
+        });
         let refunded = 0;
         for (const bet of stale) {
           if (await voidBet(bet)) refunded++;
         }
-        if (refunded) console.log(`poller: auto-refunded ${refunded} stale bets`);
+        if (refunded)
+          console.log(`poller: auto-refunded ${refunded} stale bets`);
       }
     } catch (e) {
       console.error('poller error:', e.message);
@@ -476,7 +543,10 @@ export const voidRound = async (req, res) => {
   const { slug } = req.params;
   const roundId = String(req.body.roundId ?? '');
   try {
-    if (!roundId) return res.status(400).json({ success: false, message: 'roundId required' });
+    if (!roundId)
+      return res
+        .status(400)
+        .json({ success: false, message: 'roundId required' });
 
     const bets = await Bet.find({ slug, roundId, status: 'pending' });
     let refunded = 0;
@@ -485,7 +555,10 @@ export const voidRound = async (req, res) => {
     }
     await Round.updateOne(
       { slug, roundId },
-      { $set: { status: 'settled', result: { void: true } }, $setOnInsert: { slug, roundId } },
+      {
+        $set: { status: 'settled', result: { void: true } },
+        $setOnInsert: { slug, roundId },
+      },
       { upsert: true }
     );
     return res.json({ success: true, refunded });
@@ -501,7 +574,12 @@ export const voidRound = async (req, res) => {
 export const getNationBook = async (req, res) => {
   try {
     const { slug, roundId } = req.params;
-    const bets = await Bet.find({ slug, roundId: String(roundId), userId: getUid(req), status: 'pending' }).lean();
+    const bets = await Bet.find({
+      slug,
+      roundId: String(roundId),
+      userId: getUid(req),
+      status: 'pending',
+    }).lean();
     const book = engine.nationBook(slug, bets, engine.defaultScenarios(slug));
     res.json({ success: true, book });
   } catch (err) {
@@ -515,7 +593,10 @@ export const getNationBook = async (req, res) => {
 export const myBets = async (req, res) => {
   try {
     const { slug } = req.params;
-    const bets = await Bet.find({ userId: getUid(req), slug }).sort({ createdAt: -1 }).limit(50).lean();
+    const bets = await Bet.find({ userId: getUid(req), slug })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
     res.json({
       success: true,
       bets: bets.map((b) => ({ ...b, result: betResult(b) })),
@@ -529,7 +610,11 @@ export const myBets = async (req, res) => {
 export const getStats = async (req, res) => {
   try {
     const { slug } = req.params;
-    const rounds = await Round.find({ slug, status: 'settled', 'result.void': { $ne: true } })
+    const rounds = await Round.find({
+      slug,
+      status: 'settled',
+      'result.void': { $ne: true },
+    })
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
@@ -538,21 +623,40 @@ export const getStats = async (req, res) => {
 
     if (fam === 'baccarat') {
       return res.json(
-        engine.baccaratStats(rs.map((r) => (r.playerPoints > r.bankerPoints ? 'p' : r.playerPoints < r.bankerPoints ? 'b' : 't')))
+        engine.baccaratStats(
+          rs.map((r) =>
+            r.playerPoints > r.bankerPoints
+              ? 'p'
+              : r.playerPoints < r.bankerPoints
+                ? 'b'
+                : 't'
+          )
+        )
       );
     }
     if (fam === 'dt') {
       return res.json(
         engine.dragonTigerStats(
-          rs.reverse().map((r) => (r.dragon.rank > r.tiger.rank ? 'D' : r.dragon.rank < r.tiger.rank ? 'T' : 'TIE'))
+          rs
+            .reverse()
+            .map((r) =>
+              r.dragon.rank > r.tiger.rank
+                ? 'D'
+                : r.dragon.rank < r.tiger.rank
+                  ? 'T'
+                  : 'TIE'
+            )
         )
       );
     }
     if (fam === 'lucky7') {
       // result API gives win codes (no card) -> use side if rank missing
-      return res.json(engine.lucky7Stats(rs.map((r) => r.card?.rank ?? r.side)));
+      return res.json(
+        engine.lucky7Stats(rs.map((r) => r.card?.rank ?? r.side))
+      );
     }
-    if (fam === 'roulette') return res.json(engine.rouletteStats(rs.map((r) => r.number)));
+    if (fam === 'roulette')
+      return res.json(engine.rouletteStats(rs.map((r) => r.number)));
     res.json({});
   } catch (err) {
     console.error('getStats error:', err);

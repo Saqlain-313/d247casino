@@ -1,9 +1,7 @@
 import dotenv from 'dotenv';
 
-import {
-  fetchMatchData,
-} from '../services/matchApi/index.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
+import { fetchMatchData } from '../services/matchApi/index.js';
 
 dotenv.config();
 
@@ -247,8 +245,7 @@ export async function validateSportsMarket(
     ? teamSection.odds.find((o) => o.oname === oname)
     : teamSection.odds.find(
         (o) =>
-          o.otype === effectiveOtype &&
-          String(o.tno ?? 0) === String(tno ?? 0)
+          o.otype === effectiveOtype && String(o.tno ?? 0) === String(tno ?? 0)
       );
   const liveOdds = liveOddsObj ? parseFloat(liveOddsObj.odds) : null;
 
@@ -349,8 +346,14 @@ export async function validateFancyMarket(
       const isNormal = (gameType || '').toLowerCase() === 'normal';
 
       if (isNormal) {
-        if (section.gstatus === 'SUSPENDED' || section.gstatus === 'Ball Running') {
-          return { valid: false, reason: 'Market is suspended. Bet not accepted.' };
+        if (
+          section.gstatus === 'SUSPENDED' ||
+          section.gstatus === 'Ball Running'
+        ) {
+          return {
+            valid: false,
+            reason: 'Market is suspended. Bet not accepted.',
+          };
         }
       } else {
         if (
@@ -358,11 +361,17 @@ export async function validateFancyMarket(
           section.gstatus === 'Ball Running' ||
           section.status === 'SUSPENDED'
         ) {
-          return { valid: false, reason: 'Market is suspended. Bet not accepted.' };
+          return {
+            valid: false,
+            reason: 'Market is suspended. Bet not accepted.',
+          };
         }
 
         if (market.status === 'SUSPENDED' || market.gstatus === 'SUSPENDED') {
-          return { valid: false, reason: 'Market is suspended. Bet not accepted.' };
+          return {
+            valid: false,
+            reason: 'Market is suspended. Bet not accepted.',
+          };
         }
       }
 

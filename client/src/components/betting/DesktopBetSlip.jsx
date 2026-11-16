@@ -1,4 +1,3 @@
-
 import { useDispatch, useSelector } from 'react-redux';
 import { useCasino } from '../../context/CasinoContext';
 import {
@@ -9,17 +8,11 @@ import {
 export default function DesktopBetSlip() {
   const dispatch = useDispatch();
 
-  const {
-    betSlip,
-    closeBetSlip,
-    updateStake,
-  } = useCasino();
+  const { betSlip, closeBetSlip, updateStake } = useCasino();
 
-  const {
-    placeBetLoading,
-    placeBetError,
-    balance,
-  } = useSelector((state) => state.casinoBet);
+  const { placeBetLoading, placeBetError, balance } = useSelector(
+    (state) => state.casinoBet
+  );
 
   if (!betSlip.isOpen) return null;
 
@@ -85,11 +78,7 @@ export default function DesktopBetSlip() {
       }
     } catch (error) {
       console.error('Casino bet failed:', error);
-      alert(
-        typeof error === 'string'
-          ? error
-          : 'Unable to place bet'
-      );
+      alert(typeof error === 'string' ? error : 'Unable to place bet');
     }
   };
 
@@ -102,17 +91,14 @@ export default function DesktopBetSlip() {
   };
 
   return (
-    <div
-      className="sidebar-box place-bet-container"
-      id="sidebar-place-bet-box"
-    >
+    <div className='sidebar-box place-bet-container' id='sidebar-place-bet-box'>
       {/* HEADER */}
-      <div className="sidebar-title d-flex justify-content-between align-items-center">
+      <div className='sidebar-title d-flex justify-content-between align-items-center'>
         <h4>Place Bet</h4>
 
         <button
-          type="button"
-          className="btn-close-slip text-white"
+          type='button'
+          className='btn-close-slip text-white'
           onClick={closeBetSlip}
           disabled={placeBetLoading}
           style={{
@@ -129,71 +115,63 @@ export default function DesktopBetSlip() {
       </div>
 
       {/* BET HEADER */}
-      <div className="place-bet-box-header">
-        <div className="place-bet-for">(Bet for)</div>
-        <div className="place-bet-odds">Odds</div>
-        <div className="place-bet-stake">Stake</div>
+      <div className='place-bet-box-header'>
+        <div className='place-bet-for'>(Bet for)</div>
+        <div className='place-bet-odds'>Odds</div>
+        <div className='place-bet-stake'>Stake</div>
 
-        <div className="place-bet-profit">
+        <div className='place-bet-profit'>
           {betSlip.type === 'lay' ? 'Liability' : 'Profit'}
         </div>
       </div>
 
       {/* BET BODY */}
       <div className={`place-bet-box-body ${betSlip.type}`}>
-        <div className="place-bet-for">
-          <span className="fw-bold">
-            {betSlip.nation}
-          </span>
+        <div className='place-bet-for'>
+          <span className='fw-bold'>{betSlip.nation}</span>
         </div>
 
-        <div className="place-bet-odds">
+        <div className='place-bet-odds'>
           <input
-            type="text"
-            className="form-control text-center fw-bold"
+            type='text'
+            className='form-control fw-bold text-center'
             value={betSlip.odds}
             readOnly
           />
         </div>
 
-        <div className="place-bet-stake">
+        <div className='place-bet-stake'>
           <input
-            type="number"
-            className="form-control text-center fw-bold"
+            type='number'
+            className='form-control fw-bold text-center'
             value={betSlip.stake || ''}
             onChange={(e) => updateStake(e.target.value)}
-            placeholder="0"
-            min="0"
+            placeholder='0'
+            min='0'
             disabled={placeBetLoading}
           />
         </div>
 
-        <div className="place-bet-profit">
+        <div className='place-bet-profit'>
           {betSlip.type === 'lay' ? (
-            <span className="fw-bold text-danger">
-              ₹
-              {Number(
-                betSlip.liability || 0
-              ).toLocaleString('en-IN')}
+            <span className='fw-bold text-danger'>
+              ₹{Number(betSlip.liability || 0).toLocaleString('en-IN')}
             </span>
           ) : (
-            <span className="fw-bold text-success">
-              ₹
-              {Number(
-                betSlip.profit || 0
-              ).toLocaleString('en-IN')}
+            <span className='fw-bold text-success'>
+              ₹{Number(betSlip.profit || 0).toLocaleString('en-IN')}
             </span>
           )}
         </div>
       </div>
 
       {/* QUICK STAKE BUTTONS */}
-      <div className="place-bet-buttons">
+      <div className='place-bet-buttons'>
         {quickStakes.map((stk) => (
           <button
             key={stk.label}
-            type="button"
-            className="btn btn-place-bet"
+            type='button'
+            className='btn btn-place-bet'
             onClick={() => updateStake(stk.val)}
             disabled={placeBetLoading}
           >
@@ -202,8 +180,8 @@ export default function DesktopBetSlip() {
         ))}
 
         <button
-          type="button"
-          className="btn btn-place-bet btn-clear-stake"
+          type='button'
+          className='btn btn-place-bet btn-clear-stake'
           onClick={() => updateStake(0)}
           disabled={placeBetLoading}
         >
@@ -213,26 +191,21 @@ export default function DesktopBetSlip() {
 
       {/* BALANCE */}
       {balance !== null && (
-        <div className="px-2 py-1">
-          <small>
-            Balance: ₹
-            {Number(balance).toLocaleString('en-IN')}
-          </small>
+        <div className='px-2 py-1'>
+          <small>Balance: ₹{Number(balance).toLocaleString('en-IN')}</small>
         </div>
       )}
 
       {/* ERROR */}
       {placeBetError && (
-        <div className="alert alert-danger py-2 mx-2 mb-2">
-          {placeBetError}
-        </div>
+        <div className='alert alert-danger mx-2 mb-2 py-2'>{placeBetError}</div>
       )}
 
       {/* ACTION BUTTONS */}
-      <div className="place-bet-action-buttons">
+      <div className='place-bet-action-buttons'>
         <button
-          type="button"
-          className="btn btn-danger"
+          type='button'
+          className='btn btn-danger'
           onClick={handleReset}
           disabled={placeBetLoading}
         >
@@ -240,8 +213,8 @@ export default function DesktopBetSlip() {
         </button>
 
         <button
-          type="button"
-          className="btn btn-success"
+          type='button'
+          className='btn btn-success'
           onClick={handleSubmitBet}
           disabled={placeBetLoading}
         >

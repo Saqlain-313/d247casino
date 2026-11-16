@@ -1,10 +1,4 @@
-
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
@@ -72,10 +66,7 @@ const normalizeCasinoData = (payload) => {
       return current;
     }
 
-    if (
-      current.data &&
-      typeof current.data === 'object'
-    ) {
+    if (current.data && typeof current.data === 'object') {
       current = current.data;
       continue;
     }
@@ -116,15 +107,9 @@ export default function CasinoBet() {
   // REDUX
   // =============================================
 
-  const {
-    battingData,
-    loader,
-    error,
-  } = useSelector((state) => state.casino);
+  const { battingData, loader, error } = useSelector((state) => state.casino);
 
-  const { userInfo } = useSelector(
-    (state) => state.auth
-  );
+  const { userInfo } = useSelector((state) => state.auth);
 
   // Direct casino result state
   const {
@@ -154,10 +139,7 @@ export default function CasinoBet() {
     const actualData = normalizeCasinoData(payload);
 
     if (!actualData) {
-      console.warn(
-        'WebSocket casino data could not be normalized:',
-        payload
-      );
+      console.warn('WebSocket casino data could not be normalized:', payload);
       return;
     }
 
@@ -196,9 +178,7 @@ export default function CasinoBet() {
   // =============================================
 
   useEffect(() => {
-    const query = window.matchMedia(
-      '(min-width: 1024px)'
-    );
+    const query = window.matchMedia('(min-width: 1024px)');
 
     const onChange = (e) => {
       setIsDesktop(e.matches);
@@ -245,7 +225,6 @@ export default function CasinoBet() {
         })
       );
     }
-
   }, [gameid, eventName, dispatch]);
 
   // =============================================
@@ -279,31 +258,21 @@ export default function CasinoBet() {
   useEffect(() => {
     if (!battingData) return;
 
-    console.log(
-      'REDUX RAW CASINO RESPONSE:',
-      battingData
-    );
+    console.log('REDUX RAW CASINO RESPONSE:', battingData);
 
     const actualData = normalizeCasinoData(battingData);
 
     if (!actualData) {
-      console.warn(
-        'Casino Redux data normalization failed:',
-        battingData
-      );
+      console.warn('Casino Redux data normalization failed:', battingData);
       return;
     }
 
-    console.log(
-      'REDUX NORMALIZED CASINO DATA:',
-      actualData
-    );
+    console.log('REDUX NORMALIZED CASINO DATA:', actualData);
 
     console.log('REDUX MID:', actualData.mid);
     console.log('REDUX MARKETS:', actualData.sub);
 
     setBettingData(actualData);
-
   }, [battingData]);
 
   // =============================================
@@ -311,24 +280,16 @@ export default function CasinoBet() {
   // =============================================
 
   useEffect(() => {
-    if (
-      !betting.betControl?.sid ||
-      !Array.isArray(bettingData?.sub)
-    ) {
+    if (!betting.betControl?.sid || !Array.isArray(bettingData?.sub)) {
       return;
     }
 
-    if (
-      String(betting.betControl.roundId) !==
-      String(bettingData.mid)
-    ) {
+    if (String(betting.betControl.roundId) !== String(bettingData.mid)) {
       return;
     }
 
     const selectedSub = bettingData.sub.find(
-      (item) =>
-        String(item.sid ?? item.i) ===
-        String(betting.betControl.sid)
+      (item) => String(item.sid ?? item.i) === String(betting.betControl.sid)
     );
 
     if (!selectedSub) {
@@ -337,15 +298,13 @@ export default function CasinoBet() {
 
     const selectedStatus = String(
       selectedSub.gstatus ?? selectedSub.status ?? ''
-    ).trim().toUpperCase();
+    )
+      .trim()
+      .toUpperCase();
 
-    if (
-      selectedStatus &&
-      !['OPEN', 'ACTIVE'].includes(selectedStatus)
-    ) {
+    if (selectedStatus && !['OPEN', 'ACTIVE'].includes(selectedStatus)) {
       betting.resetBettingState();
     }
-
   }, [
     bettingData?.sub,
     bettingData?.mid,
@@ -364,16 +323,8 @@ export default function CasinoBet() {
     const currentMid = String(bettingData.mid);
     const previousMid = previousMidRef.current;
 
-    if (
-      hasInitializedRef.current &&
-      previousMid !== currentMid
-    ) {
-      console.log(
-        'Provider MID changed:',
-        previousMid,
-        '=>',
-        currentMid
-      );
+    if (hasInitializedRef.current && previousMid !== currentMid) {
+      console.log('Provider MID changed:', previousMid, '=>', currentMid);
 
       // Preserve existing bet slip's captured MID
       dispatch(clearPendingBetAmounts());
@@ -397,15 +348,12 @@ export default function CasinoBet() {
             })
           );
         }
-
       }, 100);
 
       previousMidRef.current = currentMid;
 
       return () => clearTimeout(timer);
-
     } else if (!hasInitializedRef.current) {
-
       dispatch(
         getPendingBetAmo({
           gameId: gameid,
@@ -416,13 +364,7 @@ export default function CasinoBet() {
 
     previousMidRef.current = currentMid;
     hasInitializedRef.current = true;
-
-  }, [
-    bettingData?.mid,
-    gameid,
-    eventName,
-    dispatch,
-  ]);
+  }, [bettingData?.mid, gameid, eventName, dispatch]);
 
   // =============================================
   // FETCH USER
@@ -446,12 +388,7 @@ export default function CasinoBet() {
     }, 5000);
 
     return () => clearInterval(pollInterval);
-
-  }, [
-    gameid,
-    dispatch,
-    isConnected,
-  ]);
+  }, [gameid, dispatch, isConnected]);
 
   // =============================================
   // PROVIDER BETTING DATA
@@ -463,13 +400,9 @@ export default function CasinoBet() {
 
         gtype: bettingData.gtype || gameid,
 
-        mid: bettingData.mid
-          ? String(bettingData.mid)
-          : '',
+        mid: bettingData.mid ? String(bettingData.mid) : '',
 
-        sub: Array.isArray(bettingData.sub)
-          ? bettingData.sub
-          : [],
+        sub: Array.isArray(bettingData.sub) ? bettingData.sub : [],
       }
     : {
         gtype: gameid,
@@ -493,10 +426,7 @@ export default function CasinoBet() {
   // GROUP AND FILTER
   // =============================================
 
-  const groupedData = groupBettingData(
-    mockBettingData.sub,
-    gameid
-  );
+  const groupedData = groupBettingData(mockBettingData.sub, gameid);
 
   const displayData = filterPlayersForTwoPlayerGames(
     groupedData,
@@ -515,26 +445,20 @@ export default function CasinoBet() {
     <>
       {/* Bet Loader */}
       {betting.loader && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className='fixed inset-0 z-50 flex items-center justify-center'>
           <Spinner2 />
         </div>
       )}
 
-      <div className="mt-0.5 flex gap-px">
-
+      <div className='mt-0.5 flex gap-px'>
         {/* Left Section */}
-        <div className="ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]">
-
+        <div className='ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]'>
           {/* Header */}
-          <div className="bg-secondary text-secondary flex items-center justify-between gap-2 p-1 text-[12px] font-bold lg:text-[15px]">
-            <span className="truncate uppercase">
-              {match || gameid}
-            </span>
+          <div className='bg-secondary text-secondary flex items-center justify-between gap-2 p-1 text-[12px] font-bold lg:text-[15px]'>
+            <span className='truncate uppercase'>{match || gameid}</span>
 
             {mockBettingData.mid && (
-              <span>
-                Round ID: {mockBettingData.mid}
-              </span>
+              <span>Round ID: {mockBettingData.mid}</span>
             )}
           </div>
 
@@ -543,14 +467,12 @@ export default function CasinoBet() {
             eventName={casinoEventName}
             bettingData={mockBettingData}
             showWinner={results.showWinner}
-            winnerLabel={
-              winnerMap[results.resultData?.res?.[0]?.win]
-            }
+            winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
           />
 
           {/* API Error */}
           {!bettingData && !loader.betting && error.betting && (
-            <div className="bg-white p-6 text-center text-[14px] font-semibold text-[#b3001b]">
+            <div className='bg-white p-6 text-center text-[14px] font-semibold text-[#b3001b]'>
               {error.betting}
             </div>
           )}
@@ -567,7 +489,7 @@ export default function CasinoBet() {
 
           {/* Remark */}
           {mockBettingData.remark && (
-            <div className="bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]">
+            <div className='bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]'>
               {mockBettingData.remark}
             </div>
           )}
@@ -575,16 +497,11 @@ export default function CasinoBet() {
           {/* Mobile My Bets */}
           {!isDesktop && (
             <div>
-              <div className="bg-secondary text-secondary p-1">
-                <span className="font-bold">
-                  My Bet
-                </span>
+              <div className='bg-secondary text-secondary p-1'>
+                <span className='font-bold'>My Bet</span>
               </div>
 
-              <MatchedBet
-                eventName={eventName}
-                slug={gameid}
-              />
+              <MatchedBet eventName={eventName} slug={gameid} />
             </div>
           )}
 
@@ -599,14 +516,12 @@ export default function CasinoBet() {
             directResultsError={directCasinoResultError}
             onItemClick={results.setSelectedItem}
           />
-
         </div>
 
         {/* Desktop Sidebar */}
         {isDesktop && (
-          <div className="sticky top-0 h-fit">
-            <div className="w-[350px]">
-
+          <div className='sticky top-0 h-fit'>
+            <div className='w-[350px]'>
               <CasinoUiProvider
                 gameid={eventName}
                 bettingData={mockBettingData}
@@ -616,21 +531,14 @@ export default function CasinoBet() {
                 <DesktopBetSlip />
               </CasinoUiProvider>
 
-              <div className="bg-secondary text-secondary p-1">
-                <span className="font-bold">
-                  My Bet
-                </span>
+              <div className='bg-secondary text-secondary p-1'>
+                <span className='font-bold'>My Bet</span>
               </div>
 
-              <MatchedBet
-                eventName={eventName}
-                slug={gameid}
-              />
-
+              <MatchedBet eventName={eventName} slug={gameid} />
             </div>
           </div>
         )}
-
       </div>
 
       {/* Mobile Bet Drawer */}
@@ -655,7 +563,6 @@ export default function CasinoBet() {
           showSideBets={true}
         />
       )}
-
     </>
   );
 }

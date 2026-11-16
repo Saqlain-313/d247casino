@@ -25,9 +25,7 @@ const TeamScore = ({ name, score, crr, rrr, batting, align }) => (
         {score || '0-0'}
       </span>
     </div>
-    <div className='mt-1 text-[13px] font-bold text-white/90'>
-      {name || ''}
-    </div>
+    <div className='mt-1 text-[13px] font-bold text-white/90'>{name || ''}</div>
     <div className='text-[11px] text-white/70'>
       {crr ? <span>CRR {crr} </span> : null}
       {rrr ? <span>RRR {rrr}</span> : null}

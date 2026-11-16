@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+
 import api from '../api';
 
 export const fetchHorseRacingData = createAsyncThunk(
@@ -73,7 +74,7 @@ const horseRacingSlice = createSlice({
       .addCase(fetchHorseRacingData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || action.error.message;
-      }) 
+      })
       .addCase(fetchHorseRacingBettingData.pending, (state, action) => {
         if (String(state.bettingGameId) !== String(action.meta.arg)) {
           state.bettingData = [];

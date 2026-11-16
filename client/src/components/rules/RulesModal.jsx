@@ -1,9 +1,13 @@
 import React, { useEffect } from 'react';
 import { useCasino } from '../../context/CasinoContext';
-import { getCasinoRulesModalHtml, getCasinoRulesModalTitle } from '../../data/rulesData';
+import {
+  getCasinoRulesModalHtml,
+  getCasinoRulesModalTitle,
+} from '../../data/rulesData';
 
 export default function RulesModal() {
-  const { rulesModalOpen, setRulesModalOpen, selectedGame, gameInfo } = useCasino();
+  const { rulesModalOpen, setRulesModalOpen, selectedGame, gameInfo } =
+    useCasino();
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -22,10 +26,10 @@ export default function RulesModal() {
 
   return (
     <div
-      className="modal fade show"
-      id="casino-rules-modal"
-      tabIndex="-1"
-      role="dialog"
+      className='modal fade show'
+      id='casino-rules-modal'
+      tabIndex='-1'
+      role='dialog'
       style={{
         display: 'block',
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -42,23 +46,26 @@ export default function RulesModal() {
         }
       }}
     >
-      <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable" style={{ maxWidth: '680px' }}>
-        <div className="modal-content">
-          <div className="modal-header">
-            <div className="modal-title h4" id="rules-modal-title">
+      <div
+        className='modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable'
+        style={{ maxWidth: '680px' }}
+      >
+        <div className='modal-content'>
+          <div className='modal-header'>
+            <div className='modal-title h4' id='rules-modal-title'>
               {modalTitle}
             </div>
             <button
-              type="button"
-              className="btn-close"
-              aria-label="Close"
+              type='button'
+              className='btn-close'
+              aria-label='Close'
               onClick={() => setRulesModalOpen(false)}
             ></button>
           </div>
 
           <div
-            className="modal-body"
-            id="rules-modal-body"
+            className='modal-body'
+            id='rules-modal-body'
             style={{
               maxHeight: '78vh',
               overflowY: 'auto',
@@ -70,4 +77,3 @@ export default function RulesModal() {
     </div>
   );
 }
-
