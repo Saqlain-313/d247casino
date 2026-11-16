@@ -182,7 +182,7 @@ export function createProviderA() {
       const response = await axios.get(
         `${API_URL}/casino/detail_result?key=${API_KEY}&type=${eventName}&mid=${mid}`
       );
-      return response.data;
+      return response.data.data;
     },
 
     async fetchCricketFancyResult(eventId, fancyId) {
