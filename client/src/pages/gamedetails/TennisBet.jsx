@@ -267,16 +267,22 @@ import {
 import { fetchTannisBatingData } from '../../redux/reducer/tennisSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
 import { getTennisScorecardUrl } from '../../utils/scorecardUrl';
+import CricketMarket from './CricketMarket';
 import MatchedBet from './MatchedBet';
 import MatchOdds from './MatchOdds';
 import PlaceBet from './PlaceBet';
 function TennisBet() {
-  const { game, id } = useParams();
+  const { id } = useParams();
   const location = useLocation();
-  const time = location.state?.time;
-  const beventId = location.state?.beventId;
   const gameid = id;
-  const match = game;
+  // Name/time/beventId: navigation state first, redux match list as refresh fallback
+  const storeMatch = useSelector((state) =>
+    state.tennis.matches.find((m) => String(m.id) === String(id))
+  );
+  const listLoaded = useSelector((state) => state.tennis.matches.length > 0);
+  const time = location.state?.time || storeMatch?.time;
+  const beventId = location.state?.beventId || storeMatch?.beventId;
+  const match = location.state?.name || storeMatch?.game || 'Live Match';
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [bettingData, setBettingData] = useState(null);
@@ -287,9 +293,10 @@ function TennisBet() {
   const [showlivetv, setshowlivetv] = useState(false);
   const streamGmid = beventId || gameid;
   const liveTvUrl = getLiveTvUrl(3, streamGmid);
+  const hasLiveTv = Boolean(storeMatch?.tv && liveTvUrl);
   const scorecardUrl = getTennisScorecardUrl(streamGmid);
   // Extract team names from match title
-  const matchTitle = 'Paarl Royals v Joburg Super Kings';
+  const matchTitle = match;
   const teams = matchTitle.split(' v ');
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
@@ -373,10 +380,16 @@ function TennisBet() {
     };
   }, [gameid, userInfo?._id]);
 
+  const [marketFetchFailed, setMarketFetchFailed] = useState(false);
+
   useEffect(() => {
     if (gameid) {
-      console.log('The gameId is', gameid);
-      dispatch(fetchTannisBatingData(gameid)); // initial
+      dispatch(fetchTannisBatingData(gameid)) // initial
+        .then((res) => {
+          if (fetchTannisBatingData.rejected.match(res)) {
+            setMarketFetchFailed(true);
+          }
+        });
     }
   }, [gameid, dispatch]);
 
@@ -387,6 +400,19 @@ function TennisBet() {
     dispatch(getPendingBetAmo(gameid));
     dispatch(getPendingBet(gameid));
   }, [dispatch, gameid]);
+
+  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya refreshed
+  // list me event nahi bacha → home pe redirect + "no market" message box.
+  useEffect(() => {
+    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+      navigate('/', {
+        replace: true,
+        state: {
+          noMarketMessage: 'There are no market available in this game',
+        },
+      });
+    }
+  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
 
   useEffect(() => {
     if (successMessage) {
@@ -405,12 +431,22 @@ function TennisBet() {
   }, [successMessage, errorMessage, dispatch, gameid]);
 
   const matchOddsList = Array.isArray(bettingData)
-    ? bettingData.filter((item) => item.mname === 'MATCH_ODDS')
+    ? bettingData.filter(
+        (item) =>
+          item?.mname === 'MATCH_ODDS' || item?.mname === 'TOURNAMENT_WINNER'
+      )
     : [];
 
-  console.log('this is matchOddsList', matchOddsList);
-
-  console.log('bettingData', bettingData);
+  // Every market without a dedicated component (Bookmaker, Game Winner,
+  // Set Winner, Game To Deuce, ...) renders through the generic renderer,
+  // so nothing the provider sends is silently dropped.
+  const KNOWN_MARKETS = new Set(['MATCH_ODDS', 'TOURNAMENT_WINNER']);
+  const otherMarkets = (Array.isArray(bettingData) ? bettingData : []).filter(
+    (market) =>
+      !KNOWN_MARKETS.has(market?.mname) &&
+      Array.isArray(market?.section) &&
+      market.section.length > 0
+  );
 
   //   const oddsData =
   //     Array.isArray(matchOddsList) &&
@@ -428,7 +464,7 @@ function TennisBet() {
     <div className='mt-0.5 flex gap-px'>
       <div className='ml-0 w-full md:ml-1 lg:w-[calc(100%-352px)]'>
         <div className='bg-secondary text-secondary flex items-center justify-between p-1 text-[12px] font-bold lg:text-[15px]'>
-          <span>{game}</span>
+          <span>{match}</span>
           <span>{time}</span>
         </div>
         <div className='bg-primary text-primary flex items-center justify-around text-[12px] font-bold lg:hidden'>
@@ -447,15 +483,17 @@ function TennisBet() {
           >
             MATCHED BET
           </div>
-          <div
-            className='flex w-full cursor-pointer items-center justify-center p-2'
-            onClick={() => {
-              setShowLive(true);
-              setshowodds(true);
-            }}
-          >
-            <FaTv className='text-sm' />
-          </div>
+          {hasLiveTv && (
+            <div
+              className='flex w-full cursor-pointer items-center justify-center p-2'
+              onClick={() => {
+                setShowLive(true);
+                setshowodds(true);
+              }}
+            >
+              <FaTv className='text-sm' />
+            </div>
+          )}
         </div>
 
         {showodds && (
@@ -505,6 +543,24 @@ function TennisBet() {
                 pendingBetAmounts={pendingBetAmounts}
                 selectedBet={selectedBet}
               />
+            )}
+
+            {/** All other provider markets (Bookmaker, Game/Set Winner, Deuce...) —
+             * reference-style grid: 1 per row mobile, 2 per row md, 3 per row xl */}
+            {otherMarkets.length > 0 && (
+              <div className='mt-1 flex flex-wrap gap-1'>
+                {otherMarkets.map((market) => (
+                  <div
+                    key={`${market.gmid || gameid}-${market.mid || market.mname}`}
+                    className='w-full min-w-0 md:w-[calc(50%-4px)] xl:w-[calc(33.33%-6px)]'
+                  >
+                    <CricketMarket
+                      market={market}
+                      onBetSelect={handleBetSelect}
+                    />
+                  </div>
+                ))}
+              </div>
             )}
 
             {/** Bookmaker */}

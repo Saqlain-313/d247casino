@@ -7,13 +7,17 @@ import { WebSocketServer } from 'ws';
 import { getBestOddsForTeam } from '../controllers/cashoutController.js';
 import betModel from '../models/betModel.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
+import { getCricketCasino } from '../services/cricketCasinoCache.js';
 import {
   getLatestScore,
   isValidScoreEventId,
   requestScore,
   startLiveScoreFeed,
 } from '../services/liveScoreFeed.js';
-import { fetchMatchData } from '../services/matchApi/index.js';
+import {
+  fetchCasinoResult,
+  fetchMatchData,
+} from '../services/matchApi/index.js';
 import {
   calculateCashoutValue,
   CASHOUT_GAME_TYPES,
@@ -132,13 +136,35 @@ const computeAndPushCashoutValues = async (gameid) => {
 };
 
 // Poll betting data for cricket, tennis, soccer
+// Inplay matches poll every tick (1s); non-inplay odds barely change, so they
+// are re-fetched only every NON_INPLAY_POLL_MS. The provider's market `iplay`
+// flag (seen in the odds response) tells the two apart; while a game's state
+// is still unknown it polls every tick so a match going live is caught within
+// ~1s of its first response.
+const NON_INPLAY_POLL_MS = 10000;
+const lastPollAt = new Map(); // `${gameid}_${apitype}` -> timestamp
+const inplayFlags = new Map(); // `${gameid}_${apitype}` -> boolean
+
 const pollBettingData = async () => {
   const groupedByGameId = getUniqueSubscriptions();
+  const now = Date.now();
+  const activeKeys = new Set();
 
   for (const { gameid, apitype } of groupedByGameId) {
     try {
       // Skip casino games in this function
-      if (apitype === 'casino') continue;
+      if (apitype === 'casino' || apitype === 'cricket-casino') continue;
+
+      const pollKey = `${gameid}_${apitype}`;
+      activeKeys.add(pollKey);
+
+      // Throttle non-inplay games to one fetch per NON_INPLAY_POLL_MS
+      if (
+        inplayFlags.get(pollKey) === false &&
+        now - (lastPollAt.get(pollKey) || 0) < NON_INPLAY_POLL_MS
+      ) {
+        continue;
+      }
 
       let sid = 4; // default cricket
       if (apitype === 'tennis') sid = 2;
@@ -146,9 +172,16 @@ const pollBettingData = async () => {
       else if (apitype === 'horse-racing') sid = 10;
 
       const newData = await fetchMatchData(gameid, sid);
+      lastPollAt.set(pollKey, Date.now());
 
       if (newData.success) {
-        const cacheKey = `${gameid}_${apitype}`;
+        inplayFlags.set(
+          pollKey,
+          Array.isArray(newData.data) &&
+            newData.data.some((market) => market?.iplay === true)
+        );
+
+        const cacheKey = pollKey;
         if (JSON.stringify(newData) !== JSON.stringify(cachedData[cacheKey])) {
           cachedData[cacheKey] = newData;
 
@@ -179,6 +212,14 @@ const pollBettingData = async () => {
       console.error(`Polling error for ${gameid} (${apitype}):`, error.message);
     }
   }
+
+  // Forget games nobody is watching anymore
+  for (const key of inplayFlags.keys()) {
+    if (!activeKeys.has(key)) {
+      inplayFlags.delete(key);
+      lastPollAt.delete(key);
+    }
+  }
 };
 
 // Poll casino betting data - IMMEDIATE (no delays)
@@ -206,15 +247,21 @@ const pollCasinoBettingData = async () => {
           if (!newBettingData?.success || !newBettingData.data) return null;
 
           const cacheKey = `betting_${gameid}_casino`;
+          const prevBetting = cachedData[cacheKey];
           // Simple check: only send if data changed
-          if (
-            JSON.stringify(cachedData[cacheKey]) ===
-            JSON.stringify(newBettingData)
-          ) {
+          if (JSON.stringify(prevBetting) === JSON.stringify(newBettingData)) {
             return null;
           }
 
           cachedData[cacheKey] = newBettingData;
+
+          // Session complete (round mid badla) -> result turant refresh karo,
+          // 5s poll ka wait nahi. Broadcast refreshCasinoResult karta hy.
+          const prevMid = prevBetting?.data?.mid;
+          const newMid = newBettingData?.data?.mid;
+          if (newMid && prevMid && newMid !== prevMid) {
+            refreshCasinoResult(gameid);
+          }
 
           // Serialised once and reused for every viewer of this table
           return [
@@ -246,6 +293,147 @@ const pollCasinoBettingData = async () => {
     }
   } finally {
     casinoPollRunning = false;
+  }
+};
+
+// Casino RESULT over WebSocket (sports jaisa). Data har 1s (upar), result har
+// 5s ya session-complete pe. Provider call shared hy (per gameid, users nahi).
+const casinoResultInflight = new Map();
+const refreshCasinoResult = (gameid) => {
+  if (casinoResultInflight.has(gameid)) return casinoResultInflight.get(gameid);
+
+  const pending = (async () => {
+    try {
+      const res = await fetchCasinoResult(gameid);
+      if (!res?.success || !res.data) return;
+
+      // Sirf change pe broadcast — duplicate result nahi jayega.
+      const prev = cachedCasinoResults.get(gameid);
+      if (JSON.stringify(prev) === JSON.stringify(res.data)) return;
+      cachedCasinoResults.set(gameid, res.data);
+
+      const message = JSON.stringify({
+        type: 'casino_result',
+        gameid,
+        apitype: 'casino',
+        data: res.data,
+      });
+      for (const client of clients) {
+        if (
+          client.apitype === 'casino' &&
+          client.gameid === gameid &&
+          client.ws.readyState === 1
+        ) {
+          client.ws.send(message);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Casino result polling error for ${gameid}:`,
+        error.message
+      );
+    } finally {
+      casinoResultInflight.delete(gameid);
+    }
+  })();
+
+  casinoResultInflight.set(gameid, pending);
+  return pending;
+};
+
+let casinoResultPollRunning = false;
+const pollCasinoResultData = async () => {
+  if (casinoResultPollRunning) return;
+  casinoResultPollRunning = true;
+  try {
+    const casinoGames = [
+      ...new Set(
+        getUniqueSubscriptions()
+          .filter((s) => s.apitype === 'casino')
+          .map((s) => s.gameid)
+      ),
+    ];
+    await Promise.all(casinoGames.map((gameid) => refreshCasinoResult(gameid)));
+  } finally {
+    casinoResultPollRunning = false;
+  }
+};
+
+// Cricket-casino (cricketv) live feed over WebSocket — virtual cricket (iscc 1).
+// High-frequency feed: inplay har 1s, non-inplay har 10s (sports poller jaisa).
+// inplay flag feed ke success se derive hota hy (active game = success).
+const cricketCasinoLastPoll = new Map();
+const cricketCasinoInplay = new Map();
+let cricketCasinoPollRunning = false;
+const pollCricketCasinoData = async () => {
+  if (cricketCasinoPollRunning) return;
+  cricketCasinoPollRunning = true;
+  const now = Date.now();
+  const activeKeys = new Set();
+  try {
+    const games = [
+      ...new Set(
+        getUniqueSubscriptions()
+          .filter((s) => s.apitype === 'cricket-casino')
+          .map((s) => s.gameid)
+      ),
+    ];
+    await Promise.all(
+      games.map(async (gameid) => {
+        const pollKey = `cc_${gameid}`;
+        activeKeys.add(pollKey);
+        // Non-inplay throttle: 10s me ek baar.
+        if (
+          cricketCasinoInplay.get(pollKey) === false &&
+          now - (cricketCasinoLastPoll.get(pollKey) || 0) < NON_INPLAY_POLL_MS
+        ) {
+          return;
+        }
+        try {
+          const res = await getCricketCasino(gameid, 900);
+          cricketCasinoLastPoll.set(pollKey, Date.now());
+          cricketCasinoInplay.set(pollKey, Boolean(res?.success));
+          if (!res?.success || !res.data) return;
+
+          const cacheKey = `cricketcasino_${gameid}`;
+          if (
+            JSON.stringify(cachedData[cacheKey]) === JSON.stringify(res.data)
+          ) {
+            return;
+          }
+          cachedData[cacheKey] = res.data;
+
+          const message = JSON.stringify({
+            type: 'cricket_casino_update',
+            gameid,
+            apitype: 'cricket-casino',
+            data: res.data,
+          });
+          for (const client of clients) {
+            if (
+              client.apitype === 'cricket-casino' &&
+              client.gameid === gameid &&
+              client.ws.readyState === 1
+            ) {
+              client.ws.send(message);
+            }
+          }
+        } catch (error) {
+          console.error(
+            `Cricket-casino polling error for ${gameid}:`,
+            error.message
+          );
+        }
+      })
+    );
+    for (const key of cricketCasinoInplay.keys()) {
+      if (!activeKeys.has(key)) {
+        cricketCasinoInplay.delete(key);
+        cricketCasinoLastPoll.delete(key);
+      }
+    }
+  } finally {
+    cricketCasinoPollRunning = false;
   }
 };
 
@@ -302,6 +490,36 @@ export const setupWebSocket = (server) => {
                 })
               );
             }
+
+            // Latest result bhi turant bhejo (cache se), aur ek refresh trigger
+            // karo taaki cache khali ho to pehla result jaldi aa jaye.
+            const latestResult = cachedCasinoResults.get(client.gameid);
+            if (latestResult && ws.readyState === 1) {
+              ws.send(
+                JSON.stringify({
+                  type: 'casino_result',
+                  gameid: client.gameid,
+                  apitype: 'casino',
+                  data: latestResult,
+                })
+              );
+            }
+            refreshCasinoResult(client.gameid);
+          }
+
+          // Cricket-casino subscriber ko latest cached feed turant bhejo.
+          if (client.apitype === 'cricket-casino') {
+            const latest = cachedData[`cricketcasino_${client.gameid}`];
+            if (latest && ws.readyState === 1) {
+              ws.send(
+                JSON.stringify({
+                  type: 'cricket_casino_update',
+                  gameid: client.gameid,
+                  apitype: 'cricket-casino',
+                  data: latest,
+                })
+              );
+            }
           }
 
           // Live scorecard: viewers share one provider feed per event
@@ -337,6 +555,10 @@ export const setupWebSocket = (server) => {
   // Start all polling intervals
   setInterval(pollBettingData, 1000);
   setInterval(pollCasinoBettingData, 1000);
+  // Casino result har 5s (session-complete pe upar turant trigger hota hy).
+  setInterval(pollCasinoResultData, 5000);
+  // Cricket-casino high-frequency feed: 1s tick (inplay 1s / non-inplay 10s).
+  setInterval(pollCricketCasinoData, 1000);
 
   // Live scorecards: one shared provider feed, refreshed every 5s per active event
   startLiveScoreFeed({

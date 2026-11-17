@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import betHistoryModel from '../models/betHistoryModel.js';
 import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
@@ -85,18 +86,133 @@ export const fetchCasinoResult = async (slug) => {
   }
 };
 
-// Provider `win` code -> result object for engine.
-// lucky7: "1" = Low (A-6), "2" = High (8-K), "0" = Tie (7)   -- verify once on a known round.
-// NOTE: result API has no card, so odd/even, red/black, card-specific markets
-// can't be settled from it. Handle result.side in engine.evaluateSelection('lucky7', ...).
-const normalizeResult = (slug, win) => {
+// Provider result row -> engine result object (winCode path).
+// Result API sirf {mid, win} deta hy: side codes per family, roulette me number,
+// dolidana me per-die sibling rows (<mid>001/002/003), sicbo me total.
+// Card-dependent selections (red/black/even/odd/card:N/pairs...) win code se
+// decidable nahi hy — engine unhe throw karta hy aur bet pending rehti hy.
+const normalizeResult = (slug, row, list = []) => {
   const fam = engine.familyOf(slug);
-  const w = String(win);
-  if (fam === 'lucky7') {
-    return { win: w, side: w === '1' ? 'low' : w === '2' ? 'high' : 'tie' };
+  const w = String(row?.win);
+  const rc = { winCode: w, win: w };
+  if (fam === 'roulette') {
+    rc.number = Number(w);
+  } else if (fam === 'sicbo') {
+    const base = String(row?.mid);
+    const dice = [1, 2, 3]
+      .map((i) => list.find((r) => String(r.mid) === `${base}00${i}`))
+      .map((r) => Number(r?.win));
+    if (dice.every((d) => Number.isFinite(d) && d >= 1 && d <= 6))
+      rc.dice = dice;
+    else rc.total = Number(w);
   }
-  // add other families once their `win` codes are known
-  throw new Error(`No win-code mapping for ${slug}`);
+  return rc;
+};
+
+// fetchCasinoResult wrapped shapes return karta hy ({success,data:{res}} /
+// {res} / bare array) — poller aur settle endpoint dono ko flat rows chahiye.
+const resultRows = (resp) => {
+  if (Array.isArray(resp)) return resp;
+  if (Array.isArray(resp?.res)) return resp.res;
+  if (Array.isArray(resp?.data?.res)) return resp.data.res;
+  if (Array.isArray(resp?.data)) return resp.data;
+  return [];
+};
+
+// Provider market label (nat) -> engine selection key. Frontend selection me
+// sid bhejta hy, engine family keys ('dragon', 'pairplus:A', 'split:1-2'...)
+// expect karta hy — placement par hi canonical key store karte hy.
+const natKey = (fam, nat) => {
+  const n = String(nat ?? '')
+    .trim()
+    .toLowerCase();
+  if (!n || n === 'undefined') return null;
+  const cardM = n.match(/^card ([a-z0-9]+)$/);
+  switch (fam) {
+    case 'lucky7':
+      if (n === 'low card') return 'low';
+      if (n === 'high card') return 'high';
+      if (['even', 'odd', 'red', 'black'].includes(n)) return n;
+      if (cardM) return `card:${cardM[1] === 'a' ? 1 : Number(cardM[1])}`;
+      return null;
+    case 'aaa':
+      if (
+        ['amar', 'akbar', 'anthony', 'even', 'odd', 'red', 'black'].includes(n)
+      )
+        return n;
+      if (n === 'under 7' || n === 'under7') return 'under7';
+      if (n === 'over 7' || n === 'over7') return 'over7';
+      if (cardM) return `card:${cardM[1] === 'a' ? 1 : Number(cardM[1])}`;
+      return null;
+    case 'dt':
+      if (['dragon', 'tiger', 'tie'].includes(n)) return n;
+      return null;
+    case 'baccarat':
+      if (['player', 'banker', 'tie'].includes(n)) return n;
+      if (n === 'player pair') return 'playerPair';
+      if (n === 'banker pair') return 'bankerPair';
+      if (n === 'either pair') return 'eitherPair';
+      return null;
+    case 'teen':
+    case 'muflis': {
+      const m = n.match(
+        /^(player|pair plus|total|3 baccarat|m baccarat|black|red)\s+([ab])$/
+      );
+      if (!m) return null;
+      const who = m[2].toUpperCase();
+      if (m[1] === 'player') return who === 'A' ? 'playerA' : 'playerB';
+      if (m[1] === 'pair plus') return `pairplus:${who}`;
+      if (m[1] === 'total') return `total:${who}`;
+      if (m[1] === '3 baccarat' || m[1] === 'm baccarat')
+        return `baccarat:${who}`;
+      if (m[1] === 'black') return `redblack:black`;
+      if (m[1] === 'red') return `redblack:red`;
+      return null;
+    }
+    case 'sicbo': {
+      if (n === 'small') return 'small';
+      if (n === 'big') return 'big';
+      if (n === 'any triple') return 'anytriple';
+      if (n === 'odd' || n === 'even') return n;
+      const dm = n.match(/^double (\d)$/);
+      if (dm) return `double:${dm[1]}`;
+      const tm = n.match(/^triple (\d)$/);
+      if (tm) return `triple:${tm[1]}`;
+      const sm = n.match(/^sum (\d+)$/);
+      if (sm) return `sum:${sm[1]}`;
+      return null;
+    }
+    case 'card32': {
+      const pm = n.match(/^player (\d+)$/);
+      return pm ? `player${pm[1]}` : null;
+    }
+    case 'roulette': {
+      const nums = n
+        .split(',')
+        .map((x) => x.trim())
+        .filter((x) => /^\d+$/.test(x));
+      if (nums.length === 1) return `straight:${nums[0]}`;
+      if (nums.length === 2) return `split:${nums.join('-')}`;
+      if (nums.length === 3) return `street:${nums.join('-')}`;
+      if (nums.length === 4) return `corner:${nums.join('-')}`;
+      if (nums.length === 6) return `sixline:${nums.join('-')}`;
+      if (n === '1st 12') return 'dozen:1';
+      if (n === '2nd 12') return 'dozen:2';
+      if (n === '3rd 12') return 'dozen:3';
+      if (n === '1st column') return 'column:1';
+      if (n === '2nd column') return 'column:2';
+      if (n === '3rd column') return 'column:3';
+      if (n === '1 to 18') return 'low';
+      if (n === '19 to 36') return 'high';
+      if (n === 'red') return 'red';
+      if (n === 'black') return 'black';
+      if (n === 'odd') return 'odd';
+      if (n === 'even') return 'even';
+      return null;
+    }
+    default:
+      return null;
+  }
 };
 
 // Bet ka user-facing result label: win / lose / push / void / pending
@@ -291,6 +407,10 @@ export const placeBet = async (req, res) => {
     // Production me client odds par bharosa mat karo; provider odds feed se verify karo.
     // await oddsService.assertOdds(slug, roundId, selection, side, odds);
 
+    // Client sid bhejta hy; engine ko canonical selection key chahiye.
+    const providerNat = selectedMarket.nat ?? selectedMarket.n;
+    const selKey = natKey(family, providerNat) || String(selection);
+
     let exposure = NaN;
     if (family && typeof engine.calcExposure === 'function') {
       try {
@@ -328,7 +448,9 @@ export const placeBet = async (req, res) => {
         slug,
         roundId: currentRoundId,
         side,
-        selection,
+        selection: selKey,
+        sid: String(selection),
+        nation: String(providerNat ?? ''),
         odds,
         stake,
         exposure,
@@ -339,6 +461,28 @@ export const placeBet = async (req, res) => {
       await User.updateOne({ _id: userId }, { $inc: { balance: exposure } });
       throw error;
     }
+
+    // Account statement (betHistoryModel, gameName 'Casino') me mirror row —
+    // statement isi model se padhta hy, CasinoBet model se nahi.
+    await betHistoryModel
+      .create({
+        betId: bet._id.toString(),
+        userId: String(userId),
+        userName: debited.userName ?? String(userId),
+        gameId: slug,
+        roundId: String(currentRoundId),
+        otype: side,
+        price: odds,
+        xValue: 0,
+        betAmount: stake,
+        status: 0,
+        eventName: slug,
+        marketName: selKey,
+        teamName: String(providerNat ?? selKey),
+        gameType: 'casino',
+        gameName: 'Casino',
+      })
+      .catch((e) => console.error('casino history mirror create:', e.message));
 
     return res.status(201).json({
       success: true,
@@ -399,6 +543,32 @@ const settleCore = async (slug, roundId, result) => {
           { $inc: { balance: s.payout } }
         );
       }
+      if (claimed) {
+        await betHistoryModel
+          .updateOne(
+            { betId: bet._id.toString() },
+            {
+              $set: {
+                status: s.net > 0 ? 1 : s.net < 0 ? 2 : 1,
+                betResult:
+                  s.outcome === 'win'
+                    ? 'WON'
+                    : s.outcome === 'push'
+                      ? 'PUSH'
+                      : s.outcome === 'half_loss'
+                        ? 'HALF LOSS'
+                        : 'LOST',
+                profitLossChange: s.net,
+                resultAmount: Math.abs(s.net),
+                settledBy: 'api',
+                settledAt: new Date(),
+              },
+            }
+          )
+          .catch((e) =>
+            console.error('casino history mirror settle:', e.message)
+          );
+      }
       settled++;
     } catch (e) {
       failed++;
@@ -419,6 +589,21 @@ const voidBet = async (bet) => {
       { _id: bet.userId },
       { $inc: { balance: bet.exposure } }
     );
+    await betHistoryModel
+      .updateOne(
+        { betId: bet._id.toString() },
+        {
+          $set: {
+            status: 3,
+            betResult: 'VOID',
+            profitLossChange: 0,
+            resultAmount: 0,
+            settledBy: 'api',
+            settledAt: new Date(),
+          },
+        }
+      )
+      .catch((e) => console.error('casino history mirror void:', e.message));
     return true;
   }
   return false;
@@ -461,14 +646,19 @@ export const settleRoundFromApi = async (req, res) => {
         .json({ success: false, message: 'Result API unavailable' });
     }
 
-    const row = list.find((r) => String(r.mid) === String(roundId));
+    const rows = resultRows(list);
+    const row = rows.find((r) => String(r.mid) === String(roundId));
     if (!row) {
       return res
         .status(404)
         .json({ success: false, message: 'Result not available yet' });
     }
 
-    const out = await settleCore(slug, roundId, normalizeResult(slug, row.win));
+    const out = await settleCore(
+      slug,
+      roundId,
+      normalizeResult(slug, row, rows)
+    );
     return res.json({ success: true, ...out });
   } catch (err) {
     console.error('settleRoundFromApi error:', err);
@@ -496,11 +686,11 @@ export const startResultPoller = (everyMs = 60 * 1000) => {
           ).map(String);
           if (!pending.length) continue;
 
-          const list = await fetchCasinoResult(slug); // newest first
+          const list = resultRows(await fetchCasinoResult(slug)); // newest first
           for (const row of list) {
             if (!pending.includes(String(row.mid))) continue;
             try {
-              await settleCore(slug, row.mid, normalizeResult(slug, row.win));
+              await settleCore(slug, row.mid, normalizeResult(slug, row, list));
             } catch (e) {
               console.error(`poller settle ${slug}/${row.mid}:`, e.message);
             }
@@ -599,7 +789,11 @@ export const myBets = async (req, res) => {
       .lean();
     res.json({
       success: true,
-      bets: bets.map((b) => ({ ...b, result: betResult(b) })),
+      bets: bets.map((b) => ({
+        ...b,
+        teamName: b.nation || b.selection,
+        result: betResult(b),
+      })),
     });
   } catch (err) {
     console.error('myBets error:', err);

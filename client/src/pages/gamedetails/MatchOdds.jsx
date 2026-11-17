@@ -3,6 +3,10 @@ import { FaArrowRight, FaCheck } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../redux/api';
+import {
+  isMarketSuspended as marketSuspendedByGscode,
+  isRunnerSuspended as runnerSuspendedByGscode,
+} from '../../utils/suspension';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
   clearCashoutValues,
@@ -50,6 +54,8 @@ function MatchOdds({
         odds: sec.odds || [],
         max: sec.max,
         min: sec.min,
+        gstatus: sec.gstatus,
+        gscode: sec.gscode,
         mname:
           matchOddsList[0].mname === 'MATCH_ODDS' ? 'Match Odds' : 'Winner',
         status: matchOddsList[0].status,
@@ -201,6 +207,15 @@ function MatchOdds({
     if (size < 1000) return size.toFixed(2);
 
     return `${(size / 1000).toFixed(1)}k`;
+  };
+
+  // Reference-site market max format: >=1L -> "2.5L", >=1K -> "25K"
+  const formatMarketMax = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return '-';
+    if (n >= 1e5) return `${parseFloat((n / 1e5).toFixed(2))}L`;
+    if (n >= 1e3) return `${parseFloat((n / 1e3).toFixed(2))}K`;
+    return String(n);
   };
 
   const getMarketBets = (marketName) => {
@@ -356,17 +371,51 @@ function MatchOdds({
     }
   };
 
-  const maxValue = matchOddsList?.[0]?.max || matchOddsList?.[0]?.maxb || 0;
+  const market0 = matchOddsList?.[0];
+  const maxValue = market0?.max || market0?.maxb || 0;
 
-  // Market suspended status
-  const isMarketSuspended =
-    String(matchOddsList?.[0]?.status || '').toUpperCase() === 'SUSPENDED';
+  // Reference: suspension gscode-only (status string sirf overlay text hy).
+  const isMarketSuspended = marketSuspendedByGscode(market0);
+
+  // Reference jitni depth dikhata hai: max back/lay count per runner (cap 3)
+  const depth = Math.min(
+    3,
+    Math.max(
+      1,
+      ...oddsData.map((r) => {
+        const odds = r.odds || [];
+        return Math.max(
+          odds.filter((o) => o.otype === 'back').length,
+          odds.filter((o) => o.otype === 'lay').length
+        );
+      })
+    )
+  );
+  // Bookmaker-jaisa compact grid: odds columns fixed width (12% mobile / 60px
+  // desktop per depth-3), naam ka column baaki space leta hai (wrap hota hai).
+  const gridClass =
+    {
+      1: 'grid-cols-[1fr_20%_20%] lg:grid-cols-[1fr_80px_80px]',
+      2: 'grid-cols-[1fr_16%_16%_16%_16%] lg:grid-cols-[1fr_60px_60px_60px_60px]',
+      3: 'grid-cols-[1fr_12%_12%_12%_12%_12%_12%] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]',
+    }[depth] || 'grid-cols-[1fr_12%_12%_12%_12%_12%_12%]';
+
+  // Depth-wise colors: best odds (tno 0) solid, aage 75%, outer 50% alpha
+  const BACK_COLORS = ['#72bbef', '#72bbefbf', '#72bbef7f'];
+  const LAY_COLORS = ['#faa9ba', '#faa9babf', '#faa9ba7f'];
+  const depthLevel = (odd, slot, isBack) => {
+    const tno = Number(odd?.tno);
+    if (Number.isFinite(tno)) return Math.min(2, Math.max(0, tno));
+    return isBack ? depth - 1 - slot : slot;
+  };
 
   return (
     <div className='w-full min-w-0 overflow-hidden bg-white'>
       {/* MATCH ODDS HEADER */}
       <div className='flex h-[30px] items-center justify-between bg-[#4b5b6b] px-2 text-white'>
-        <span className='text-[13px] font-bold'>MATCH_ODDS</span>
+        <span className='text-[13px] font-bold'>
+          {(oddsData?.[0]?.mname || 'Match Odds').replaceAll('_', ' ')}
+        </span>
 
         {hasCashoutAvailable && showCashoutOptions ? (
           <button
@@ -411,47 +460,54 @@ function MatchOdds({
         )}
       </div>
 
-      {/* MAX / BACK / LAY HEADER */}
-      <div className='grid h-[24px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca]'>
+      {/* MAX / BACK / LAY HEADER — Bookmaker jaisa: Back/Lay single column,
+          best odds ke upar (back slot depth-1, lay slot 0), baaki pads khali. */}
+      <div className={`grid h-[24px] border-b border-[#c7c8ca] ${gridClass}`}>
         <div className='flex items-center px-1 text-[12px] font-bold text-[#097c93]'>
-          Max: {maxValue}
+          Max: {formatMarketMax(maxValue)}
         </div>
 
-        <div className='flex items-center justify-center border-l border-white bg-[#72bbef] text-[13px] font-bold text-[#333]'>
+        {Array.from({ length: depth - 1 }, (_, i) => (
+          <div key={`hb-${i}`} />
+        ))}
+        <div className='flex items-center justify-center border-l border-white bg-[#72bbef] p-[2px] text-[13px] font-bold text-[#333]'>
           Back
         </div>
-
-        <div className='flex items-center justify-center border-l border-white bg-[#faa9ba] text-[13px] font-bold text-[#333]'>
+        <div className='flex items-center justify-center border-l border-white bg-[#faa9ba] p-[2px] text-[13px] font-bold text-[#333]'>
           Lay
         </div>
+        {Array.from({ length: depth - 1 }, (_, i) => (
+          <div key={`hl-${i}`} />
+        ))}
       </div>
 
       {/* TEAM ROWS */}
       {oddsData.length > 0 ? (
         <div className='relative'>
-          {oddsData.map(({ team, odds, sid }, teamIndex) => {
-            // First available Back and Lay odds
+          {oddsData.map(({ team, odds, sid, gscode }, teamIndex) => {
+            // Provider order: back3→back1 (worst→best), then lay1→lay3 (best→worst)
             const backOdds = (odds || [])
-              .filter((odd) => odd.otype === 'back' && Number(odd.odds) > 0)
-              .slice(0, 1);
+              .filter((odd) => odd.otype === 'back')
+              .slice(0, depth);
 
             const layOdds = (odds || [])
-              .filter((odd) => odd.otype === 'lay' && Number(odd.odds) > 0)
-              .slice(0, 1);
+              .filter((odd) => odd.otype === 'lay')
+              .slice(0, depth);
 
-            const backItem = backOdds[0];
-            const layItem = layOdds[0];
+            const runnerSuspended =
+              isMarketSuspended || runnerSuspendedByGscode(market0, { gscode });
 
-            const renderOddsCell = (item, type) => {
+            const renderOddsCell = (item, type, slot) => {
               const formattedOdds = item?.odds;
+              const colors = type === 'back' ? BACK_COLORS : LAY_COLORS;
 
               return (
                 <button
-                  key={`${type}-${sid}`}
+                  key={`${type}-${sid}-${slot}-${formattedOdds ?? 'x'}`}
                   type='button'
-                  disabled={isMarketSuspended || !formattedOdds}
+                  disabled={!formattedOdds}
                   onClick={() => {
-                    if (!isMarketSuspended && formattedOdds) {
+                    if (formattedOdds) {
                       handleOddsClick(
                         team,
                         formattedOdds,
@@ -461,38 +517,30 @@ function MatchOdds({
                       );
                     }
                   }}
-                  className={`flex h-[33px] min-w-0 flex-col items-center justify-center border-l border-white/50 ${
-                    isMarketSuspended
-                      ? type === 'back'
-                        ? 'bg-[#414d57]'
-                        : 'bg-[#57484d]'
-                      : type === 'back'
-                        ? 'bg-[#72bbef]'
-                        : 'bg-[#faa9ba]'
-                  } ${
-                    !isMarketSuspended && formattedOdds
+                  style={{
+                    backgroundColor:
+                      colors[depthLevel(item, slot, type === 'back')],
+                  }}
+                  className={`odds-flash flex min-h-[30px] min-w-0 flex-col items-center justify-center border-l border-white/50 px-0.5 ${
+                    formattedOdds
                       ? 'cursor-pointer hover:brightness-95'
-                      : 'cursor-not-allowed'
-                  } `}
+                      : 'cursor-default'
+                  }`}
                 >
-                  {!isMarketSuspended && formattedOdds ? (
+                  {formattedOdds ? (
                     <>
-                      <span className='text-[13px] leading-[15px] font-bold text-[#333]'>
+                      <span className='text-[14px] leading-4 font-bold text-[#333] lg:text-[15px]'>
                         {formattedOdds}
                       </span>
 
-                      <span className='text-[9px] leading-[11px] text-[#333]'>
-                        {formatStake(item.size)}
-                      </span>
+                      {Number(item?.size) > 0 && (
+                        <span className='text-[10px] leading-4 font-[100] text-[#333] lg:text-[11px]'>
+                          {formatStake(item.size)}
+                        </span>
+                      )}
                     </>
                   ) : (
-                    <span
-                      className={`text-[12px] font-bold ${
-                        isMarketSuspended ? 'text-[#333]' : 'text-[#333]'
-                      }`}
-                    >
-                      -
-                    </span>
+                    <span className='text-[12px] font-bold text-[#333]'>-</span>
                   )}
                 </button>
               );
@@ -501,11 +549,11 @@ function MatchOdds({
             return (
               <div
                 key={teamIndex}
-                className='grid min-h-[33px] grid-cols-[minmax(0,1fr)_68px_68px] border-b border-[#c7c8ca] hover:bg-[#f7f7f7]'
+                className={`grid min-h-[30px] border-b border-[#c7c8ca] hover:bg-[#f7f7f7] ${gridClass}`}
               >
                 {/* TEAM NAME + P/L */}
                 <div className='flex min-w-0 flex-col justify-center px-1'>
-                  <span className='truncate text-[12px] leading-[16px] font-medium text-[#333]'>
+                  <span className='text-[12px] leading-[16px] font-medium break-words text-[#333]'>
                     {team}
                   </span>
 
@@ -672,23 +720,63 @@ function MatchOdds({
                   })()}
                 </div>
 
-                {/* BACK */}
-                {renderOddsCell(backItem, 'back')}
-
-                {/* LAY */}
-                {renderOddsCell(layItem, 'lay')}
+                {/* BACK + LAY (reference: dim odds + red SUSPENDED overlay) */}
+                {runnerSuspended ? (
+                  <div
+                    className='relative'
+                    style={{ gridColumn: `2 / span ${depth * 2}` }}
+                  >
+                    <div
+                      className='grid opacity-40'
+                      style={{
+                        gridTemplateColumns: `repeat(${depth * 2}, minmax(0,1fr))`,
+                      }}
+                    >
+                      {Array.from({ length: depth * 2 }, (_, i) => {
+                        const isBack = i < depth;
+                        const slot = isBack ? i : i - depth;
+                        const odd = isBack ? backOdds[slot] : layOdds[slot];
+                        const colors = isBack ? BACK_COLORS : LAY_COLORS;
+                        return (
+                          <div
+                            key={`s-${i}`}
+                            style={{
+                              backgroundColor:
+                                colors[depthLevel(odd, slot, isBack)],
+                            }}
+                            className='flex min-h-[30px] flex-col items-center justify-center border-l border-white/50 px-0.5'
+                          >
+                            <span className='text-[14px] leading-4 font-bold text-[#333] lg:text-[15px]'>
+                              {odd?.odds || '-'}
+                            </span>
+                            {Number(odd?.size) > 0 && (
+                              <span className='text-[10px] leading-4 font-[100] text-[#333] lg:text-[11px]'>
+                                {formatStake(odd.size)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
+                      <span className='text-[13px] font-bold tracking-wide text-red-600'>
+                        SUSPENDED
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {Array.from({ length: depth }, (_, slot) =>
+                      renderOddsCell(backOdds[slot], 'back', slot)
+                    )}
+                    {Array.from({ length: depth }, (_, slot) =>
+                      renderOddsCell(layOdds[slot], 'lay', slot)
+                    )}
+                  </>
+                )}
               </div>
             );
           })}
-
-          {/* SUSPENDED OVERLAY */}
-          {isMarketSuspended && (
-            <div className='pointer-events-none absolute inset-y-0 right-0 z-10 flex w-[136px] items-center justify-center'>
-              <span className='text-[13px] font-bold whitespace-nowrap text-red-600'>
-                SUSPENDED
-              </span>
-            </div>
-          )}
         </div>
       ) : (
         <div className='py-3 text-center text-[12px] text-gray-500'>

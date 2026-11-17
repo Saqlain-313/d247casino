@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 
 import connectDB from './config/db.js';
 import { connectRedis } from './config/redis.js';
+import { startResultPoller } from './controllers/casinobetController.js';
 import { cronJobGame1p } from './controllers/cronJobs.js';
 import downlineRoutes from './routes/admin/downlineRoutes.js';
 import manualResultRoutes from './routes/admin/manualResultRoutes.js';
@@ -49,6 +50,7 @@ app.use(
       'http://localhost:5175',
       'http://localhost:5176',
       'https://reddy-777.site',
+      'http://localhost:5180',
       'https://www.reddy-777.site',
       'https://dashboard.reddy-777.site',
     ],
@@ -139,6 +141,7 @@ const startServer = async () => {
     // 4. Cron jobs
     if (APP_TYPE !== 'dashboard') {
       cronJobGame1p();
+      startResultPoller();
       console.log('[CRON] Settlement crons started (client process)');
     } else {
       console.log('[CRON] Settlement crons SKIPPED (dashboard process)');

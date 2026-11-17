@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import NoMarketMessage from '../components/NoMarketMessage';
 import Footer from '../components/footer/Footer';
 import Header from '../components/header/Header';
 import Navbar from '../components/header/Navbar';
@@ -19,6 +20,7 @@ function MainLayout() {
 
   return (
     <div className='bg-body flex min-h-screen flex-col'>
+      <NoMarketMessage />
       <LoginBannerPopup />
 
       <Header onMenuToggle={toggleSidebar} isSidebarOpen={isSidebarOpen} />

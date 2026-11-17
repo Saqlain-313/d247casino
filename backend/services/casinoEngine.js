@@ -439,8 +439,104 @@ function evalMatka(sel, r) {
   }
 }
 
+// ------------------------------------------- win-code settlement (result API)
+// Provider result rows carry only {mid, win}: a family-specific win code
+// (roulette: the number itself, dolidana: per-die sibling rows). Selections
+// whose outcome is a pure function of that code settle here; everything else
+// throws so the bet stays pending instead of settling on guessed data.
+const WIN_SIDE = {
+  lucky7: { 1: 'low', 2: 'high', 0: 'seven', 3: 'seven' },
+  aaa: { 1: 'amar', 2: 'akbar', 3: 'anthony' },
+  dt: { 1: 'dragon', 2: 'tiger', 3: 'tie' },
+  baccarat: { 1: 'player', 2: 'banker', 3: 'tie' },
+  teen: { 1: 'playerA', 2: 'playerB', 0: 'tie' },
+  muflis: { 1: 'playerA', 2: 'playerB', 0: 'tie' },
+  card32: { 1: '8', 2: '9', 3: '10', 4: '11' },
+};
+const TRIPLE_SUMS = new Set([3, 6, 9, 12, 15, 18]);
+
+function evaluateFromWinCode(slug, sel, rc) {
+  const fam = familyOf(slug);
+  if (fam === 'roulette') {
+    if (!Number.isFinite(rc.number)) throw new Error('roulette number missing');
+    return evalRoulette(sel, { number: rc.number });
+  }
+  if (fam === 'sicbo') {
+    if (Array.isArray(rc.dice) && rc.dice.length === 3) {
+      return evalSicBo(sel, { dice: rc.dice });
+    }
+    // total-only feed: settle sums/parity outright, big/small/anytriple only
+    // when no triple can produce the same total
+    const sum = Number(rc.total);
+    if (!Number.isFinite(sum)) throw new Error('sicbo total missing');
+    const [key, arg] = sel.split(':');
+    if (key === 'sum') return bool(sum === Number(arg));
+    if (key === 'even') return bool(sum % 2 === 0);
+    if (key === 'odd') return bool(sum % 2 === 1);
+    if (key === 'small') {
+      if (sum < 4 || sum > 10) return 'lose';
+      if (TRIPLE_SUMS.has(sum)) throw new Error('triple ambiguity');
+      return 'win';
+    }
+    if (key === 'big') {
+      if (sum < 11 || sum > 17) return 'lose';
+      if (TRIPLE_SUMS.has(sum)) throw new Error('triple ambiguity');
+      return 'win';
+    }
+    if (key === 'anytriple') {
+      if (sum === 3 || sum === 18) return 'win';
+      if (TRIPLE_SUMS.has(sum)) throw new Error('triple ambiguity');
+      return 'lose';
+    }
+    throw new Error(`selection ${sel} needs dice`);
+  }
+  const side = (WIN_SIDE[fam] || {})[Number(rc.win)];
+  if (!side) throw new Error(`unknown win code ${rc.win} for ${slug}`);
+  const [key] = sel.split(':');
+  switch (fam) {
+    case 'lucky7':
+      if (key === 'low' || key === 'high') {
+        return side === 'seven' ? 'half_loss' : bool(side === key);
+      }
+      break;
+    case 'aaa':
+      if (key === 'amar' || key === 'akbar' || key === 'anthony') {
+        return bool(side === key);
+      }
+      if (key === 'under7') return bool(side === 'amar');
+      break;
+    case 'dt':
+      if (key === 'dragon' || key === 'tiger') {
+        return side === 'tie' ? 'half_loss' : bool(side === key);
+      }
+      if (key === 'tie' || key === 'pair') return bool(side === 'tie');
+      break;
+    case 'baccarat':
+      if (key === 'player' || key === 'banker') {
+        return side === 'tie' ? 'push' : bool(side === key);
+      }
+      if (key === 'tie') return bool(side === 'tie');
+      break;
+    case 'teen':
+    case 'muflis':
+      if (key === 'playerA' || key === 'playerB') return bool(side === key);
+      break;
+    case 'card32': {
+      const p = sel.split(':')[1] || sel.replace('player', '');
+      if (['8', '9', '10', '11'].includes(p)) return bool(p === side);
+      break;
+    }
+    default:
+      break;
+  }
+  throw new Error(`selection ${sel} not decidable from win code`);
+}
+
 // ------------------------------------------------------------- dispatcher
 function evaluateSelection(slug, selection, result) {
+  if (result && result.winCode !== undefined) {
+    return evaluateFromWinCode(slug, selection, result);
+  }
   switch (familyOf(slug)) {
     case 'lucky7':
       return evalLucky7(selection, result);

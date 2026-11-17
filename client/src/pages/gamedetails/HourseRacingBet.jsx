@@ -9,17 +9,27 @@ import {
   getPendingBetAmo,
   messageClear,
 } from '../../redux/reducer/betReducer';
-import { fetchHorseRacingBettingData } from '../../redux/reducer/horseRacingSlice';
+import {
+  fetchHorseRacingBettingData,
+  setHorseRacingBettingData,
+} from '../../redux/reducer/horseRacingSlice';
+import { getLiveTvUrl } from '../../utils/liveTvUrl';
+import { host } from '../../redux/api';
 import HorseRacingMarkets from './HorseRacingMarkets';
 import MatchedBet from './MatchedBet';
 import PlaceBet from './PlaceBet';
 
 function HourseRacingBet() {
-  const { game, id: gameid } = useParams();
+  const { id: gameid } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const time = location.state?.time;
-  const venue = game || 'Horse Racing';
+  const [showLive, setShowLive] = useState(false);
+  const [showlivetv, setshowlivetv] = useState(false);
+  const venue = location.state?.name || 'Horse Racing';
+  const liveTvUrl = getLiveTvUrl(10, gameid);
+  // Horse races me tv flag nahi hota; live (iplay) races pe stream gate karo.
+  const hasLiveTv = Boolean(location.state?.iplay && liveTvUrl);
   const dispatch = useDispatch();
   const [showOdds, setShowOdds] = useState(true);
   const [selectedBet, setSelectedBet] = useState(null);
@@ -33,6 +43,7 @@ function HourseRacingBet() {
   const { pendingBetAmounts, successMessage, errorMessage } = useSelector(
     (state) => state.bet
   );
+  const { userInfo } = useSelector((state) => state.auth);
   const horseRacingDataMatchesRoute = String(bettingGameId) === String(gameid);
   const bettingData = horseRacingDataMatchesRoute ? storedBettingData : [];
   const isBettingLoaded = horseRacingDataMatchesRoute && bettingLoaded;
@@ -46,29 +57,59 @@ function HourseRacingBet() {
         market.section.some((runner) => runner && (runner.nat || runner.tname))
     );
 
+  // Initial odds fetch (REST) — sirf ek baar. Live updates WS se aate hy.
   useEffect(() => {
-    if (!gameid) return undefined;
-
-    let requestInProgress = false;
-    const refreshBettingData = () => {
-      if (requestInProgress) return;
-      requestInProgress = true;
-      dispatch(fetchHorseRacingBettingData(gameid)).finally(() => {
-        requestInProgress = false;
-      });
-    };
-
-    refreshBettingData();
-    const intervalId = window.setInterval(refreshBettingData, 1000);
-    return () => window.clearInterval(intervalId);
+    if (!gameid) return;
+    dispatch(fetchHorseRacingBettingData(gameid));
   }, [dispatch, gameid]);
 
+  // Live betting data WebSocket pe (sports jaisa, apitype 'horse-racing').
+  // Per-user 1s REST polling hata di — backend shared poller 1s inplay / 10s
+  // non-inplay broadcast karta hy, provider load per race rahta hy.
   useEffect(() => {
-    if (!isBettingLoaded || bettingDataError || hasHorseRacingMarkets) {
+    if (!gameid) return undefined;
+    const socket = new WebSocket(host);
+    socket.onopen = () => {
+      socket.send(
+        JSON.stringify({
+          type: 'subscribe',
+          gameid,
+          apitype: 'horse-racing',
+          userId: userInfo?._id,
+        })
+      );
+    };
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (
+          message.type === 'bettingData' &&
+          String(message.gameid) === String(gameid)
+        ) {
+          dispatch(setHorseRacingBettingData({ gameid, data: message.data }));
+        }
+      } catch (err) {
+        console.error('Horse racing WS parse error:', err);
+      }
+    };
+    return () => socket.close();
+  }, [dispatch, gameid, userInfo?._id]);
+
+  useEffect(() => {
+    // Dead event: betting data fetch fail (race provider pe nahi) ya markets khali
+    if (!bettingDataError && (!isBettingLoaded || hasHorseRacingMarkets)) {
       return undefined;
     }
 
-    const redirectTimer = window.setTimeout(() => navigate('/'), 2500);
+    const redirectTimer = window.setTimeout(
+      () =>
+        navigate('/', {
+          state: {
+            noMarketMessage: 'There are no market available in this game',
+          },
+        }),
+      2500
+    );
     return () => window.clearTimeout(redirectTimer);
   }, [isBettingLoaded, bettingDataError, hasHorseRacingMarkets, navigate]);
 
@@ -129,28 +170,55 @@ function HourseRacingBet() {
           {time && <span className='ml-auto'>{time}</span>}
         </div>
 
-        <div className='bg-primary text-primary flex text-xs font-bold lg:hidden'>
-          <button
-            type='button'
-            className={`w-1/2 border-r border-white p-2 ${
-              showOdds ? 'border-t-2 border-t-white' : ''
+        <div className='bg-primary text-primary flex items-center justify-around text-[12px] font-bold lg:hidden'>
+          <div
+            className={`flex w-full items-center justify-center border-r border-r-[#FFFFFF] p-2 ${
+              showOdds && !showLive ? 'border-t-2 border-t-[#cccccc]' : ''
             }`}
-            onClick={() => setShowOdds(true)}
+            onClick={() => {
+              setShowOdds(true);
+              setShowLive(false);
+            }}
           >
             ODDS
-          </button>
-          <button
-            type='button'
-            className={`w-1/2 p-2 ${
-              showOdds ? '' : 'border-t-2 border-t-white'
+          </div>
+          <div
+            className={`flex w-full items-center justify-center border-r border-r-[#FFFFFF] p-2 ${
+              !showOdds ? 'border-t-2 border-t-[#cccccc]' : ''
             }`}
-            onClick={() => setShowOdds(false)}
+            onClick={() => {
+              setShowOdds(false);
+              setShowLive(false);
+            }}
           >
             MATCHED BET
-          </button>
+          </div>
+          {hasLiveTv && (
+            <div
+              className={`flex w-full cursor-pointer items-center justify-center p-2 ${
+                showLive ? 'border-t-2 border-t-[#cccccc]' : ''
+              }`}
+              onClick={() => {
+                setShowLive(true);
+                setShowOdds(true);
+              }}
+            >
+              <FaTv className='text-sm' />
+            </div>
+          )}
         </div>
 
-        {showOdds ? (
+        {showLive && hasLiveTv ? (
+          <iframe
+            src={liveTvUrl}
+            title='Horse Racing Live'
+            className='w-full'
+            style={{ height: '50vh' }}
+            allow='autoplay; encrypted-media; picture-in-picture'
+            allowFullScreen
+            loading='lazy'
+          />
+        ) : showOdds ? (
           <HorseRacingMarkets
             key={gameid}
             bettingData={bettingData}
@@ -162,11 +230,30 @@ function HourseRacingBet() {
             onBetSelect={setSelectedBet}
           />
         ) : (
-          <div className='block lg:hidden'>
-            <MatchedBet eventName={eventName} />
-          </div>
+          <MatchedBet eventName={gameid} />
         )}
       </main>
+      {hasLiveTv && (
+        <div className='mb-1'>
+          <div
+            className='bg-secondary text-secondary cursor-pointer p-1'
+            onClick={() => setshowlivetv((prev) => !prev)}
+          >
+            <span className='font-bold'>Live Match</span>
+          </div>
+          {showlivetv && (
+            <iframe
+              src={liveTvUrl}
+              title='Horse Racing Live'
+              className='w-full'
+              style={{ height: '50vh' }}
+              allow='autoplay; encrypted-media; picture-in-picture'
+              allowFullScreen
+              loading='lazy'
+            />
+          )}
+        </div>
+      )}
 
       <aside className='sticky top-0 hidden h-fit lg:block'>
         <div className='w-[350px]'>
@@ -180,7 +267,7 @@ function HourseRacingBet() {
           <div className='bg-secondary text-secondary p-1 font-bold'>
             My Bet
           </div>
-          <MatchedBet gameid={gameid} pendingBetAmounts={pendingBetAmounts} />
+          <MatchedBet eventName={gameid} />
         </div>
       </aside>
 

@@ -11,9 +11,7 @@ function CasinoCard({ casino, navigate }) {
       key={casino.eventName || casino.slug}
       className='flex min-w-0 cursor-pointer flex-col items-center p-0.5'
       onClick={() => {
-        navigate(
-          `/casino-bet/${encodeURIComponent(casino.name)}/${casino.eventName || casino.slug}`
-        );
+        navigate(`/casino-bet/${casino.eventName || casino.slug}`);
       }}
     >
       {!imageError && imageUrl ? (

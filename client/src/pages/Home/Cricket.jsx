@@ -6,6 +6,8 @@ import { FaCircle } from 'react-icons/fa';
 import { GiTv } from 'react-icons/gi';
 import Bm from '../../assets/ic_bm.png';
 import F from '../../assets/ic_fancy.png';
+import IsccIcon from '../../components/IsccIcon';
+import { cricketMatchPath, cricketMatchState } from '../../utils/cricketRoute';
 const matche = [
   {
     id: 1,
@@ -207,9 +209,16 @@ export default function Cricket() {
   // const { user } = useSelector((state) => state.user);
   // console.log(user)
   const { matches } = useSelector((state) => state.cricket);
-  console.log('matches', matches);
+
+  // Page-specific 5s refresh: cricket page sirf cricket list refresh karta hai
   useEffect(() => {
-    dispatch(fetchCricketData());
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      dispatch(fetchCricketData());
+    };
+    refresh();
+    const intervalId = setInterval(refresh, 5000);
+    return () => clearInterval(intervalId);
   }, [dispatch]);
 
   // // Show loading state
@@ -256,8 +265,8 @@ export default function Cricket() {
           <div
             className='hidden cursor-pointer grid-cols-[1fr_70px_70px_70px_70px_70px_70px] hover:bg-gray-50 md:grid'
             onClick={() =>
-              navigate(`/cricket-bet/${m.game}/${m.id}`, {
-                state: { time: m.time },
+              navigate(cricketMatchPath(m.iscc, m.id), {
+                state: cricketMatchState(m),
               })
             }
           >
@@ -275,8 +284,9 @@ export default function Cricket() {
                   <FaCircle className='h-[14px] w-[14px] text-[#28a745]' />
                 )}
                 {m.tv && <GiTv className='h-[14px] w-[14px]' />}
-                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
                 {m.f && <img src={F} alt='F' className='h-[12px]' />}
+                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
+                <IsccIcon iscc={m.iscc} />
               </div>
             </div>
 
@@ -296,8 +306,8 @@ export default function Cricket() {
             <div
               className='mb-0 flex items-center justify-between gap-2'
               onClick={() =>
-                navigate(`/cricket-bet/${m.game}/${m.id}`, {
-                  state: { time: m.time },
+                navigate(cricketMatchPath(m.iscc, m.id), {
+                  state: cricketMatchState(m),
                 })
               }
             >
@@ -314,8 +324,9 @@ export default function Cricket() {
                   <FaCircle className='h-[12px] w-[12px] text-[#28a745]' />
                 )}
                 {m.tv && <GiTv className='h-[14px] w-[14px]' />}
-                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
                 {m.f && <img src={F} alt='F' className='h-[12px]' />}
+                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
+                <IsccIcon iscc={m.iscc} />
               </div>
             </div>
 
@@ -330,8 +341,8 @@ export default function Cricket() {
             <div
               className='grid grid-cols-3'
               onClick={() =>
-                navigate(`/cricket-bet/${m.game}/${m.id}`, {
-                  state: { time: m.time },
+                navigate(cricketMatchPath(m.iscc, m.id), {
+                  state: cricketMatchState(m),
                 })
               }
             >

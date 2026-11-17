@@ -31,8 +31,6 @@ export default function HorseRacing({ panel = false }) {
       );
     });
 
-  console.log('Horse Racing Races:', races); // Debugging line to check the races data
-
   return (
     <section
       className={`z-[99999] flex min-h-0 flex-col bg-white text-[#252a2e] ${
@@ -59,7 +57,12 @@ export default function HorseRacing({ panel = false }) {
       <div className='min-h-0 flex-1 overflow-y-auto'>
         {races.map((race) => (
           <Link
-            to={`/hourse-racing-bet/${encodeURIComponent(race.venue)}/${race.gmid}`}
+            to={`/hourse-racing-bet/${race.gmid}`}
+            state={{
+              name: race.venue,
+              time: formatRaceTime(race.stime),
+              iplay: race.iplay,
+            }}
             key={race.gmid}
             className='flex items-center gap-2 px-6 py-3 text-base hover:bg-gray-50'
           >

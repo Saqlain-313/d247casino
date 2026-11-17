@@ -1,17 +1,17 @@
 import React from 'react';
-import { useCasino } from '../../context/CasinoContext';
 import { getCasinoRulesSidebarTable } from '../../data/rulesData';
 
-export default function SidebarRulesTable({ isMobile = false }) {
-  const { selectedGame, gameInfo } = useCasino();
-  const tableHtml = getCasinoRulesSidebarTable(selectedGame, gameInfo.name);
+// Reference sidebar "Rules" box (sidebar-box my-bet-container + sidebar-title
+// Rules + bordered payout tables) — sirf un games me jinka side-rules table
+// hy (teen20 family, teenmuf family, dolidana); baaki slugs ke liye null.
+export default function SidebarRulesTable({ slug }) {
+  const tableHtml = getCasinoRulesSidebarTable(slug);
+  if (!tableHtml) return null;
 
   return (
-    <div
-      className={`sidebar-box my-bet-container ${isMobile ? 'd-xl-none mt-2' : 'mt-2'}`}
-    >
-      <div className='sidebar-title'>
-        <h4>Rules</h4>
+    <div className='mt-1'>
+      <div className='bg-secondary text-secondary p-1'>
+        <span className='font-bold'>Rules</span>
       </div>
       <div
         className='rules-table-container'

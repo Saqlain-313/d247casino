@@ -1,13 +1,39 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { useCasino } from '../../context/CasinoContext';
+
+// Fallback jab user ne Set Button Value me casino buttons save na kiye hon
+const CASINO_DEFAULTS = [
+  { label: '100', value: 100 },
+  { label: '500', value: 500 },
+  { label: '1k', value: 1000 },
+  { label: '5k', value: 5000 },
+  { label: '10k', value: 10000 },
+  { label: '25k', value: 25000 },
+];
+
+const formatStakeLabel = (value) =>
+  value >= 1000 ? `${value / 1000}k` : String(value);
 
 export default function MobileBetDrawer() {
   const { betSlip, closeBetSlip, updateStake, adjustOdds, submitBet } =
     useCasino();
+  const { userInfo } = useSelector((state) => state.auth);
 
   if (!betSlip.isOpen || betSlip.mode !== 'mobile') return null;
 
-  const quickStakes = [100, 500, 1000, 5000, 10000, 25000];
+  // Casino drawer hamesha user ke configured casinoQuickStakes use karta hai
+  // (Set Button Value → Casino Buttons tab), warna defaults.
+  const quickStakes = (
+    userInfo?.casinoQuickStakes?.length
+      ? userInfo.casinoQuickStakes
+      : CASINO_DEFAULTS
+  )
+    .map((s) => ({
+      label: s.label || formatStakeLabel(Number(s.value)),
+      value: Number(s.value),
+    }))
+    .filter((s) => Number.isFinite(s.value) && s.value > 0);
 
   return (
     <div
@@ -108,11 +134,11 @@ export default function MobileBetDrawer() {
           <div className='mobile-slip-quick-stakes d-flex mb-2 flex-wrap gap-1'>
             {quickStakes.map((stk) => (
               <button
-                key={stk}
+                key={`${stk.label}-${stk.value}`}
                 className='btn btn-sm btn-outline-secondary m-quick-stake flex-fill'
-                onClick={() => updateStake(stk)}
+                onClick={() => updateStake(stk.value)}
               >
-                {stk >= 1000 ? stk / 1000 + 'k' : stk}
+                {stk.label}
               </button>
             ))}
             <button

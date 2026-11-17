@@ -158,7 +158,12 @@ const casinoSlice = createSlice({
       state.battingData = action.payload;
     },
     setCasinoResultData: (state, action) => {
-      state.resultData = action.payload;
+      // WS casino_result payload: { data: {res:[...]}, gameid }. currentGameId
+      // bhi set karo taaki winner-popup / RecentResults ka gameid gate sahi chale.
+      state.resultData = action.payload?.data ?? action.payload;
+      if (action.payload?.gameid) {
+        state.currentGameId = action.payload.gameid;
+      }
     },
     //  Clear result data when switching games
     clearCasinoResultData: (state) => {

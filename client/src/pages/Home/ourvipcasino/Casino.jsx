@@ -4,9 +4,7 @@ function Casino({ casinos }) {
   const navigate = useNavigate();
 
   const handleGameClick = (casino) => {
-    navigate(
-      `/casino-bet/${encodeURIComponent(casino.name)}/${encodeURIComponent(casino.slug)}`
-    );
+    navigate(`/casino-bet/${encodeURIComponent(casino.slug)}`);
   };
 
   return (

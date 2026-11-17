@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { distributeCards } from './utils';
+import CricketCard from '../../gamedetails/CricketCard';
 
 /**
  * CardsDisplay - Displays cards for the current round
@@ -8,7 +9,7 @@ import { distributeCards } from './utils';
 const CardsDisplay = memo(function CardsDisplay({ bettingData }) {
   if (!bettingData?.card) return null;
 
-  const cards = bettingData.card.split(',');
+  const cards = String(bettingData.card).split(/[|,]/);
   const gameType = bettingData.gtype;
   const distributedCards = distributeCards(cards, bettingData.gtype, gameType);
 
@@ -62,28 +63,55 @@ const CardsDisplay = memo(function CardsDisplay({ bettingData }) {
       });
     }
   }
+  // Reference overlay types: dolidana/sicbo = DICE, superover family = BALLS
+  const DICE_GAMES = new Set(['dolidana', 'sicbo', 'sicbo2']);
+  const BALL_GAMES = new Set([
+    'superover',
+    'superover2',
+    'superover3',
+    'cmatch20',
+  ]);
+  const ballFor = (code) => {
+    const rank =
+      String(code).length > 2 ? String(code).slice(0, -2) : String(code);
+    if (['J', 'Q', 'K'].includes(rank)) return '/balls/cricket20/wicket.png';
+    if (rank === 'A') return '/balls/cricket20/ball1.png';
+    if (['7', '8', '9', '10'].includes(rank))
+      return '/balls/cricket20/ball0.png';
+    return `/balls/cricket20/ball${rank}.png`;
+  };
+  const revealed = cards.filter((c) => c && c !== '1');
+
+  // Joker/poison family: reference overlay me alag .joker-card block hota hy
+  const JOKER_GAMES = new Set(['joker1', 'joker20', 'joker120']);
+  const POISON_GAMES = new Set(['poison', 'poison20']);
+  const poisonCard = distributedCards.poison?.[0] || '1';
+
+  if (DICE_GAMES.has(gameType) || BALL_GAMES.has(gameType)) {
+    return (
+      <div>
+        <div className='text-[10px] font-bold text-white'>
+          RID: {bettingData.mid}
+        </div>
+        <div className='flex gap-1'>
+          {revealed.map((c, i) => (
+            <img
+              key={i}
+              src={DICE_GAMES.has(gameType) ? `/dice/dice${c}.png` : ballFor(c)}
+              alt={c}
+              className='h-10 w-10 drop-shadow'
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className='text-[10px] font-bold text-white'>
         RID: {bettingData.mid}
       </div>
-
-      {/* Poison Cards */}
-      {distributedCards.poison && distributedCards.poison.length > 0 && (
-        <div className='mb-1'>
-          <h4 className='text-xs font-bold text-white'>POISON</h4>
-          <div className='flex gap-1'>
-            {distributedCards.poison.map((card, index) => (
-              <img
-                key={`poison-${index}`}
-                src={`/cards/${card}.jpg`}
-                alt={card}
-                className='h-8 w-auto rounded shadow-sm'
-              />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Board Cards */}
       {distributedCards.board && distributedCards.board.length > 0 && (
@@ -91,44 +119,65 @@ const CardsDisplay = memo(function CardsDisplay({ bettingData }) {
           <h4 className='text-xs font-bold text-white'>BOARD</h4>
           <div className='flex gap-1'>
             {distributedCards.board.map((card, index) => (
-              <img
-                key={`board-${index}`}
-                src={`/cards/${card}.jpg`}
-                alt={card}
-                className='h-8 w-auto rounded shadow-sm'
-              />
+              <CricketCard key={`board-${index}`} card={card} />
             ))}
           </div>
         </div>
       )}
 
-      {playerEntries.map((entry) => (
-        <div key={entry.key} className='mb-1'>
-          <h4 className='text-xs font-bold text-white uppercase'>
-            {entry.label}
-          </h4>
-          <div className='flex gap-1'>
-            {entry.cards.map((card, index) => {
-              const isFirstCard = index === 0;
-              const isLastCard = index === entry.cards.length - 1;
-              const shouldRotateFirst =
-                isBaccaratGame && entry.key === 'playerA' && isFirstCard;
-              const shouldRotateLast =
-                isBaccaratGame && entry.key === 'playerB' && isLastCard;
-              if (shouldRotateFirst && card === '1') return null;
-              if (shouldRotateLast && card === '1') return null;
-              return (
-                <img
-                  key={`${entry.key}-${index}`}
-                  src={`/cards/${card}.jpg`}
-                  alt={card}
-                  className={`h-8 w-auto rounded shadow-sm ${shouldRotateFirst ? 'mr-1 rotate-90' : ''} ${shouldRotateLast ? 'ml-1 rotate-90' : ''}`}
-                />
-              );
-            })}
+      {JOKER_GAMES.has(gameType) && (
+        <div className='joker-card mb-1 text-center'>
+          <h4 className='text-playerb mb-1 text-xs font-bold'>Joker</h4>
+          <span>
+            <img src='/joker/14.png' alt='Joker' className='h-14 w-auto' />
+          </span>
+        </div>
+      )}
+      {POISON_GAMES.has(gameType) && (
+        <div className='joker-card mb-1'>
+          <h5 className='text-playerb mb-1 text-xs font-bold'>Poison</h5>
+          <div className='flip-card-container'>
+            <CricketCard card={poisonCard} />
           </div>
         </div>
-      ))}
+      )}
+      {playerEntries
+        .filter(
+          (entry) => !(POISON_GAMES.has(gameType) && entry.key === 'poison')
+        )
+        .map((entry) => (
+          <div key={entry.key} className='mb-1'>
+            <h4 className='text-xs font-bold text-white uppercase'>
+              {entry.label}
+            </h4>
+            <div className='flex gap-1'>
+              {entry.cards.map((card, index) => {
+                const isFirstCard = index === 0;
+                const isLastCard = index === entry.cards.length - 1;
+                const shouldRotateFirst =
+                  isBaccaratGame && entry.key === 'playerA' && isFirstCard;
+                const shouldRotateLast =
+                  isBaccaratGame && entry.key === 'playerB' && isLastCard;
+                if (shouldRotateFirst && card === '1') return null;
+                if (shouldRotateLast && card === '1') return null;
+                return (
+                  <div
+                    key={`${entry.key}-${index}`}
+                    className={
+                      shouldRotateFirst
+                        ? 'mr-1 rotate-90'
+                        : shouldRotateLast
+                          ? 'ml-1 rotate-90'
+                          : ''
+                    }
+                  >
+                    <CricketCard card={card} />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
     </div>
   );
 });

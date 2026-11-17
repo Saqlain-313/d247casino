@@ -399,7 +399,7 @@ function AllCasino() {
           className='flex flex-col items-center p-0.5'
           onClick={() => {
             // if (PLAYABLE_SLUGS.has(casino.slug)) {
-            navigate(`/casino-bet/${casino.name}/${casino.slug}`);
+            navigate(`/casino-bet/${casino.slug}`);
             // }
           }}
         >

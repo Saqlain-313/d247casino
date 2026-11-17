@@ -399,9 +399,12 @@ const betSlice = createSlice({
       // ------------------------------------------
       // GET DIRECT CASINO RESULT BY DATE
       // ------------------------------------------
-      .addCase(getDirectCasinoResultByDate.pending, (state) => {
-        state.directCasinoResultLoading = true;
-        state.directCasinoResultError = null;
+      .addCase(getDirectCasinoResultByDate.pending, (state, action) => {
+        // Background polls (silent) keep the current table visible — no flicker.
+        if (!action.meta.arg?.silent) {
+          state.directCasinoResultLoading = true;
+          state.directCasinoResultError = null;
+        }
       })
 
       .addCase(getDirectCasinoResultByDate.fulfilled, (state, action) => {
@@ -411,10 +414,12 @@ const betSlice = createSlice({
 
       .addCase(getDirectCasinoResultByDate.rejected, (state, action) => {
         state.directCasinoResultLoading = false;
-        state.directCasinoResultError =
-          action.payload ||
-          action.error?.message ||
-          'Failed to fetch casino result';
+        if (!action.meta.arg?.silent) {
+          state.directCasinoResultError =
+            action.payload ||
+            action.error?.message ||
+            'Failed to fetch casino result';
+        }
       });
   },
 });

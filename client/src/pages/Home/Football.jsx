@@ -6,6 +6,7 @@ import { FaCircle } from 'react-icons/fa';
 import { GiTv } from 'react-icons/gi';
 import Bm from '../../assets/ic_bm.png';
 import F from '../../assets/ic_fancy.png';
+import IsccIcon from '../../components/IsccIcon';
 
 const Cell = ({ value, type }) => (
   <div
@@ -19,9 +20,16 @@ export default function Football() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { matches, loader, error } = useSelector((state) => state.soccer);
-  console.log('football matches', matches);
+
+  // Page-specific 5s refresh: football page sirf soccer list refresh karta hai
   useEffect(() => {
-    dispatch(fetchSoccerData());
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      dispatch(fetchSoccerData());
+    };
+    refresh();
+    const intervalId = setInterval(refresh, 5000);
+    return () => clearInterval(intervalId);
   }, [dispatch]);
   return (
     <div className='w-full text-sm text-gray-900'>
@@ -40,8 +48,8 @@ export default function Football() {
           <div
             className='hidden cursor-pointer grid-cols-[1fr_70px_70px_70px_70px_70px_70px] hover:bg-gray-50 md:grid'
             onClick={() =>
-              navigate(`/football-bet/${m.game}/${m.id}`, {
-                state: { time: m.time, beventId: m.beventId },
+              navigate(`/football-bet/${m.id}`, {
+                state: { name: m.game, time: m.time, beventId: m.beventId },
               })
             }
           >
@@ -59,8 +67,9 @@ export default function Football() {
                   <FaCircle className='h-[14px] w-[14px] text-[#28a745]' />
                 )}
                 {m.tv && <GiTv className='h-[14px] w-[14px]' />}
-                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
                 {m.f && <img src={F} alt='F' className='h-[12px]' />}
+                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
+                <IsccIcon iscc={m.iscc} />
               </div>
             </div>
 
@@ -78,8 +87,8 @@ export default function Football() {
           <div
             className='space-y-2 bg-white p-2 md:hidden'
             onClick={() =>
-              navigate(`/football-bet/${m.game}/${m.id}`, {
-                state: { time: m.time, beventId: m.beventId },
+              navigate(`/football-bet/${m.id}`, {
+                state: { name: m.game, time: m.time, beventId: m.beventId },
               })
             }
           >
@@ -98,8 +107,9 @@ export default function Football() {
                   <FaCircle className='h-[12px] w-[12px] text-[#28a745]' />
                 )}
                 {m.tv && <GiTv className='h-[14px] w-[14px]' />}
-                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
                 {m.f && <img src={F} alt='F' className='h-[12px]' />}
+                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
+                <IsccIcon iscc={m.iscc} />
               </div>
             </div>
 

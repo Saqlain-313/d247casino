@@ -145,6 +145,22 @@ export function createProviderA() {
         data: table?.data ?? null,
       };
     },
+
+    // Cricket-casino (cricketv) live game feed — reference /api/front/cricketvdata2
+    // ka provider equivalent. Virtual cricket (iscc 1) events ke liye. Response
+    // { fetchedAt, etid, gmid, data: { success, data: { t1: {card, ft, lt} } } }.
+    // Not-found par { error, key } aata hy -> success:false.
+    async fetchCricketCasino(gmid) {
+      const response = await axios.get(
+        `${API_URL}/diamond/cricket-casino/4_${encodeURIComponent(gmid)}?key=${API_KEY}`,
+        { timeout: 10000 }
+      );
+      const table = response.data?.data;
+      return {
+        success: Boolean(table?.success && table?.data),
+        data: table?.data ?? null,
+      };
+    },
     // async fetchCasinoData(eventName) {
     // //   const response = await axios.get(
     // //     `${API_URL}/casino/data?key=${API_KEY}&type=${eventName}`

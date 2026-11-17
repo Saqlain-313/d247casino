@@ -23,21 +23,24 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
       const backOdd = item.odds?.find((odd) => odd.otype === 'back');
       const layOdd = item.odds?.find((odd) => odd.otype === 'lay');
 
+      // fancy1 is a Yes/No session market: settlement treats otype 'back' as
+      // YES and 'lay' as NO (see settleFancy1Bet). So No = lay (pink) and
+      // Yes = back (blue), matching the reference market-6 convention.
       return {
         id: index + 1,
         label: item.team || `Item ${index + 1}`,
         no:
-          backOdd && backOdd.odds > 0
-            ? {
-                rate: backOdd.odds,
-                stake: backOdd.size || 0,
-              }
-            : { rate: null, stake: null },
-        yes:
           layOdd && layOdd.odds > 0
             ? {
                 rate: layOdd.odds,
                 stake: layOdd.size || 0,
+              }
+            : { rate: null, stake: null },
+        yes:
+          backOdd && backOdd.odds > 0
+            ? {
+                rate: backOdd.odds,
+                stake: backOdd.size || 0,
               }
             : { rate: null, stake: null },
         min: item.min || 0,
@@ -95,11 +98,11 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
         <div className=''>
           <div className='grid grid-cols-[1fr_60px_60px] border-b border-b-[#c7c8ca] lg:grid-cols-[1fr_60px_60px_60px]'>
             <div></div>
-            <div className='flex items-center justify-center bg-[#72bbef] p-[2px] font-[16px] font-bold text-[#333]'>
-              Back
-            </div>
             <div className='flex items-center justify-center bg-[#faa9ba] p-[2px] font-[16px] font-bold text-[#333]'>
-              Lay
+              No
+            </div>
+            <div className='flex items-center justify-center bg-[#72bbef] p-[2px] font-[16px] font-bold text-[#333]'>
+              Yes
             </div>
             <div className='hidden lg:block'></div>
           </div>
@@ -136,13 +139,13 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                 </div>
 
                 <div
-                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.no.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#faa9ba] ${item.no.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                   onClick={() =>
                     item.no.rate &&
                     handleOddsClick(
                       item.label,
                       item.no.rate,
-                      'back',
+                      'lay',
                       item.sid,
                       item.min,
                       item.max,
@@ -163,13 +166,13 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                 </div>
 
                 <div
-                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#faa9ba] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                   onClick={() =>
                     item.yes.rate &&
                     handleOddsClick(
                       item.label,
                       item.yes.rate,
-                      'lay',
+                      'back',
                       item.sid,
                       item.min,
                       item.max,
@@ -208,11 +211,11 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
         <div className=''>
           <div className='grid grid-cols-[1fr_60px_60px] border-b border-b-[#c7c8ca] lg:grid-cols-[1fr_60px_60px_60px]'>
             <div></div>
-            <div className='hidden items-center justify-center bg-[#72bbef] p-[2px] font-[16px] font-bold text-[#333] lg:flex'>
-              Back
-            </div>
             <div className='hidden items-center justify-center bg-[#faa9ba] p-[2px] font-[16px] font-bold text-[#333] lg:flex'>
-              Lay
+              No
+            </div>
+            <div className='hidden items-center justify-center bg-[#72bbef] p-[2px] font-[16px] font-bold text-[#333] lg:flex'>
+              Yes
             </div>
             <div></div>
           </div>
@@ -249,13 +252,13 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                 </div>
 
                 <div
-                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.no.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#faa9ba] ${item.no.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                   onClick={() =>
                     item.no.rate &&
                     handleOddsClick(
                       item.label,
                       item.no.rate,
-                      'back',
+                      'lay',
                       item.sid,
                       item.min,
                       item.max,
@@ -276,13 +279,13 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                 </div>
 
                 <div
-                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#faa9ba] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                  className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                   onClick={() =>
                     item.yes.rate &&
                     handleOddsClick(
                       item.label,
                       item.yes.rate,
-                      'lay',
+                      'back',
                       item.sid,
                       item.min,
                       item.max,

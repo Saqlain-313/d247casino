@@ -12,6 +12,7 @@ import {
 import { fetchSoccerBatingData } from '../../redux/reducer/soccerSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
 import { getFootballScorecardUrl } from '../../utils/scorecardUrl';
+import CricketMarket from './CricketMarket';
 import MatchedBet from './MatchedBet';
 import MatchOdds from './MatchOdds';
 import OverUnder_05 from './OverUnder_05';
@@ -20,12 +21,17 @@ import OverUnder_25 from './OverUnder_25';
 import OverUnder_35 from './OverUnder_35';
 import PlaceBet from './PlaceBet';
 function FootballBet() {
-  const { game, id } = useParams();
+  const { id } = useParams();
   const location = useLocation();
-  const time = location.state?.time;
-  const beventId = location.state?.beventId;
   const gameid = id;
-  const match = game;
+  // Name/time/beventId: navigation state first, redux match list as refresh fallback
+  const storeMatch = useSelector((state) =>
+    state.soccer.matches.find((m) => String(m.id) === String(id))
+  );
+  const listLoaded = useSelector((state) => state.soccer.matches.length > 0);
+  const time = location.state?.time || storeMatch?.time;
+  const beventId = location.state?.beventId || storeMatch?.beventId;
+  const match = location.state?.name || storeMatch?.game || 'Live Match';
   const dispatch = useDispatch();
 
   const [bettingData, setBettingData] = useState(null);
@@ -42,10 +48,11 @@ function FootballBet() {
   const [showlivetv, setshowlivetv] = useState(false);
   const streamGmid = beventId || gameid;
   const liveTvUrl = getLiveTvUrl(1, streamGmid);
+  const hasLiveTv = Boolean(storeMatch?.tv && liveTvUrl);
   const scorecardUrl = getFootballScorecardUrl(streamGmid);
 
   // Extract team names from match title
-  const matchTitle = 'Paarl Royals v Joburg Super Kings';
+  const matchTitle = match;
   const teams = matchTitle.split(' v ');
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
@@ -118,11 +125,32 @@ function FootballBet() {
     };
   }, [gameid, userInfo?._id]);
 
+  const [marketFetchFailed, setMarketFetchFailed] = useState(false);
+
   useEffect(() => {
     if (gameid) {
-      dispatch(fetchSoccerBatingData(gameid)); // initial
+      dispatch(fetchSoccerBatingData(gameid)) // initial
+        .then((res) => {
+          if (fetchSoccerBatingData.rejected.match(res)) {
+            setMarketFetchFailed(true);
+          }
+        });
     }
   }, [gameid, dispatch]);
+
+  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya refreshed
+  // list me event nahi bacha → home pe redirect + "no market" message box.
+  useEffect(() => {
+    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+      navigate('/', {
+        replace: true,
+        state: {
+          noMarketMessage: 'There are no market available in this game',
+        },
+      });
+    }
+  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
+
   useEffect(() => {
     setBettingData(battingData);
   }, [battingData]);
@@ -141,6 +169,23 @@ function FootballBet() {
 
   const matcUnder35List =
     bettingData?.filter((item) => item.mname === 'OVER_UNDER_35') || [];
+
+  // Every market without a dedicated component (Bookmaker, Draw No Bet,
+  // Next Goal, ...) renders through the generic renderer, so nothing the
+  // provider sends is silently dropped.
+  const KNOWN_MARKETS = new Set([
+    'MATCH_ODDS',
+    'OVER_UNDER_05',
+    'OVER_UNDER_15',
+    'OVER_UNDER_25',
+    'OVER_UNDER_35',
+  ]);
+  const otherMarkets = (Array.isArray(bettingData) ? bettingData : []).filter(
+    (market) =>
+      !KNOWN_MARKETS.has(market?.mname) &&
+      Array.isArray(market?.section) &&
+      market.section.length > 0
+  );
 
   useEffect(() => {
     dispatch(getPendingBetAmo(gameid));
@@ -167,10 +212,10 @@ function FootballBet() {
     <div className='mt-0.5 flex gap-px'>
       <div className='ml-0 w-full md:ml-1 lg:w-[calc(100%-352px)]'>
         <div className='bg-secondary text-secondary flex items-center justify-between p-1 text-[12px] font-bold lg:text-[15px]'>
-          <span>{game}</span>
+          <span>{match}</span>
           <span>{time}</span>
         </div>
-        <div className='bg-primary text-primary flex items-center justify-around text-[12px] font-bold'>
+        <div className='bg-primary text-primary flex items-center justify-around text-[12px] font-bold lg:hidden'>
           <div
             className={`flex w-full items-center justify-center border-r border-r-[#FFFFFF] p-2 ${showodds ? 'border-t-2 border-t-[#cccccc]' : ''}`}
             onClick={() => {
@@ -186,15 +231,17 @@ function FootballBet() {
           >
             MATCHED BET
           </div>
-          <div
-            className='flex w-full cursor-pointer items-center justify-center p-2'
-            onClick={() => {
-              setShowLive(true);
-              setshowodds(true);
-            }}
-          >
-            <FaTv className='text-sm' />
-          </div>
+          {hasLiveTv && (
+            <div
+              className='flex w-full cursor-pointer items-center justify-center p-2'
+              onClick={() => {
+                setShowLive(true);
+                setshowodds(true);
+              }}
+            >
+              <FaTv className='text-sm' />
+            </div>
+          )}
         </div>
 
         {showodds && (
@@ -292,11 +339,29 @@ function FootballBet() {
                 selectedBet={selectedBet}
               />
             )}
+
+            {/** All other provider markets (Draw No Bet, Next Goal, Bookmaker...) —
+             * reference-style grid: 1 per row mobile, 2 per row md, 3 per row xl */}
+            {otherMarkets.length > 0 && (
+              <div className='mt-1 flex flex-wrap gap-1'>
+                {otherMarkets.map((market) => (
+                  <div
+                    key={`${market.gmid || gameid}-${market.mid || market.mname}`}
+                    className='w-full min-w-0 md:w-[calc(50%-4px)] xl:w-[calc(33.33%-6px)]'
+                  >
+                    <CricketMarket
+                      market={market}
+                      onBetSelect={handleBetSelect}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         {!showodds && (
           <div className='block lg:hidden'>
-            <MatchedBet eventName={eventName} />
+            <MatchedBet eventName={gameid} />
           </div>
         )}
       </div>
@@ -350,7 +415,7 @@ function FootballBet() {
           <div className='bg-secondary text-secondary p-1'>
             <span className='font-bold'>My Bet</span>
           </div>
-          <MatchedBet eventName={eventName} />
+          <MatchedBet eventName={gameid} />
         </div>
       </div>
 

@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { useDispatch } from 'react-redux';
+import api from '../redux/api';
 import { getUser } from '../redux/reducer/authReducer';
 import { placeCasinoBet } from '../redux/reducer/casinoBetSlice';
 
@@ -16,23 +17,15 @@ const CasinoContext = createContext(null);
 // =========================================
 // NORMALIZE SELECTION
 // =========================================
-const normalizeSelection = (value) =>
+export const normalizeSelection = (value) =>
   String(value ?? '')
     .toLowerCase()
     .replace(/^roulette\s*:\s*/, '')
     .replace(/[^a-z0-9]/g, '');
 
-// Some providers omit `visible` for open markets.
-// Treat missing visibility as allowed; explicit 0 remains hidden.
-const isMarketVisible = (market) => {
-  const visible = market?.visible;
-
-  if (visible === undefined || visible === null || visible === '') {
-    return true;
-  }
-
-  return Number(visible) === 1;
-};
+// Provider `visible` flag market-lock NAHI hy — reference bundle isse ignore
+// karta hy (open markets pe bhi visible:0 ata hy). Suspension sirf gstatus se.
+const isMarketVisible = (market) => true;
 
 const isMarketOpen = (market) => {
   const status = String(market?.gstatus ?? market?.status ?? '')
@@ -55,6 +48,7 @@ export function CasinoUiProvider({
   const [rouletteBets, setRouletteBets] = useState({});
   const [statisticsModalOpen, setStatisticsModalOpen] = useState(false);
   const [slipMode, setSlipMode] = useState(isMobile ? 'mobile' : 'desktop');
+  const [nationBook, setNationBook] = useState({});
 
   // =========================================
   // FIX: NORMALIZE API RESPONSE
@@ -72,6 +66,33 @@ export function CasinoUiProvider({
   // =========================================
 
   const marketList = Array.isArray(casinoData?.sub) ? casinoData.sub : [];
+
+  // =========================================
+  // NATION BOOK (per-selection P&L, reference userbook box)
+  // =========================================
+
+  const roundMid = casinoData?.mid ? String(casinoData.mid) : '';
+
+  useEffect(() => {
+    if (!gameid || !roundMid) {
+      setNationBook({});
+      return;
+    }
+    let alive = true;
+    const load = () =>
+      api
+        .get(`/casino/${gameid}/book/${roundMid}`, { withCredentials: true })
+        .then((r) => {
+          if (alive) setNationBook(r.data?.book || {});
+        })
+        .catch(() => {});
+    load();
+    const timer = setInterval(load, 15000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [gameid, roundMid]);
 
   // =========================================
   // DEBUG LOGS
@@ -147,7 +168,7 @@ export function CasinoUiProvider({
         nat: item?.nat ?? item?.n ?? item?.name ?? item?.label ?? '',
         sid: providerId != null ? String(providerId) : '',
         gstatus: item?.gstatus ?? item?.status ?? '',
-        visible: Number(item?.visible) === 1,
+        visible: isMarketVisible(item),
         min: Number(item?.min ?? 100),
         max: Number(item?.max ?? 100000),
       };
@@ -505,6 +526,8 @@ export function CasinoUiProvider({
       selectedGame: gameid || '',
 
       roundData,
+
+      nationBook,
 
       isSuspended,
 

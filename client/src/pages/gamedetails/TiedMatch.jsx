@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import {
+  isMarketSuspended as marketSuspendedByGscode,
+  isRunnerSuspended as runnerSuspendedByGscode,
+} from '../../utils/suspension';
 import TeamOutcomeLabels from './components/TeamOutcomeLabels';
 import { useMarketNetOutcome } from './hooks/useMarketNetOutcome';
 
@@ -16,7 +20,6 @@ function TiedMatch({
       gameId: gameid,
       cashoutPLKey: 'Tied Match',
     });
-  console.log('tiedmatch from tiedmatch', tiedMatchList);
   const backBg = ['bg-[#72bbef7f]', 'bg-[#72bbefbf]', 'bg-[#72bbef]'];
   const layBg = ['bg-[#faa9ba]', 'bg-[#faa9babf]', 'bg-[#faa9ba7f]'];
   const [showCashoutOptions, setShowCashoutOptions] = useState(false);
@@ -30,6 +33,7 @@ function TiedMatch({
         min: sec.min,
         mname: tiedMatchList[0].mname || 'Tied Match',
         gstatus: sec.gstatus,
+        gscode: sec.gscode,
         status: tiedMatchList[0].status,
       }))
     : [];
@@ -65,10 +69,24 @@ function TiedMatch({
   // Get max value from API
   const maxValue = tiedMatchList?.[0]?.max || tiedMatchList?.[0]?.maxb || 0;
 
+  // Market-level suspension (reference: status/gstatus SUSPENDED ya gscode != 1)
+  const isMarketSuspended = marketSuspendedByGscode(tiedMatchList?.[0]);
+
+  // Reference-site market max format: >=1L -> "2.5L", >=1K -> "25K"
+  const formatMarketMax = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return '-';
+    if (n >= 1e5) return `${parseFloat((n / 1e5).toFixed(2))}L`;
+    if (n >= 1e3) return `${parseFloat((n / 1e3).toFixed(2))}K`;
+    return String(n);
+  };
+
   return (
     <div>
       <div className='text-secondary mt-1 flex items-center justify-between bg-[#2C3E50D9] p-1'>
-        <span className='text-[13px] font-bold lg:text-[15px]'>TIED_MATCH</span>
+        <span className='text-[13px] font-bold lg:text-[15px]'>
+          {(tiedMatchList?.[0]?.mname || 'Tied Match').replaceAll('_', ' ')}
+        </span>
         <button
           disabled={!showCashoutOptions}
           className={`p-1 font-[400] text-white ${
@@ -82,7 +100,7 @@ function TiedMatch({
       </div>
       <div className='grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b border-b-[#c7c8ca] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]'>
         <div className='ml-2 text-[12px] font-bold text-[#097c93]'>
-          Max:{maxValue}
+          Max: {formatMarketMax(maxValue)}
         </div>
         <div></div>
         <div></div>
@@ -96,23 +114,28 @@ function TiedMatch({
         <div></div>
       </div>
       {tiedMatchData.length > 0 ? (
-        tiedMatchData.map(({ team, odds, sid, gstatus }, teamIndex) => {
-          const isSuspended = gstatus === 'SUSPENDED';
-          // Get back and lay odds (Tied Match typically has only 1 back and 1 lay)
-          const backOdds = odds.filter((odd) => odd.otype === 'back');
-          const layOdds = odds.filter((odd) => odd.otype === 'lay');
+        tiedMatchData.map(({ team, odds, sid, gstatus, gscode }, teamIndex) => {
+          const isSuspended =
+            isMarketSuspended ||
+            runnerSuspendedByGscode(tiedMatchList?.[0], { gscode });
 
-          // Create arrays with 3 slots, filling with null for empty slots
-          const backArray = [
-            backOdds[2] || null,
-            backOdds[1] || null,
-            backOdds[0] || null,
-          ];
+          // Provider order back3→back1: best back hamesha right (center ke paas,
+          // solid color) aur best lay left — reference layout.
+          const backList = (odds || [])
+            .filter((odd) => odd.otype === 'back')
+            .slice(-3);
+          const backArray = [null, null, null];
+          backList.forEach((o, i) => {
+            backArray[3 - backList.length + i] = o;
+          });
 
+          const layList = (odds || [])
+            .filter((odd) => odd.otype === 'lay')
+            .slice(0, 3);
           const layArray = [
-            layOdds[0] || null,
-            layOdds[1] || null,
-            layOdds[2] || null,
+            layList[0] || null,
+            layList[1] || null,
+            layList[2] || null,
           ];
 
           return (
@@ -121,7 +144,7 @@ function TiedMatch({
               className='grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b border-b-[#c7c8ca] hover:bg-[#f7f7f7] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]'
             >
               {/* Team with suggestions */}
-              <div className='ml-2 truncate text-[13px] font-bold text-[#333] lg:text-[14px]'>
+              <div className='ml-2 min-w-0 text-[13px] font-bold break-words text-[#333] lg:text-[14px]'>
                 <div>{team}</div>
                 <TeamOutcomeLabels
                   team={team}
@@ -133,10 +156,29 @@ function TiedMatch({
               </div>
 
               {isSuspended ? (
-                <div className='col-span-6 flex min-h-[30px] items-center justify-center bg-[#4b4b4b]'>
-                  <span className='font-bold tracking-wide text-red-600'>
-                    SUSPENDED
-                  </span>
+                <div className='relative col-span-6'>
+                  <div className='grid grid-cols-6 opacity-40'>
+                    {[...backArray, ...layArray].map((item, i) => (
+                      <div
+                        key={`s-${i}`}
+                        className={`${i < 3 ? backBg[i] : layBg[i - 3]} flex min-h-[30px] flex-col items-center justify-center`}
+                      >
+                        <span className='text-[15px] leading-4 font-bold text-[#333] lg:text-[16px]'>
+                          {item && item.odds > 0 ? item.odds : '-'}
+                        </span>
+                        {item && item.odds > 0 && item.size > 0 && (
+                          <span className='text-[11px] leading-4 font-[100] text-[#333] lg:text-[12px]'>
+                            {formatStake(item.size)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
+                    <span className='text-[13px] font-bold tracking-wide text-red-600'>
+                      SUSPENDED
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -146,8 +188,8 @@ function TiedMatch({
                     const hasOdds = backItem && backItem.odds > 0;
                     return (
                       <div
-                        key={`back-${i}`}
-                        className={`${backBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                        key={`back-${i}-${backItem?.odds ?? 'x'}`}
+                        className={`odds-flash ${backBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                         onClick={() =>
                           hasOdds &&
                           handleOddsClick(
@@ -183,8 +225,8 @@ function TiedMatch({
                     const hasOdds = layItem && layItem.odds > 0;
                     return (
                       <div
-                        key={`lay-${i}`}
-                        className={`${layBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                        key={`lay-${i}-${layItem?.odds ?? 'x'}`}
+                        className={`odds-flash ${layBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                         onClick={() =>
                           hasOdds &&
                           handleOddsClick(

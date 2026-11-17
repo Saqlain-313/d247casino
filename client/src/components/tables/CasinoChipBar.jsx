@@ -1,13 +1,26 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { useCasino } from '../../context/CasinoContext';
 
-const CHIPS = [
-  { val: 25, label: '25', color: '#138cf5' },
-  { val: 50, label: '50', color: '#138cf5' },
-  { val: 100, label: '100', color: '#138cf5' },
-  { val: 200, label: '200', color: '#00d700' },
-  { val: 500, label: '500', color: '#00d700' },
-  { val: 1000, label: '1K', color: '#9541f9' },
+// Fallback jab user ne Set Button Value me casino buttons save na kiye hon
+const FALLBACK_CHIPS = [
+  { value: 25, label: '25' },
+  { value: 50, label: '50' },
+  { value: 100, label: '100' },
+  { value: 200, label: '200' },
+  { value: 500, label: '500' },
+  { value: 1000, label: '1K' },
+];
+
+// Chip colors by position (reference: low=blue, mid=green, high=purple)
+const CHIP_COLORS = [
+  '#138cf5',
+  '#138cf5',
+  '#138cf5',
+  '#00d700',
+  '#00d700',
+  '#9541f9',
+  '#9541f9',
 ];
 
 export default function CasinoChipBar() {
@@ -20,6 +33,24 @@ export default function CasinoChipBar() {
     clearRouletteBets,
     isSuspended,
   } = useCasino();
+  const { userInfo } = useSelector((state) => state.auth);
+
+  // Casino chips = user ke configured casinoQuickStakes (Set Button Value →
+  // Casino Buttons), warna defaults.
+  const CHIPS = (
+    userInfo?.casinoQuickStakes?.length
+      ? userInfo.casinoQuickStakes.map((s) => ({
+          value: Number(s.value),
+          label: s.label || String(s.value),
+        }))
+      : FALLBACK_CHIPS
+  )
+    .filter((c) => Number.isFinite(c.value) && c.value > 0)
+    .map((c, i) => ({
+      val: c.value,
+      label: c.label,
+      color: CHIP_COLORS[i] || '#9541f9',
+    }));
 
   const hasBets = Object.keys(rouletteBets).length > 0;
 

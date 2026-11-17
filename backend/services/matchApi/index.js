@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 
+import { getCached } from './cache.js';
 import { createProviderA } from './providerA.js';
 import { createProviderB } from './providerB.js';
 import { createProviderC } from './providerC.js';
@@ -50,11 +51,22 @@ const callProvider = (method, ...args) => {
 };
 
 // Match APIs
+// Shared short-TTL cache: 1000 users opening the same sport/match produce ONE
+// provider call per TTL window (plus in-flight dedupe for concurrent bursts).
+// Match data TTL (800ms) stays below the 1s WS poller tick so live odds keep
+// refreshing every cycle; the match list changes slower, so it gets 3s.
+const MATCH_LIST_TTL_MS = 3000;
+const MATCH_DATA_TTL_MS = 800;
+
 export const fetchMatchList = (sportId) =>
-  callProvider('fetchMatchList', sportId);
+  getCached(`list:${sportId}`, MATCH_LIST_TTL_MS, () =>
+    callProvider('fetchMatchList', sportId)
+  );
 
 export const fetchMatchData = (gameId, sportId) =>
-  callProvider('fetchMatchData', gameId, sportId);
+  getCached(`data:${sportId}:${gameId}`, MATCH_DATA_TTL_MS, () =>
+    callProvider('fetchMatchData', gameId, sportId)
+  );
 
 // Result APIs
 export const getResult = (payload) => callProvider('getResult', payload);
@@ -67,6 +79,9 @@ export const fetchCasinoTables = () => callProvider('fetchCasinoTables');
 
 export const fetchCasinoData = (eventName) =>
   callProvider('fetchCasinoData', eventName);
+
+export const fetchCricketCasino = (gmid) =>
+  callProvider('fetchCricketCasino', gmid);
 
 export const fetchCasinoResult = (eventName) =>
   callProvider('fetchCasinoResult', eventName);

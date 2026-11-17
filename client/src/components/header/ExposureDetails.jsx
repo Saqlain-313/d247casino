@@ -44,13 +44,13 @@ function ExposureDetails({ onClose, userId }) {
     if (!gameId) return;
 
     if (sportName.includes('cricket')) {
-      navigate(`/cricket-bet/${eventName}/${gameId}`);
+      navigate(`/cricket-bet/${gameId}`, { state: { name: eventName } });
     } else if (sportName.includes('soccer') || sportName.includes('football')) {
-      navigate(`/football-bet/${eventName}/${gameId}`);
+      navigate(`/football-bet/${gameId}`, { state: { name: eventName } });
     } else if (sportName.includes('tennis')) {
-      navigate(`/tennis-bet/${eventName}/${gameId}`);
+      navigate(`/tennis-bet/${gameId}`, { state: { name: eventName } });
     } else if (sportName.includes('casino')) {
-      navigate(`/casino-bet/${eventName}/${gameId}`);
+      navigate(`/casino-bet/${gameId}`);
     } else {
       return;
     }

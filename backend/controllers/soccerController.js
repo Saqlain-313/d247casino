@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
-import { fetchMatchList, fetchMatchData } from '../services/matchApi/index.js';
+
+import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
+import { listingOdds } from '../utils/bestOdds.js';
 
 dotenv.config();
 
@@ -20,22 +22,23 @@ export const fetchSoccerData = async (req, res) => {
       tv: match.tv,
       bm: match.bm,
       f: match.f,
+      iscc: match.iscc || 0,
       channels: match.f ? ['F'] : [],
-      odds: match.section.reduce((acc, section, index) => {
-        const homeOdds = section.odds[0]?.odds || '0';
-        const awayOdds = section.odds[1]?.odds || '0';
-
-        acc.push({ home: homeOdds, away: awayOdds });
-
-        if (index < match.section.length - 1) {
-          acc.push({ home: '0', away: '0' });
-        }
-
-        return acc;
-      }, []),
+      odds: listingOdds(match.section),
     }));
 
-    res.status(200).json({ success: true, data: combinedData });
+    // Reference-site listing order: live (inplay) matches first in provider
+    // order, then upcoming matches sorted by start time.
+    const now = new Date();
+    const upcoming = combinedData
+      .filter((m) => m.inplay !== true && new Date(m.date) >= now)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedData = [
+      ...combinedData.filter((m) => m.inplay === true),
+      ...upcoming,
+    ];
+
+    res.status(200).json({ success: true, data: sortedData });
   } catch (error) {
     console.error('Error fetching soccer data:', error.message);
     res

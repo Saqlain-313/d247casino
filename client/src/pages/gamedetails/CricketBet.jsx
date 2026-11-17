@@ -14,6 +14,7 @@ import { fetchCricketBatingData } from '../../redux/reducer/cricketSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
 import { getCricketScorecardUrl } from '../../utils/scorecardUrl';
 import Bookmaker from './Bookmaker';
+import CricketCasinoLive from './CricketCasinoLive';
 import CricketMarket from './CricketMarket';
 import Fancy1 from './Fancy1';
 import Khado from './Khado';
@@ -23,15 +24,34 @@ import MatchOdds from './MatchOdds';
 import Normal from './Normal';
 import OddEven from './OddEven';
 import PlaceBet from './PlaceBet';
+import RulesModal from './RulesModal';
 import TiedMatch from './TiedMatch';
+import { getGameRulesContent } from '../../utils/gameRules';
 
-function CricketBet() {
-  const { game, id } = useParams();
+function CricketBet({ variant = 'sportsbook' }) {
+  const { id } = useParams();
   const location = useLocation();
-  const time = location.state?.time;
-  const beventId = location.state?.beventId;
   const eventName = id;
-  const match = game;
+  // Name/time/beventId: navigation state first, redux match list as refresh fallback
+  const storeMatch = useSelector((state) =>
+    state.cricket.matches.find((m) => String(m.id) === String(id))
+  );
+  const listLoaded = useSelector((state) => state.cricket.matches.length > 0);
+  const time = location.state?.time || storeMatch?.time;
+  const beventId = location.state?.beventId || storeMatch?.beventId;
+  const match = location.state?.name || storeMatch?.game || 'Live Match';
+  // iscc navigation state se pehle lo (refresh pe redux list ka wait nahi).
+  const iscc = Number(location.state?.iscc ?? storeMatch?.iscc ?? 0);
+  const casinoLabel =
+    variant === 'cricketv'
+      ? 'Cricket Casino'
+      : variant === 'virtual'
+        ? 'Virtual Cricket'
+        : variant === 'superover'
+          ? 'Super Over'
+          : variant === 'egames'
+            ? 'E-Games'
+            : null;
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [bettingData, setBettingData] = useState(null);
@@ -62,14 +82,18 @@ function CricketBet() {
     teamName: '',
   });
 
-  console.log('eventName', eventName);
-  console.log('streamGmid (gameId)', streamGmid);
-
   const [activeSubTab, setActiveSubTab] = useState('Normal');
   const [item, setitem] = useState(null);
   const [showLive, setShowLive] = useState(false);
   const [showlivetv, setshowlivetv] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const rulesContent = getGameRulesContent(
+    variant === 'superover' ? 'superover' : 'cricketv',
+    match
+  );
   const liveTvUrl = getLiveTvUrl(4, streamGmid);
+  // Live TV tab sirf jab event me tv flag ho aur stream url bane.
+  const hasLiveTv = Boolean(storeMatch?.tv && liveTvUrl);
   const scorecardUrl = getCricketScorecardUrl(streamGmid);
   const [scoreData, setScoreData] = useState(null);
   const [scoreTimedOut, setScoreTimedOut] = useState(false);
@@ -90,12 +114,10 @@ function CricketBet() {
     { id: 'khado', name: 'Khado Markets' },
   ];
 
-  const matchTitle = decodeURIComponent(game || 'Team 1 v Team 2');
+  const matchTitle = match || 'Team 1 v Team 2';
   const teams = matchTitle.split(' v ');
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
-
-  console.log(showodds);
 
   const handleBetSelect = (betData) => {
     setSelectedBet(betData);
@@ -115,14 +137,35 @@ function CricketBet() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const [marketFetchFailed, setMarketFetchFailed] = useState(false);
+
   useEffect(() => {
     if (eventName) {
       setLoader(true);
-      dispatch(fetchCricketBatingData(eventName)).finally(() => {
-        setLoader(false);
-      });
+      dispatch(fetchCricketBatingData(eventName))
+        .then((res) => {
+          if (fetchCricketBatingData.rejected.match(res)) {
+            setMarketFetchFailed(true);
+          }
+        })
+        .finally(() => {
+          setLoader(false);
+        });
     }
   }, [dispatch, eventName]);
+
+  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya refreshed
+  // list me event nahi bacha → home pe redirect + "no market" message box.
+  useEffect(() => {
+    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+      navigate('/', {
+        replace: true,
+        state: {
+          noMarketMessage: 'There are no market available in this game',
+        },
+      });
+    }
+  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
 
   useEffect(() => {
     if (!eventName) return;
@@ -131,7 +174,7 @@ function CricketBet() {
       socket.send(
         JSON.stringify({
           type: 'subscribe',
-          eventName,
+          gameid: eventName,
           apitype: 'cricket',
           userId: userInfo?._id,
           scoreEventId: String(streamGmid),
@@ -148,7 +191,7 @@ function CricketBet() {
           }
           return;
         }
-        if (message.eventName === eventName) {
+        if (message.gameid === eventName) {
           setBettingData(message.data);
         }
       } catch (err) {
@@ -166,23 +209,6 @@ function CricketBet() {
 
     return () => socket.close();
   }, [eventName, streamGmid, userInfo?._id]);
-
-  useEffect(() => {
-    let intervalId;
-
-    if (eventName) {
-      setLoader(true);
-      const fetchData = async () => {
-        await dispatch(fetchCricketBatingData(eventName));
-        setLoader(false);
-      };
-      fetchData();
-    }
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [eventName, dispatch]);
 
   useEffect(() => {
     setBettingData(battingData);
@@ -214,8 +240,6 @@ function CricketBet() {
       dispatch(messageClear());
     }
   }, [successMessage, errorMessage, dispatch, eventName]);
-
-  console.log('bettting data111', bettingData);
 
   const matchOddsList = Array.isArray(bettingData)
     ? bettingData.filter(
@@ -280,8 +304,6 @@ function CricketBet() {
         }))
       : [];
 
-  console.log('khadoData from cricketbet', khadoData);
-
   const oddEvenList = bettingData?.filter((item) => item.mname === 'oddeven');
   const oddEvenData =
     Array.isArray(oddEvenList) &&
@@ -297,8 +319,6 @@ function CricketBet() {
           status: sec.gstatus,
         }))
       : [];
-
-  console.log('oddEvenData from cricketbet', oddEvenData);
 
   const knownMarketNames = new Set([
     'MATCH_ODDS',
@@ -320,14 +340,63 @@ function CricketBet() {
       market.section.length > 0
   );
 
+  // Reference width scheme (style.css): 3+3-depth back+lay markets are full
+  // width (market-4/13 = 100%), 2-depth gets 50% (market-3), compact markets
+  // (back-only / session / U-O / 1-depth) share a row. Squeezing a 3+3 grid
+  // into a 33% column made the odds buttons overflow / overlap the row.
+  const marketWidthClass = (market) => {
+    const runners = Array.isArray(market?.section) ? market.section : [];
+    const dtype = Number(market?.dtype);
+    const hasLay = runners.some((r) =>
+      (r.odds || []).some((o) => o.otype === 'lay' && Number(o.odds) > 0)
+    );
+    const depth = Math.min(
+      3,
+      Math.max(
+        1,
+        ...runners.map((r) => {
+          const odds = Array.isArray(r.odds) ? r.odds : [];
+          return Math.max(
+            odds.filter((o) => o.otype === 'back').length,
+            odds.filter((o) => o.otype === 'lay').length
+          );
+        })
+      )
+    );
+    const isSession = dtype === 6 || dtype === 7;
+    const isUnderOver = dtype === 18;
+    const isDepthGrid = hasLay && !isSession && !isUnderOver;
+    if (isDepthGrid && depth >= 3) return 'w-full min-w-0';
+    if ((isDepthGrid && depth === 2) || isSession) {
+      return 'w-full min-w-0 md:w-[calc(50%-4px)]';
+    }
+    return 'w-full min-w-0 md:w-[calc(50%-4px)] xl:w-[calc(33.33%-6px)]';
+  };
+
   return (
     <div className='mt-0.5 flex gap-px'>
       <div className='ml-0 w-full md:ml-1 lg:w-[calc(100%-352px)]'>
-        <div className='bg-secondary text-secondary flex items-center justify-between p-1 text-[12px] font-bold lg:text-[15px]'>
-          <span>{game}</span>
-          <span>{time}</span>
-        </div>
-        <div className='bg-primary text-primary flex items-center justify-around text-[12px] font-bold'>
+        {casinoLabel && (
+          <div className='casino-header'>
+            <span className='casino-name'>
+              {match}
+              <a
+                className='ms-1 cursor-pointer underline'
+                onClick={() => setShowRules(true)}
+              >
+                <small>Rules</small>
+              </a>
+            </span>
+            <span className='ml-auto text-[12px] font-[400]'>{time}</span>
+          </div>
+        )}
+        {!casinoLabel && (
+          <div className='bg-secondary text-secondary flex items-center justify-between p-1 text-[12px] font-bold lg:text-[15px]'>
+            <span>{match}</span>
+            <span>{time}</span>
+          </div>
+        )}
+        <div className='bg-primary text-primary flex items-center justify-around text-[12px] font-bold lg:hidden'>
           <div
             className={`flex w-full items-center justify-center border-r border-r-[#FFFFFF] p-2 ${showodds ? 'border-t-2 border-t-[#cccccc]' : ''}`}
             onClick={() => {
@@ -343,15 +412,17 @@ function CricketBet() {
           >
             MATCHED BET
           </div>
-          <div
-            className={`flex w-full cursor-pointer items-center justify-center p-2`}
-            onClick={() => {
-              setShowLive(true);
-              setshowodds(true);
-            }}
-          >
-            <FaTv className='text-sm' />
-          </div>
+          {hasLiveTv && (
+            <div
+              className={`flex w-full cursor-pointer items-center justify-center p-2`}
+              onClick={() => {
+                setShowLive(true);
+                setshowodds(true);
+              }}
+            >
+              <FaTv className='text-sm' />
+            </div>
+          )}
         </div>
 
         {showodds && (
@@ -392,6 +463,18 @@ function CricketBet() {
                   '
                 />
               </div>
+            )}
+            {/** Cricket Casino game screen (cards/clock/video) — iscc 1 & 3 */}
+            {(iscc === 1 ||
+              iscc === 3 ||
+              variant === 'cricketv' ||
+              variant === 'superover') && (
+              <CricketCasinoLive
+                gmid={eventName}
+                tvUrl={liveTvUrl}
+                inplay={storeMatch?.inplay}
+                hasTv={storeMatch?.tv}
+              />
             )}
             {/** Match Odds */}
             {matchOddsList.length > 0 && (
@@ -467,13 +550,21 @@ function CricketBet() {
               />
             )}
 
-            {otherMarkets.map((market) => (
-              <CricketMarket
-                key={`${market.gmid || eventName}-${market.mid || market.mname}`}
-                market={market}
-                onBetSelect={handleBetSelect}
-              />
-            ))}
+            {otherMarkets.length > 0 && (
+              <div className='mt-1 flex flex-wrap gap-1'>
+                {otherMarkets.map((market) => (
+                  <div
+                    key={`${market.gmid || eventName}-${market.mid || market.mname}`}
+                    className={marketWidthClass(market)}
+                  >
+                    <CricketMarket
+                      market={market}
+                      onBetSelect={handleBetSelect}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -565,6 +656,16 @@ function CricketBet() {
             />
           </div>
         </>
+      )}
+
+      {casinoLabel && (
+        <RulesModal
+          open={showRules}
+          onClose={() => setShowRules(false)}
+          title={rulesContent.title}
+          image={rulesContent.image}
+          html={rulesContent.html}
+        />
       )}
     </div>
   );

@@ -23,6 +23,9 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
       const backOdd = item.odds?.find((odd) => odd.otype === 'back');
       const layOdd = item.odds?.find((odd) => odd.otype === 'lay');
 
+      // Reference market-8 (vd): OddEven shows a SINGLE colour (back/blue)
+      // for both buttons — back1 -> Odd, lay1 -> Even, no No/Yes or Back/Lay
+      // header. Settlement mapping stays back -> Odd, lay -> Even.
       return {
         id: index + 1,
         label: item.team || `Item ${index + 1}`,
@@ -202,7 +205,7 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
                       </div>
 
                       <div
-                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#faa9ba] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                         onClick={() =>
                           item.yes.rate &&
                           handleOddsClick(
@@ -247,16 +250,6 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
           )}
         </div>
         <div className=''>
-          {/* <div className="grid grid-cols-[1fr_60px_60px] lg:grid-cols-[1fr_60px_60px_60px] border-b border-b-[#c7c8ca]">
-            <div></div>
-            <div className="bg-[#72bbef] p-[2px] hidden lg:flex justify-center items-center font-[16px] font-bold text-[#333]  ">
-              Back
-            </div>
-            <div className="bg-[#faa9ba] p-[2px] hidden lg:flex justify-center items-center font-[16px] font-bold text-[#333] ">
-              Lay
-            </div>
-            <div></div>
-          </div> */}
           {rightData.length > 0 ? (
             rightData.map((item) => {
               const hasStatus = item.status && item.status.trim() !== '';
@@ -327,7 +320,7 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
                       </div>
 
                       <div
-                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#faa9ba] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                         onClick={() =>
                           item.yes.rate &&
                           handleOddsClick(

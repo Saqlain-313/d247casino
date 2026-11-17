@@ -42,13 +42,14 @@ const CACHE = {
   },
   betting: {
     prefix: 'casino:betting',
-    // 1 min
-    ttl: Number(process.env.CASINO_BETTING_TTL) || 60,
+    // 1 sec — casino data har 1 sec refresh hota hy (WS poller 1s), isliye
+    // REST cache bhi 1s taaki fresh data mile.
+    ttl: Number(process.env.CASINO_BETTING_TTL) || 1,
   },
   result: {
     prefix: 'casino:result',
-    // 1 min
-    ttl: Number(process.env.CASINO_RESULT_TTL) || 60,
+    // 5 sec — result har 5 sec refresh ho sakta hy, cache 5s.
+    ttl: Number(process.env.CASINO_RESULT_TTL) || 5,
   },
   resultDetail: {
     prefix: 'casino:result-detail',
@@ -57,8 +58,9 @@ const CACHE = {
   },
   directResultByDate: {
     prefix: 'casino:direct-result-by-date',
-    // 1 min
-    ttl: Number(process.env.CASINO_DIRECT_RESULT_TTL) || 60,
+    // 5 sec — /casino-results page har 5 sec poll karta hy, cache usi se
+    // chhota taaki har poll pe fresh result mile.
+    ttl: Number(process.env.CASINO_DIRECT_RESULT_TTL) || 5,
   },
 };
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 
 import { host } from '../../../redux/api';
-import { fetchCasinoResultData } from '../../../redux/reducer/casinoSlice';
+import { setCasinoResultData } from '../../../redux/reducer/casinoSlice';
 
 /**
  * State reducer - batches all state updates to avoid cascading renders
@@ -167,24 +167,16 @@ export const useCasinoWebSocket = ({
 
         if (data.type === 'casino_update') {
           onBettingDataUpdate?.(data.data);
-
           const newRoundId = data.data?.mid;
-          const currentLastRoundId = lastRoundIdRef.current;
+          if (newRoundId) lastRoundIdRef.current = newRoundId;
+        }
 
-          if (
-            newRoundId &&
-            newRoundId !== currentLastRoundId &&
-            !isFetchingResultsRef.current
-          ) {
-            lastRoundIdRef.current = newRoundId;
-            isFetchingResultsRef.current = true;
-            dispatch({ type: 'FETCH_START' });
-
-            reduxDispatch(fetchCasinoResultData(currentGameId)).finally(() => {
-              isFetchingResultsRef.current = false;
-              dispatch({ type: 'FETCH_END' });
-            });
-          }
+        // Result ab WebSocket pe aata hy (backend har 5s / session-complete pe
+        // broadcast karta hy). REST round-detection fetch ki zarurat nahi.
+        if (data.type === 'casino_result') {
+          reduxDispatch(
+            setCasinoResultData({ data: data.data, gameid: currentGameId })
+          );
         }
       } catch (error) {
         console.error('Error parsing WebSocket data:', error);

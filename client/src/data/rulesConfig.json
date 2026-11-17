@@ -1,0 +1,420 @@
+{
+  "generated": "2026-11-17",
+  "source": "sitethemedata.com/v3/static/front/img/casino-rules/{key}.jpg",
+  "note": "rulesPosition: after-name = Rules link inside casino-name; right = after date/round-id on right; none = no rules link",
+  "games": [
+    {
+      "key": "3cardj",
+      "type": "casino",
+      "title": "3cardj",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "ab20",
+      "type": "casino",
+      "title": "ab20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "ab4",
+      "type": "casino",
+      "title": "ab4",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "abj",
+      "type": "casino",
+      "title": "abj",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "baccarat",
+      "type": "casino",
+      "title": "baccarat",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "baccarat2",
+      "type": "casino",
+      "title": "baccarat2",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "ballbyball",
+      "type": "casino",
+      "title": "ballbyball",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "btable2",
+      "type": "casino",
+      "title": "btable2",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "card32",
+      "type": "casino",
+      "title": "card32",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "card32eu",
+      "type": "casino",
+      "title": "card32eu",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "dolidana",
+      "type": "casino",
+      "title": "dolidana",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "dt20",
+      "type": "casino",
+      "title": "dt20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "dt202",
+      "type": "casino",
+      "title": "dt202",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "dt6",
+      "type": "casino",
+      "title": "dt6",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "dtl20",
+      "type": "casino",
+      "title": "dtl20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "goal",
+      "type": "casino",
+      "title": "goal",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "joker1",
+      "type": "casino",
+      "title": "joker1",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "joker120",
+      "type": "casino",
+      "title": "joker120",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "joker20",
+      "type": "casino",
+      "title": "joker20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "lucky15",
+      "type": "casino",
+      "title": "lucky15",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "lucky5",
+      "type": "casino",
+      "title": "lucky5",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "lucky7",
+      "type": "casino",
+      "title": "lucky7",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "lucky7eu",
+      "type": "casino",
+      "title": "lucky7eu",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "mogambo",
+      "type": "casino",
+      "title": "mogambo",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "ourroullete",
+      "type": "casino",
+      "title": "ourroullete",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "poison",
+      "type": "casino",
+      "title": "poison",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "poison20",
+      "type": "casino",
+      "title": "poison20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "poker",
+      "type": "casino",
+      "title": "poker",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "poker20",
+      "type": "casino",
+      "title": "poker20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "poker6",
+      "type": "casino",
+      "title": "poker6",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "roulette11",
+      "type": "casino",
+      "title": "roulette11",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "roulette12",
+      "type": "casino",
+      "title": "roulette12",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "roulette13",
+      "type": "casino",
+      "title": "roulette13",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "sicbo",
+      "type": "casino",
+      "title": "sicbo",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "sicbo2",
+      "type": "casino",
+      "title": "sicbo2",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "superover2",
+      "type": "casino",
+      "title": "superover2",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "superover3",
+      "type": "casino",
+      "title": "superover3",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen",
+      "type": "casino",
+      "title": "teen",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen20",
+      "type": "casino",
+      "title": "teen20",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen20c",
+      "type": "casino",
+      "title": "teen20c",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen20v1",
+      "type": "casino",
+      "title": "teen20v1",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen32",
+      "type": "casino",
+      "title": "teen32",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen33",
+      "type": "casino",
+      "title": "teen33",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen41",
+      "type": "casino",
+      "title": "teen41",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen42",
+      "type": "casino",
+      "title": "teen42",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen62",
+      "type": "casino",
+      "title": "teen62",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen8",
+      "type": "casino",
+      "title": "teen8",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teen9",
+      "type": "casino",
+      "title": "teen9",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teenmuf",
+      "type": "casino",
+      "title": "teenmuf",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "teenunique",
+      "type": "casino",
+      "title": "teenunique",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "worli3",
+      "type": "casino",
+      "title": "worli3",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "cricketv",
+      "type": "iscc1",
+      "title": "Cricket Casino",
+      "rulesImage": "cricketv.jpg",
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "cricketv3",
+      "type": "iscc4",
+      "title": "E-Cricket",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "superover",
+      "type": "iscc3",
+      "title": "Super Over",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "virtual",
+      "type": "iscc2",
+      "title": "Virtual Cricket",
+      "rulesImage": null,
+      "rulesPosition": "after-name"
+    },
+    {
+      "key": "cricket",
+      "type": "sport",
+      "title": "Cricket",
+      "rulesImage": null,
+      "rulesPosition": "none"
+    },
+    {
+      "key": "football",
+      "type": "sport",
+      "title": "Football",
+      "rulesImage": null,
+      "rulesPosition": "none"
+    },
+    {
+      "key": "tennis",
+      "type": "sport",
+      "title": "Tennis",
+      "rulesImage": null,
+      "rulesPosition": "none"
+    },
+    {
+      "key": "horse-racing",
+      "type": "sport",
+      "title": "Horse Racing",
+      "rulesImage": null,
+      "rulesPosition": "none"
+    }
+  ]
+}

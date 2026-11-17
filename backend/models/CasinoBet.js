@@ -12,6 +12,8 @@ const betSchema = new mongoose.Schema(
     roundId: { type: String, required: true, index: true },
     side: { type: String, enum: ['back', 'lay'], required: true },
     selection: { type: String, required: true },
+    sid: { type: String }, // provider market id jo click hua tha
+    nation: { type: String }, // display label (provider nat)
     odds: { type: Number, required: true },
     stake: { type: Number, required: true },
     exposure: { type: Number, required: true }, // amount deducted at placement

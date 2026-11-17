@@ -1,15 +1,16 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
 // import axios from "axios";
+import { dedupedGet } from '../../services/dedupe';
 import api from '../api'; // Adjust the import based on your project structure
 
 export const fetchSoccerData = createAsyncThunk(
   'soccer/fetchSoccerData',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/soccer'); // Your backend API
-
-      console.log('response', response);
+      const response = await dedupedGet('soccer-matches', () =>
+        api.get('/soccer')
+      );
 
       return response.data.data;
     } catch (error) {
@@ -93,6 +94,7 @@ const soccerSlice = createSlice({
             tv: match.tv,
             bm: match.bm,
             f: match.f,
+            iscc: match.iscc || 0,
             one: {
               back: formatOdds(match.odds?.[0]?.home),
               lay: formatOdds(match.odds?.[0]?.away),

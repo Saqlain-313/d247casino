@@ -6,6 +6,7 @@ import { FaCircle } from 'react-icons/fa';
 import { GiTv } from 'react-icons/gi';
 import Bm from '../../assets/ic_bm.png';
 import F from '../../assets/ic_fancy.png';
+import IsccIcon from '../../components/IsccIcon';
 
 const Cell = ({ value, type }) => (
   <div
@@ -19,11 +20,17 @@ export default function Tennis() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { matches, loader, error } = useSelector((state) => state.tennis);
-  // console.log('tennis matches', matches);
+
+  // Page-specific 5s refresh: tennis page sirf tennis list refresh karta hai
   useEffect(() => {
-    dispatch(fetchTennisData());
+    const refresh = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      dispatch(fetchTennisData());
+    };
+    refresh();
+    const intervalId = setInterval(refresh, 5000);
+    return () => clearInterval(intervalId);
   }, [dispatch]);
-  console.log('tennis matches', matches);
   return (
     <div className='w-full text-sm text-gray-900'>
       {/* DESKTOP HEADER */}
@@ -41,8 +48,8 @@ export default function Tennis() {
           <div
             className='hidden cursor-pointer grid-cols-[1fr_70px_70px_70px_70px_70px_70px] hover:bg-gray-50 md:grid'
             onClick={() =>
-              navigate(`/tennis-bet/${m.game}/${m.id}`, {
-                state: { time: m.time, beventId: m.beventId },
+              navigate(`/tennis-bet/${m.id}`, {
+                state: { name: m.game, time: m.time, beventId: m.beventId },
               })
             }
           >
@@ -60,8 +67,9 @@ export default function Tennis() {
                   <FaCircle className='h-[14px] w-[14px] text-[#28a745]' />
                 )}
                 {m.tv && <GiTv className='h-[14px] w-[14px]' />}
-                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
                 {m.f && <img src={F} alt='F' className='h-[12px]' />}
+                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
+                <IsccIcon iscc={m.iscc} />
               </div>
             </div>
 
@@ -79,8 +87,8 @@ export default function Tennis() {
           <div
             className='space-y-2 bg-white p-2 md:hidden'
             onClick={() =>
-              navigate(`/tennis-bet/${m.game}/${m.id}`, {
-                state: { time: m.time, beventId: m.beventId },
+              navigate(`/tennis-bet/${m.id}`, {
+                state: { name: m.game, time: m.time, beventId: m.beventId },
               })
             }
           >
@@ -99,8 +107,9 @@ export default function Tennis() {
                   <FaCircle className='h-[12px] w-[12px] text-[#28a745]' />
                 )}
                 {m.tv && <GiTv className='h-[14px] w-[14px]' />}
-                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
                 {m.f && <img src={F} alt='F' className='h-[12px]' />}
+                {m.bm && <img src={Bm} alt='Bm' className='h-[12px]' />}
+                <IsccIcon iscc={m.iscc} />
               </div>
             </div>
 

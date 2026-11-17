@@ -16,6 +16,13 @@ import {
   getDirectCasinoResultByDate,
   getMyCasinoBets,
 } from '../../redux/reducer/casinoBetSlice';
+import RouletteStatistics, {
+  ROULETTE_STAT_SLUGS,
+} from './components/RouletteStatistics';
+import SidebarRulesTable from '../../components/rules/SidebarRulesTable';
+import VirtualGameScreen, {
+  VIRTUAL_SLUGS,
+} from './components/VirtualGameScreen';
 
 import {
   clearCasinoBettingData,
@@ -28,6 +35,7 @@ import ResultPopup from './components/CasinoResult1';
 import RecentResults from './components/RecentResults';
 import Spinner2 from './components/Spinner2';
 import VideoStream from './components/VideoStream';
+import RulesPopup from './components/RulesPopup';
 
 import DesktopBetSlip from '../../components/betting/DesktopBetSlip';
 import NewMobileBetDrawer from '../../components/betting/MobileBetDrawer';
@@ -91,6 +99,7 @@ export default function CasinoBet() {
   // =============================================
 
   const [bettingData, setBettingData] = useState(null);
+  const [showRules, setShowRules] = useState(false);
 
   const [isDesktop, setIsDesktop] = useState(
     () => window.matchMedia('(min-width: 1024px)').matches
@@ -410,6 +419,25 @@ export default function CasinoBet() {
         sub: [],
       };
 
+  // Roulette Statistics: reference har round (mid) change pe lastresults2
+  // refetch karta hy — ham dated-result silent refetch karte hy (5s cache).
+  useEffect(() => {
+    if (!ROULETTE_STAT_SLUGS.has(gameid) || !mockBettingData.mid) return;
+    const now = new Date();
+    const date = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('-');
+    dispatch(
+      getDirectCasinoResultByDate({
+        date,
+        eventName: casinoEventName,
+        silent: true,
+      })
+    );
+  }, [mockBettingData.mid, gameid, casinoEventName, dispatch]);
+
   // =============================================
   // MARKET DEBUG
   // =============================================
@@ -453,22 +481,43 @@ export default function CasinoBet() {
       <div className='mt-0.5 flex gap-px'>
         {/* Left Section */}
         <div className='ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]'>
-          {/* Header */}
-          <div className='bg-secondary text-secondary flex items-center justify-between gap-2 p-1 text-[12px] font-bold lg:text-[15px]'>
-            <span className='truncate uppercase'>{match || gameid}</span>
-
+          {/* Header — reference casino-header: name+Rules left, Round ID right (desktop) */}
+          <div className='casino-header'>
+            <span className='casino-name'>
+              {match || gameid}
+              <a
+                className='ms-1 cursor-pointer underline'
+                onClick={() => setShowRules(true)}
+              >
+                <small>Rules</small>
+              </a>
+            </span>
             {mockBettingData.mid && (
-              <span>Round ID: {mockBettingData.mid}</span>
+              <span className='casino-rid hidden xl:inline-block'>
+                <small>
+                  Round ID: <span>{mockBettingData.mid}</span>
+                </small>
+              </span>
             )}
           </div>
 
-          {/* Casino Video Stream */}
-          <VideoStream
-            eventName={casinoEventName}
-            bettingData={mockBettingData}
-            showWinner={results.showWinner}
-            winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
-          />
+          {/* Casino Video Stream — virtual games reference jaisa canvas-style
+              dealer screen use karte hy (iframe nahi) */}
+          {VIRTUAL_SLUGS.has(gameid) ? (
+            <VirtualGameScreen
+              slug={gameid}
+              bettingData={mockBettingData}
+              showWinner={results.showWinner}
+              winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+            />
+          ) : (
+            <VideoStream
+              eventName={casinoEventName}
+              bettingData={mockBettingData}
+              showWinner={results.showWinner}
+              winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+            />
+          )}
 
           {/* API Error */}
           {!bettingData && !loader.betting && error.betting && (
@@ -477,15 +526,25 @@ export default function CasinoBet() {
             </div>
           )}
 
-          {/* Betting Markets */}
-          <CasinoUiProvider
-            gameid={gameid}
-            bettingData={mockBettingData}
-            betting={betting}
-            isMobile={!isDesktop}
-          >
-            <GameMarketTable />
-          </CasinoUiProvider>
+          {/* Betting Markets — sirf jab provider se round data ho; warna
+              hardcoded fallback tables fake odds dikha deti hy */}
+          {(mockBettingData.sub || []).length > 0 ? (
+            <CasinoUiProvider
+              gameid={gameid}
+              bettingData={mockBettingData}
+              betting={betting}
+              isMobile={!isDesktop}
+            >
+              <GameMarketTable />
+            </CasinoUiProvider>
+          ) : (
+            !bettingData &&
+            !loader.betting && (
+              <div className='bg-white p-4 text-center text-[13px] font-semibold text-[#b3001b]'>
+                There are no market available in this game
+              </div>
+            )
+          )}
 
           {/* Remark */}
           {mockBettingData.remark && (
@@ -516,12 +575,18 @@ export default function CasinoBet() {
             directResultsError={directCasinoResultError}
             onItemClick={results.setSelectedItem}
           />
+
+          {/* Sidebar Rules payout tables (mobile) — reference d-xl-none box */}
+          {!isDesktop && <SidebarRulesTable slug={gameid} />}
         </div>
 
         {/* Desktop Sidebar */}
         {isDesktop && (
           <div className='sticky top-0 h-fit'>
             <div className='w-[350px]'>
+              {ROULETTE_STAT_SLUGS.has(gameid) && (
+                <RouletteStatistics rows={directCasinoResult?.data || []} />
+              )}
               <CasinoUiProvider
                 gameid={eventName}
                 bettingData={mockBettingData}
@@ -536,6 +601,9 @@ export default function CasinoBet() {
               </div>
 
               <MatchedBet eventName={eventName} slug={gameid} />
+
+              {/* Sidebar Rules payout tables — reference sidebar box */}
+              <SidebarRulesTable slug={gameid} />
             </div>
           </div>
         )}
@@ -561,6 +629,14 @@ export default function CasinoBet() {
           item={results.selectedItem}
           onClose={() => results.setSelectedItem(null)}
           showSideBets={true}
+        />
+      )}
+
+      {/* Rules modal (header se trigger) */}
+      {showRules && (
+        <RulesPopup
+          eventName={casinoEventName}
+          onClose={() => setShowRules(false)}
         />
       )}
     </>

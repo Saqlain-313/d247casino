@@ -3,6 +3,10 @@ import { FaArrowRight, FaCheck } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
 import api from '../../redux/api';
+import {
+  isMarketSuspended as marketSuspendedByGscode,
+  isRunnerSuspended as runnerSuspendedByGscode,
+} from '../../utils/suspension';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
   clearCashoutValues,
@@ -53,10 +57,10 @@ function Bookmaker({
         min: sec.min,
         mname: BookmakerList[0].mname || 'Bookmaker',
         gstatus: sec.gstatus,
+        gscode: sec.gscode,
         status: BookmakerList[0].status,
       }))
     : [];
-  console.log('bookmakerData from bookmaker', bookmakerData);
 
   const CASHOUT_GAME_TYPES = ['Bookmaker', 'Bookmaker IPL CUP'];
 
@@ -166,11 +170,13 @@ function Bookmaker({
     return `${(size / 1000).toFixed(1)}k`;
   };
 
-  // Helper function to format max value
+  // Helper function to format max/min value (reference: K/L format)
   const formatMax = (max) => {
-    if (!max || max === 0) return '0';
-    if (max < 1000) return max.toString();
-    return `${(max / 1000).toFixed(0)}K`;
+    const n = Number(max);
+    if (!Number.isFinite(n) || n <= 0) return '0';
+    if (n >= 1e5) return `${parseFloat((n / 1e5).toFixed(2))}L`;
+    if (n >= 1e3) return `${parseFloat((n / 1e3).toFixed(2))}K`;
+    return String(n);
   };
 
   const BOOKMAKER_GAME_TYPES = ['Bookmaker', 'Bookmaker IPL CUP'];
@@ -317,6 +323,9 @@ function Bookmaker({
   const minValue = BookmakerList?.[0]?.min || 0;
   const maxValue = BookmakerList?.[0]?.max || BookmakerList?.[0]?.maxb || 0;
 
+  // Market-level suspension (reference: status/gstatus SUSPENDED ya gscode != 1)
+  const isMarketSuspended = marketSuspendedByGscode(BookmakerList?.[0]);
+
   return (
     <div>
       <div className='text-secondary mt-1 flex items-center justify-between bg-[#2C3E50D9] p-1'>
@@ -364,7 +373,7 @@ function Bookmaker({
       </div>
       <div className='grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b border-b-[#c7c8ca] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]'>
         <div className='ml-2 text-[12px] font-bold text-[#097c93]'>
-          Min: {minValue} Max: {formatMax(maxValue)}
+          Min: {formatMax(minValue)} Max: {formatMax(maxValue)}
         </div>
         <div></div>
         <div></div>
@@ -379,16 +388,28 @@ function Bookmaker({
       </div>
 
       {bookmakerData.length > 0 ? (
-        bookmakerData.map(({ team, odds, sid, gstatus }, teamIndex) => {
-          const isSuspended = gstatus === 'SUSPENDED';
-          // Organize odds by type and position (back1, back2, back3, lay1, lay2, lay3)
-          // The odds are already in order: back3, back2, back1, lay1, lay2, lay3
-          // We need to reverse back odds to show: back1, back2, back3
-          const backOdds = odds
+        bookmakerData.map(({ team, odds, sid, gstatus, gscode }, teamIndex) => {
+          const isSuspended =
+            isMarketSuspended ||
+            runnerSuspendedByGscode(BookmakerList?.[0], { gscode });
+          // Provider order back3→back1: best back right-most (solid, center ke
+          // paas) aur best lay left-most — 3 padded slots, reference layout.
+          const backList = (odds || [])
             .filter((odd) => odd.otype === 'back')
-            .slice(0, 3);
+            .slice(-3);
+          const backOdds = [null, null, null];
+          backList.forEach((o, i) => {
+            backOdds[3 - backList.length + i] = o;
+          });
 
-          const layOdds = odds.filter((odd) => odd.otype === 'lay').slice(0, 3);
+          const layList = (odds || [])
+            .filter((odd) => odd.otype === 'lay')
+            .slice(0, 3);
+          const layOdds = [
+            layList[0] || null,
+            layList[1] || null,
+            layList[2] || null,
+          ];
 
           return (
             <div
@@ -396,7 +417,7 @@ function Bookmaker({
               className='grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b border-b-[#c7c8ca] hover:bg-[#f7f7f7] lg:grid-cols-[1fr_60px_60px_60px_60px_60px_60px]'
             >
               {/* Team Name with suggestions */}
-              <div className='ml-2 truncate text-[13px] font-bold text-[#333] lg:text-[14px]'>
+              <div className='ml-2 min-w-0 text-[13px] font-bold break-words text-[#333] lg:text-[14px]'>
                 <div>{team}</div>
                 {(() => {
                   const isBookmakerBet =
@@ -540,10 +561,29 @@ function Bookmaker({
               </div>
 
               {isSuspended ? (
-                <div className='col-span-6 flex min-h-[30px] items-center justify-center bg-[#4b4b4b]'>
-                  <span className='font-bold tracking-wide text-red-600'>
-                    SUSPENDED
-                  </span>
+                <div className='relative col-span-6'>
+                  <div className='grid grid-cols-6 opacity-40'>
+                    {[...backOdds, ...layOdds].map((item, i) => (
+                      <div
+                        key={`s-${i}`}
+                        className={`${i < 3 ? backBg[i] : layBg[i - 3]} flex min-h-[30px] flex-col items-center justify-center`}
+                      >
+                        <span className='text-[15px] leading-4 font-bold text-[#333] lg:text-[16px]'>
+                          {item && item.odds > 0 ? item.odds : '-'}
+                        </span>
+                        {item && item.odds > 0 && item.size > 0 && (
+                          <span className='text-[11px] leading-4 font-[100] text-[#333] lg:text-[12px]'>
+                            {formatStake(item.size)}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
+                    <span className='text-[13px] font-bold tracking-wide text-red-600'>
+                      SUSPENDED
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -553,8 +593,8 @@ function Bookmaker({
                     const hasOdds = backItem && backItem.odds > 0;
                     return (
                       <div
-                        key={`back-${i}`}
-                        className={`${backBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                        key={`back-${i}-${backItem?.odds ?? 'x'}`}
+                        className={`odds-flash ${backBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                         onClick={() =>
                           hasOdds &&
                           handleOddsClick(
@@ -590,8 +630,8 @@ function Bookmaker({
                     const hasOdds = layItem && layItem.odds > 0;
                     return (
                       <div
-                        key={`lay-${i}`}
-                        className={`${layBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
+                        key={`lay-${i}-${layItem?.odds ?? 'x'}`}
+                        className={`odds-flash ${layBg[i]} flex min-h-[30px] max-w-[100%] flex-col items-center justify-center ${hasOdds ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
                         onClick={() =>
                           hasOdds &&
                           handleOddsClick(

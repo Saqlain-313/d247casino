@@ -1,12 +1,13 @@
-// Quick bet amount options with chip images
+// Quick bet amount options with chip images — reference bet slip grid:
+// 100, 500, 1000, 5000, 10000, 25000, 50000 (ui.md Desktop Bet Slip audits)
 export const QUICK_AMOUNTS = [
   { amt: 100, img: 'chips1.svg' },
-  { amt: 200, img: 'chips1.svg' },
   { amt: 500, img: 'chips1.svg' },
+  { amt: 1000, img: 'chips1.svg' },
   { amt: 5000, img: 'chips5.svg' },
   { amt: 10000, img: 'chips10.svg' },
   { amt: 25000, img: 'chips20.svg' },
-  { amt: 100000, img: 'chips1k.svg' },
+  { amt: 50000, img: 'chips1k.svg' },
 ];
 
 // Games that should only show Player A and Player B
@@ -242,11 +243,28 @@ export const getWinnerMap = (gameid) => {
       2: 'Banker',
       3: 'Tie',
     };
-  } else if (gameid === 'dt6' || gameid === 'dt202' || gameid === 'dt20') {
+  } else if (
+    gameid === 'dt6' ||
+    gameid === 'vdt6' ||
+    gameid === 'dt202' ||
+    gameid === 'dt20'
+  ) {
     return {
       1: 'Dragon',
       2: 'Tiger',
       3: 'Tie',
+    };
+  } else if (gameid === 'vaaa') {
+    return {
+      1: 'Amar',
+      2: 'Akbar',
+      3: 'Anthony',
+    };
+  } else if (gameid === 'vdtl20') {
+    return {
+      1: 'Dragon',
+      2: 'Tiger',
+      3: 'Lion',
     };
   } else if (gameid === 'card32' || gameid === 'card32eu') {
     return {
@@ -258,7 +276,8 @@ export const getWinnerMap = (gameid) => {
   } else if (
     gameid === 'lucky7' ||
     gameid === 'lucky7eu' ||
-    gameid === 'lucky7eu2'
+    gameid === 'lucky7eu2' ||
+    gameid === 'vlucky7'
   ) {
     return {
       1: 'Low Card',
@@ -275,12 +294,41 @@ export const getWinnerMap = (gameid) => {
 // Result display labels
 export const getResultLabel = (gameid, win) => {
   const isBaccarat = gameid === 'baccarat' || gameid === 'baccarat2';
-  const isDt6 = gameid === 'dt6' || gameid === 'dt202' || gameid === 'dt20';
+  const isDt6 =
+    gameid === 'dt6' ||
+    gameid === 'vdt6' ||
+    gameid === 'dt202' ||
+    gameid === 'dt20';
   const isCard32 = gameid === 'card32' || gameid === 'card32eu';
   const isLuck7 =
-    gameid === 'lucky7' || gameid === 'lucky7eu' || gameid === 'lucky7eu2';
+    gameid === 'lucky7' ||
+    gameid === 'lucky7eu' ||
+    gameid === 'lucky7eu2' ||
+    gameid === 'vlucky7';
 
-  if (isBaccarat) {
+  if (gameid === 'vaaa') {
+    switch (win) {
+      case '1':
+        return 'A';
+      case '2':
+        return 'B';
+      case '3':
+        return 'C';
+      default:
+        return 'C';
+    }
+  } else if (gameid === 'vdtl20') {
+    switch (win) {
+      case '1':
+        return 'D';
+      case '2':
+        return 'T';
+      case '3':
+        return 'L';
+      default:
+        return 'L';
+    }
+  } else if (isBaccarat) {
     switch (win) {
       case '1':
         return 'P';
@@ -333,12 +381,30 @@ export const getResultLabel = (gameid, win) => {
 // Result background colors
 export const getResultBgColor = (gameid, win) => {
   const isBaccarat = gameid === 'baccarat' || gameid === 'baccarat2';
-  const isDt6 = gameid === 'dt6' || gameid === 'dt202' || gameid === 'dt20';
+  const isDt6 =
+    gameid === 'dt6' ||
+    gameid === 'vdt6' ||
+    gameid === 'dt202' ||
+    gameid === 'dt20';
   const isCard32 = gameid === 'card32' || gameid === 'card32eu';
   const isLuck7 =
-    gameid === 'lucky7' || gameid === 'lucky7eu' || gameid === 'lucky7eu2';
+    gameid === 'lucky7' ||
+    gameid === 'lucky7eu' ||
+    gameid === 'lucky7eu2' ||
+    gameid === 'vlucky7';
 
-  if (isBaccarat) {
+  if (gameid === 'vaaa' || gameid === 'vdtl20') {
+    switch (win) {
+      case '1':
+        return 'bg-[#ff4500] text-white';
+      case '2':
+        return 'bg-[#e2ee26] text-black';
+      case '3':
+        return 'bg-[#33c6ff] text-black';
+      default:
+        return 'bg-gray-400';
+    }
+  } else if (isBaccarat) {
     switch (win) {
       case '1':
         return 'bg-[#428bca] text-white';

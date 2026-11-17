@@ -1,12 +1,15 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
+import { dedupedGet } from '../../services/dedupe';
 import api from '../api';
 
 export const fetchHorseRacingData = createAsyncThunk(
   'horseRacing/fetchHorseRacingData',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/horse-racing');
+      const response = await dedupedGet('horse-racing-list', () =>
+        api.get('/horse-racing')
+      );
       if (!response.data?.success || !Array.isArray(response.data.data)) {
         return rejectWithValue(
           response.data?.message || 'Invalid horse racing response'
@@ -60,7 +63,19 @@ const horseRacingSlice = createSlice({
     bettingError: null,
     bettingGameId: null,
   },
-  reducers: {},
+  reducers: {
+    // WebSocket se aaya live betting data (REST polling ki jagah).
+    setHorseRacingBettingData: (state, action) => {
+      const { gameid, data } = action.payload || {};
+      if (String(state.bettingGameId) !== String(gameid)) {
+        state.bettingGameId = String(gameid);
+      }
+      state.bettingData = Array.isArray(data) ? data : [];
+      state.bettingLoading = false;
+      state.bettingLoaded = true;
+      state.bettingError = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchHorseRacingData.pending, (state) => {
@@ -99,5 +114,7 @@ const horseRacingSlice = createSlice({
       });
   },
 });
+
+export const { setHorseRacingBettingData } = horseRacingSlice.actions;
 
 export default horseRacingSlice.reducer;

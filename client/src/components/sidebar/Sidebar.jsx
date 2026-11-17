@@ -19,6 +19,9 @@ function Sidebar({ isOpen, onClose }) {
   const [showHorseRacing, setShowHorseRacing] = useState(false);
   const [activeTab, setActiveTab] = useState('');
 
+  // Sidebar sections ke liye ek baar chaaro lists laao (mount pe).
+  // 5s auto-refresh sirf us sport ka hota hai jis page pe user hai —
+  // Cricket/Football/Tennis/HorseRacing pages apna interval chalate hain.
   useEffect(() => {
     dispatch(fetchCricketData());
     dispatch(fetchTennisData());
@@ -179,15 +182,29 @@ function Sidebar({ isOpen, onClose }) {
                             e.preventDefault();
                             // Navigate based on sport type
                             if (sportName === 'Cricket') {
-                              navigate(
-                                `/cricket-bet/${match.game}/${match.id}`
-                              );
+                              navigate(`/cricket-bet/${match.id}`, {
+                                state: {
+                                  name: match.game,
+                                  time: match.time,
+                                  beventId: match.beventId,
+                                },
+                              });
                             } else if (sportName === 'Football') {
-                              navigate(
-                                `/football-bet/${match.game}/${match.id}`
-                              );
+                              navigate(`/football-bet/${match.id}`, {
+                                state: {
+                                  name: match.game,
+                                  time: match.time,
+                                  beventId: match.beventId,
+                                },
+                              });
                             } else if (sportName === 'Tennis') {
-                              navigate(`/tennis-bet/${match.game}/${match.id}`);
+                              navigate(`/tennis-bet/${match.id}`, {
+                                state: {
+                                  name: match.game,
+                                  time: match.time,
+                                  beventId: match.beventId,
+                                },
+                              });
                             }
                             // Close sidebar on mobile after navigation
                             onClose();

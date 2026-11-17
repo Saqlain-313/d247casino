@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 
+import { dedupedGet } from '../../services/dedupe';
 import api from '../api';
 
 // Async thunk to fetch cricket data
@@ -8,8 +9,9 @@ export const fetchCricketData = createAsyncThunk(
   'cricket/fetchCricketData',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/cricket/matches'); // Your backend API
-      console.log('response', response.data.matches);
+      const response = await dedupedGet('cricket-matches', () =>
+        api.get('/cricket/matches')
+      );
       return response.data.matches;
     } catch (error) {
       return rejectWithValue(
@@ -90,6 +92,7 @@ const cricketSlice = createSlice({
             tv: match.tv,
             bm: match.bm,
             f: match.f,
+            iscc: match.iscc || 0,
             one: {
               back: formatOdds(match.odds?.[0]?.home),
               lay: formatOdds(match.odds?.[0]?.away),

@@ -4,7 +4,6 @@ import { VIDEO_LOAD_TIMEOUT } from '../constants';
 import { getVideoStreamUrl } from '../utils/gameUtils';
 
 import CardsDisplay from './CardsDisplay';
-import RulesPopup from './RulesPopup';
 
 const VideoStream = memo(function VideoStream({
   eventName,
@@ -14,7 +13,6 @@ const VideoStream = memo(function VideoStream({
 }) {
   const [videoload, setVideoload] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [showRules, setShowRules] = useState(false);
 
   const streamUrl = getVideoStreamUrl(eventName);
 
@@ -22,7 +20,6 @@ const VideoStream = memo(function VideoStream({
   useEffect(() => {
     setVideoload(true);
     setFailed(false);
-    setShowRules(false);
   }, [eventName]);
 
   // Video load timeout
@@ -62,20 +59,7 @@ const VideoStream = memo(function VideoStream({
         <div className='bg-black/50 p-3'>
           <CardsDisplay bettingData={bettingData} />
         </div>
-
-        <button
-          type='button'
-          className='cursor-pointer p-3 text-sm text-yellow-300 underline transition-colors hover:text-yellow-100'
-          onClick={() => setShowRules(true)}
-        >
-          Rules
-        </button>
       </div>
-
-      {/* Rules */}
-      {showRules && (
-        <RulesPopup eventName={eventName} onClose={() => setShowRules(false)} />
-      )}
 
       {/* Timer */}
       <div className='absolute top-2 right-5 flex h-10 w-10 items-center justify-center rounded-full bg-black text-[20px] font-bold text-white'>

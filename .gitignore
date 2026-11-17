@@ -13,3 +13,4 @@
 
 #Ignore all coverage folder
 **/coverage
+.qwen/
