@@ -11,7 +11,28 @@ export function createProviderA() {
   // Matka family round-based feed: base /data/<slug> = rounds list, markets
   // /data/<slug>_<mid>, rates /sections/<slug> (idle {} normal state hy).
   const ROUND_BASED_SLUGS = new Set(['worli', 'worli2', 'worli3']);
+  const MATKA_SPECIAL = { 11: 'Line 1', 12: 'Line 2', 13: 'ODD', 14: 'EVEN' };
   const sectionsCache = new Map(); // slug -> { at, value }
+
+  // sub entries me nat label + back rate (sections board se) merge karo —
+  // bet slip aur placement dono provider market ke nat/b par depend karte hy.
+  const augmentMatkaSub = (sub, sections) => {
+    const board = sections?.['1']?.Table?.[0] || null;
+    return (Array.isArray(sub) ? sub : []).map((m) => {
+      const sid = Number(m.sid);
+      const nat = m.nat ?? MATKA_SPECIAL[sid] ?? String(Number(m.sr) % 10);
+      const rate = sid >= 1 && sid <= 10 ? board?.single : board?.multi;
+      return {
+        ...m,
+        nat,
+        b:
+          m.b ??
+          (Number.isFinite(Number(rate)) && Number(rate) > 1
+            ? Number(rate)
+            : 0),
+      };
+    });
+  };
 
   const fetchSections = async (slug) => {
     const hit = sectionsCache.get(slug);
@@ -69,6 +90,11 @@ export function createProviderA() {
     }
     if (!first) return { success: false, data: null, rounds };
     const sections = await fetchSections(slug);
+    const augSubs = {};
+    for (const [k, d] of Object.entries(subs)) {
+      augSubs[k] = { ...d, sub: augmentMatkaSub(d.sub, sections) };
+    }
+    const firstAug = augSubs[String(first.mid)] || first;
     return {
       success: true,
       data: {
@@ -78,7 +104,7 @@ export function createProviderA() {
         card: first.card ?? '',
         remark: first.remark ?? '',
         grp: first.grp,
-        sub: Array.isArray(first.sub) ? first.sub : [],
+        sub: Array.isArray(firstAug.sub) ? firstAug.sub : [],
         rounds: rounds.map((r) => ({
           mid: r.mid,
           mname: r.mname,
@@ -87,7 +113,7 @@ export function createProviderA() {
           mtype: r.mtype,
           gno: r.gno,
         })),
-        subs,
+        subs: augSubs,
         sections,
       },
     };
