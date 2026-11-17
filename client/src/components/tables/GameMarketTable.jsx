@@ -4,6 +4,7 @@ import OddsBox from './OddsBox';
 import { VIRTUAL_TABLES } from './VirtualTables';
 import RouletteTable from './RouletteTable';
 import Goal2Table from './games/Goal2Table';
+import MatkaTable from './MatkaTable';
 
 // Reference casino-nation-book box: current round me user ka per-selection P&L
 const NationBook = ({ id }) => {
@@ -10810,7 +10811,7 @@ function TableT2Generic() {
 
 export const TABLE_COMPONENTS = {
   goal2: Goal2Table,
-  worli3: TableWorli3,
+  worli3: MatkaTable,
   dolidana: TableDolidana,
   mogambo: TableMogambo,
   lucky5: TableLucky5,
@@ -10858,8 +10859,8 @@ export const TABLE_COMPONENTS = {
   lucky7: TableLucky7,
   lucky7eu: TableLucky7eu,
   '3cardj': Table3cardj,
-  worli: TableWorli,
-  worli2: TableWorli2,
+  worli: MatkaTable,
+  worli2: MatkaTable,
   aaa: TableAaa,
   btable: TableBtable,
   lottcard: TableLottcard,
@@ -10916,14 +10917,7 @@ export default function GameMarketTable() {
     case 'goal2':
       return <Goal2Table />;
     case 'worli3':
-      return (
-        <TableWorli3
-          isMobile={isMobile}
-          isSuspended={isSuspended}
-          openBetSlip={openBetSlip}
-          markets={markets}
-        />
-      );
+      return <MatkaTable isMobile={isMobile} isSuspended={isSuspended} />;
     case 'dolidana':
       return (
         <TableDolidana
@@ -11348,23 +11342,9 @@ export default function GameMarketTable() {
         />
       );
     case 'worli':
-      return (
-        <TableWorli
-          isMobile={isMobile}
-          isSuspended={isSuspended}
-          openBetSlip={openBetSlip}
-          markets={markets}
-        />
-      );
+      return <MatkaTable isMobile={isMobile} isSuspended={isSuspended} />;
     case 'worli2':
-      return (
-        <TableWorli2
-          isMobile={isMobile}
-          isSuspended={isSuspended}
-          openBetSlip={openBetSlip}
-          markets={markets}
-        />
-      );
+      return <MatkaTable isMobile={isMobile} isSuspended={isSuspended} />;
     case 'aaa':
       return (
         <TableAaa

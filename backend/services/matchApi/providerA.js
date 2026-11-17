@@ -8,6 +8,91 @@ export function createProviderA() {
   const API_KEY = process.env.API_KEY;
   const RESULT_API_URL = process.env.RESULT_API_URL;
 
+  // Matka family round-based feed: base /data/<slug> = rounds list, markets
+  // /data/<slug>_<mid>, rates /sections/<slug> (idle {} normal state hy).
+  const ROUND_BASED_SLUGS = new Set(['worli', 'worli2', 'worli3']);
+  const sectionsCache = new Map(); // slug -> { at, value }
+
+  const fetchSections = async (slug) => {
+    const hit = sectionsCache.get(slug);
+    if (hit && Date.now() - hit.at <= 5000) return hit.value;
+    try {
+      const r = await axios.get(
+        `${API_URL}/diamond/direct-casino/sections/${encodeURIComponent(slug)}?key=${API_KEY}`,
+        { timeout: 8000 }
+      );
+      const value = r.data?.data ?? {};
+      sectionsCache.set(slug, { at: Date.now(), value });
+      return value;
+    } catch {
+      return hit?.value ?? {};
+    }
+  };
+
+  const fetchRoundBasedCasinoData = async (slug) => {
+    let tab;
+    try {
+      tab = await axios.get(
+        `${API_URL}/diamond/direct-casino/tabdata/${encodeURIComponent(slug)}?key=${API_KEY}`,
+        { timeout: 10000 }
+      );
+    } catch (e) {
+      // 404 = gateway pe is game ka poller abhi subscribed nahi (idle/unknown),
+      // outage nahi — page ko "no market" dikhao, error banner nahi.
+      if (e.response?.status === 404) {
+        return { success: false, data: null, rounds: [] };
+      }
+      throw e;
+    }
+    // rounds array body.data.data me nested hy (spec + live probe)
+    const rounds = Array.isArray(tab.data?.data?.data)
+      ? tab.data.data.data
+      : [];
+    const open = rounds.filter((r) => r.mtype === 'OPEN');
+    const active = open.slice(0, 6);
+    if (!active.length) {
+      return { success: false, data: null, rounds };
+    }
+    const names = active.map((r) => `${slug}_${r.mid}`).join(',');
+    const res = await axios.get(
+      `${API_URL}/diamond/direct-casino/data/${names}?key=${API_KEY}`,
+      { timeout: 10000 }
+    );
+    const envelopes = Array.isArray(res.data) ? res.data : [res.data];
+    const subs = {};
+    let first = null;
+    for (const env of envelopes) {
+      const d = env?.data?.data;
+      if (!d || !d.mid) continue;
+      subs[String(d.mid)] = d;
+      if (!first) first = d;
+    }
+    if (!first) return { success: false, data: null, rounds };
+    const sections = await fetchSections(slug);
+    return {
+      success: true,
+      data: {
+        mid: first.mid,
+        gtype: slug,
+        mname: first.mname,
+        card: first.card ?? '',
+        remark: first.remark ?? '',
+        grp: first.grp,
+        sub: Array.isArray(first.sub) ? first.sub : [],
+        rounds: rounds.map((r) => ({
+          mid: r.mid,
+          mname: r.mname,
+          ptime: r.ptime,
+          mtime: r.mtime,
+          mtype: r.mtype,
+          gno: r.gno,
+        })),
+        subs,
+        sections,
+      },
+    };
+  };
+
   // console.log("API_URL********", API_URL)
   // console.log("API_KEY**********", API_KEY)
   // console.log("RESULT_API_URL********", RESULT_API_URL)
@@ -131,6 +216,12 @@ export function createProviderA() {
     // },
 
     async fetchCasinoData(eventName) {
+      // worli/matka family round-based hy: base /data/<slug> rounds-list deta hy,
+      // markets sirf /data/<slug>_<mid> pe. Tabdata se OPEN rounds lo, ek batch
+      // request me sab ke markets, aur sections boards (5s TTL) saath attach karo.
+      if (ROUND_BASED_SLUGS.has(eventName)) {
+        return fetchRoundBasedCasinoData(eventName);
+      }
       const response = await axios.get(
         `${API_URL}/diamond/direct-casino/data/${encodeURIComponent(eventName)}?key=${API_KEY}`,
         { timeout: 10000 }

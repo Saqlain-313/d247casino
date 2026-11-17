@@ -6,6 +6,7 @@ import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
 import * as engine from '../services/casinoEngine.js';
 import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
+import { getCasinoTable } from '../services/casinoTableCache.js';
 
 const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
@@ -47,6 +48,11 @@ const pickResultRows = (body) => {
 
 // LIVE DATA API  -> used for placing bets (current round / betting status)
 export const fetchCasinoData = async (slug) => {
+  // worli family round-based hy: shared cache wala assembler (tabdata + batched
+  // mid data + sections) use karo, base route sirf rounds-list deta hy.
+  if (['worli', 'worli2', 'worli3'].includes(slug)) {
+    return getCasinoTable(slug);
+  }
   const url = `${API_URL}/diamond/direct-casino/data/${encodeURIComponent(slug)}?key=${API_KEY}`;
   try {
     const response = await axios.get(url, { timeout: 15000 });
@@ -86,6 +92,20 @@ export const fetchCasinoResult = async (slug) => {
   }
 };
 
+// Matka family ka nodate result sirf bazaar legend hy ({mid:1,win:'Diamond'});
+// real round results dated endpoint pe hy: rows [{mid, nat:'257  -  4  -  GULF CLOSE'}].
+const fetchDatedCasinoResult = async (slug) => {
+  const now = new Date();
+  const date = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+  const url = `${API_URL}/diamond/direct-casino/result/${date}/${encodeURIComponent(slug)}?key=${API_KEY}`;
+  const { data } = await axios.get(url, { timeout: 15000 });
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
 // Provider result row -> engine result object (winCode path).
 // Result API sirf {mid, win} deta hy: side codes per family, roulette me number,
 // dolidana me per-die sibling rows (<mid>001/002/003), sicbo me total.
@@ -94,6 +114,16 @@ export const fetchCasinoResult = async (slug) => {
 const normalizeResult = (slug, row, list = []) => {
   const fam = engine.familyOf(slug);
   const w = String(row?.win);
+  if (fam === 'matka' && typeof row?.nat === 'string') {
+    // dated row: "257  -  4  -  GULF CLOSE" = pana - single digit - bazaar
+    const parts = row.nat.split('-').map((p) => p.trim());
+    const pana = parts[0];
+    const digit = Number(parts[1]);
+    if (/^\d{3}$/.test(pana) && Number.isFinite(digit)) {
+      return { open: digit, openPana: pana };
+    }
+    throw new Error(`unparseable matka result: ${row.nat}`);
+  }
   const rc = { winCode: w, win: w };
   if (fam === 'roulette') {
     rc.number = Number(w);
@@ -122,7 +152,16 @@ const resultRows = (resp) => {
 // Provider market label (nat) -> engine selection key. Frontend selection me
 // sid bhejta hy, engine family keys ('dragon', 'pairplus:A', 'split:1-2'...)
 // expect karta hy — placement par hi canonical key store karte hy.
-const natKey = (fam, nat) => {
+const natKey = (fam, nat, market = null) => {
+  if (fam === 'matka') {
+    // sub sid 1-10 = digits (display order sr%10), 11-14 Line/ODD/EVEN (engine me nahi)
+    const sid = Number(market?.sid ?? market?.i);
+    const sr = Number(market?.sr);
+    if (sid >= 1 && sid <= 10 && Number.isFinite(sr)) {
+      return `single:${sr % 10}`;
+    }
+    return null;
+  }
   const n = String(nat ?? '')
     .trim()
     .toLowerCase();
@@ -409,7 +448,8 @@ export const placeBet = async (req, res) => {
 
     // Client sid bhejta hy; engine ko canonical selection key chahiye.
     const providerNat = selectedMarket.nat ?? selectedMarket.n;
-    const selKey = natKey(family, providerNat) || String(selection);
+    const selKey =
+      natKey(family, providerNat, selectedMarket) || String(selection);
 
     let exposure = NaN;
     if (family && typeof engine.calcExposure === 'function') {
@@ -450,7 +490,12 @@ export const placeBet = async (req, res) => {
         side,
         selection: selKey,
         sid: String(selection),
-        nation: String(providerNat ?? ''),
+        nation: String(
+          providerNat ||
+            (family === 'matka'
+              ? `Single ${Number(selectedMarket.sr) % 10}`
+              : selKey)
+        ),
         odds,
         stake,
         exposure,
@@ -686,7 +731,10 @@ export const startResultPoller = (everyMs = 60 * 1000) => {
           ).map(String);
           if (!pending.length) continue;
 
-          const list = resultRows(await fetchCasinoResult(slug)); // newest first
+          const list =
+            engine.familyOf(slug) === 'matka'
+              ? await fetchDatedCasinoResult(slug).catch(() => [])
+              : resultRows(await fetchCasinoResult(slug)); // newest first
           for (const row of list) {
             if (!pending.includes(String(row.mid))) continue;
             try {
