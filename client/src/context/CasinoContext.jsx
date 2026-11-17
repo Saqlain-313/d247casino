@@ -231,7 +231,7 @@ export function CasinoUiProvider({
       const lookupNation = normalizeSelection(nation);
 
       // Find actual provider selection
-      const selectedMarket = marketList.find((item) => {
+      let selectedMarket = marketList.find((item) => {
         const providerId = item?.sid ?? item?.i;
 
         const providerNames = [
@@ -256,6 +256,32 @@ export function CasinoUiProvider({
       });
 
       // Selection not found
+      if (!selectedMarket) {
+        // Matka local markets (jodi/pana/sp/dp/trio): selection logic hamare
+        // end pe hy — provider sids nahi deta, local payout table use karo.
+        const localM = String(nation).match(
+          /^(single|jodi|sp|dp|tp|trio|pana):/
+        );
+        if (['worli', 'worli2', 'worli3'].includes(String(gameid)) && localM) {
+          const LOCAL_ODDS = {
+            single: 9.5,
+            jodi: 95,
+            sp: 140,
+            pana: 140,
+            dp: 240,
+            tp: 700,
+            trio: 700,
+          };
+          selectedMarket = {
+            sid: String(nation),
+            nat: String(nation),
+            b: LOCAL_ODDS[localM[1]],
+            gstatus: 'OPEN',
+            min: 10,
+            max: 20000,
+          };
+        }
+      }
       if (!selectedMarket) {
         console.error('Provider selection mapping failed:', {
           requested: nation,

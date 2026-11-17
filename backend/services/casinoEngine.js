@@ -439,6 +439,10 @@ function evalMatka(sel, r) {
     case 'single':
       return bool(Number(arg) === r.open || Number(arg) === r.close);
     case 'jodi':
+      // open+close dono rounds ka result chahiye; adha result ho to pending rho
+      if (r.open === undefined || r.close === undefined) {
+        throw new Error('jodi needs both open and close results');
+      }
       return bool(arg === `${r.open}${r.close}`);
     case 'pana':
     case 'sp': {

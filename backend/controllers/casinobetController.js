@@ -111,18 +111,32 @@ const fetchDatedCasinoResult = async (slug) => {
 // dolidana me per-die sibling rows (<mid>001/002/003), sicbo me total.
 // Card-dependent selections (red/black/even/odd/card:N/pairs...) win code se
 // decidable nahi hy — engine unhe throw karta hy aur bet pending rehti hy.
+// "257  -  4  -  GULF CLOSE" -> { pana:'257', digit:4, bazaar:'GULF', kind:'CLOSE' }
+const parseMatkaNat = (nat) => {
+  if (typeof nat !== 'string') return null;
+  const parts = nat.split('-').map((p) => p.trim());
+  const pana = parts[0];
+  const digit = Number(parts[1]);
+  const rest = parts.slice(2).join(' ');
+  const kindM = rest.match(/^(.*)\s+(OPEN|CLOSE)$/i);
+  if (!/^\d{3}$/.test(pana) || !Number.isFinite(digit) || !kindM) return null;
+  return {
+    pana,
+    digit,
+    bazaar: kindM[1].trim() || rest,
+    kind: kindM[2].toUpperCase(),
+  };
+};
+
 const normalizeResult = (slug, row, list = []) => {
   const fam = engine.familyOf(slug);
   const w = String(row?.win);
-  if (fam === 'matka' && typeof row?.nat === 'string') {
-    // dated row: "257  -  4  -  GULF CLOSE" = pana - single digit - bazaar
-    const parts = row.nat.split('-').map((p) => p.trim());
-    const pana = parts[0];
-    const digit = Number(parts[1]);
-    if (/^\d{3}$/.test(pana) && Number.isFinite(digit)) {
-      return { open: digit, openPana: pana };
-    }
-    throw new Error(`unparseable matka result: ${row.nat}`);
+  if (fam === 'matka') {
+    const m = parseMatkaNat(row?.nat);
+    if (!m) throw new Error(`unparseable matka result: ${row?.nat}`);
+    return m.kind === 'OPEN'
+      ? { open: m.digit, openPana: m.pana }
+      : { close: m.digit, closePana: m.pana };
   }
   const rc = { winCode: w, win: w };
   if (fam === 'roulette') {
@@ -152,6 +166,30 @@ const resultRows = (resp) => {
 // Provider market label (nat) -> engine selection key. Frontend selection me
 // sid bhejta hy, engine family keys ('dragon', 'pairplus:A', 'split:1-2'...)
 // expect karta hy — placement par hi canonical key store karte hy.
+// Matka local markets: provider sids nahi deta, payout table hamari taraf se
+// (reference sections boards: single 9.5, sp 140, dp 240, tp 700; jodi 95).
+const LOCAL_MATKA_ODDS = {
+  single: 9.5,
+  jodi: 95,
+  sp: 140,
+  pana: 140,
+  dp: 240,
+  tp: 700,
+  trio: 700,
+};
+const LOCAL_MATKA_LABEL = (sel) => {
+  const [k, arg] = String(sel).split(':');
+  const names = {
+    single: 'Single',
+    jodi: 'Jodi',
+    sp: 'SP',
+    dp: 'DP',
+    tp: 'Triple Patti',
+    trio: 'Trio',
+    pana: 'SP Patti',
+  };
+  return `${names[k] || k} ${arg ?? ''}`.trim();
+};
 const natKey = (fam, nat, market = null) => {
   if (fam === 'matka') {
     // sub sid 1-10 = digits (display order sr%10), 11-14 Line/ODD/EVEN (engine me nahi)
@@ -300,7 +338,7 @@ export const placeBet = async (req, res) => {
     .toLowerCase();
   const userId = getUid(req);
   const { roundId, side, selection } = req.body || {};
-  const odds = Number(req.body?.odds);
+  let odds = Number(req.body?.odds);
   const stake = Number(req.body?.stake);
 
   console.log('placeBet request:', {
@@ -408,9 +446,28 @@ export const placeBet = async (req, res) => {
     }
 
     // Market live data se hi lo (Round collection ki zarurat nahi)
-    const selectedMarket = liveData.sub?.find(
+    let selectedMarket = liveData.sub?.find(
       (item) => String(item.sid ?? item.i) === String(selection)
     );
+
+    // Matka local markets (jodi/pana/sp/dp/trio): selection logic hamare end pe —
+    // provider sub me inke sids nahi hote, odds/limits local payout table se.
+    const localMatka =
+      !selectedMarket &&
+      family === 'matka' &&
+      /^(single|jodi|sp|dp|tp|trio|pana):/.test(String(selection));
+    if (localMatka) {
+      const key = String(selection).split(':')[0];
+      odds = LOCAL_MATKA_ODDS[key]; // server-authoritative payout rate
+      selectedMarket = {
+        sid: String(selection),
+        nat: LOCAL_MATKA_LABEL(String(selection)),
+        b: LOCAL_MATKA_ODDS[key],
+        gstatus: 'OPEN',
+        min: 10,
+        max: 20000,
+      };
+    }
 
     if (!selectedMarket) {
       return res
@@ -731,10 +788,40 @@ export const startResultPoller = (everyMs = 60 * 1000) => {
           ).map(String);
           if (!pending.length) continue;
 
-          const list =
-            engine.familyOf(slug) === 'matka'
-              ? await fetchDatedCasinoResult(slug).catch(() => [])
-              : resultRows(await fetchCasinoResult(slug)); // newest first
+          const isMatka = engine.familyOf(slug) === 'matka';
+          if (isMatka) {
+            // Dated rows: "257  -  4  -  GULF CLOSE" = pana - digit - bazaar+kind.
+            // Jodi ke liye bazaar ke OPEN+CLOSE dono rounds chahiye — pair banne
+            // par dono mids settle karo; adha pair sirf single/sp/dp/tp settle kare.
+            const rows = await fetchDatedCasinoResult(slug).catch(() => []);
+            const byBazaar = {};
+            for (const row of rows) {
+              const m = parseMatkaNat(row?.nat);
+              if (!m) continue;
+              byBazaar[m.bazaar] = byBazaar[m.bazaar] || {};
+              byBazaar[m.bazaar][m.kind] = { mid: String(row.mid), ...m };
+            }
+            for (const pair of Object.values(byBazaar)) {
+              const result = {
+                open: pair.OPEN?.digit,
+                close: pair.CLOSE?.digit,
+                openPana: pair.OPEN?.pana,
+                closePana: pair.CLOSE?.pana,
+              };
+              for (const kind of ['OPEN', 'CLOSE']) {
+                const mid = pair[kind]?.mid;
+                if (!mid || !pending.includes(mid)) continue;
+                try {
+                  await settleCore(slug, mid, result);
+                } catch (e) {
+                  console.error(`poller settle ${slug}/${mid}:`, e.message);
+                }
+              }
+            }
+            continue;
+          }
+
+          const list = resultRows(await fetchCasinoResult(slug)); // newest first
           for (const row of list) {
             if (!pending.includes(String(row.mid))) continue;
             try {

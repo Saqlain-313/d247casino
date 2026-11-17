@@ -8,14 +8,14 @@ import {
   placeCasinoBet,
 } from '../../redux/reducer/casinoBetSlice';
 import { useCasino } from '../../context/CasinoContext';
+import MatkaCalendar from './MatkaCalendar';
 
 // worli/matka reference layout: matka-tabs (rounds + countdown + game-time),
-// matka-coins 1-click chip bar, 14 pane tabs (jodi/single/pana/sp/dp/trio/
-// cycle/motor/56/64/abr/commonsp/commondp/colordp). Bettable markets sirf wo
-// hy jinke provider sub sid hy (single pane); baaki panes reference jaise
-// display boxes hy (gateway unke sids abhi expose nahi karta).
+// matka-coins 1-click chip bar, 14 pane tabs. Selection logic hamare end pe:
+// jodi/pana/sp/dp/trio local keys (backend LOCAL_MATKA_ODDS se settleable).
 const COINS = [25, 50, 100, 200, 500, 1000];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
+const LOCAL_ODDS = { single: 9.5, jodi: 95, sp: 140, dp: 240, tp: 700 };
 
 const spPana = (d) => {
   const out = [];
@@ -32,8 +32,46 @@ const dpPana = (d) => {
       if (x !== y && (2 * x + y) % 10 === d) out.push(`${x}${x}${y}`);
   return out.sort();
 };
+const dpKey = (combo) => {
+  const [a, b, c] = String(combo).split('');
+  return a === b ? `${a}${c}` : b === c ? `${b}${a}` : `${a}${b}`;
+};
 
 const coinLabel = (v) => (v >= 1000 ? `${v / 1000}K` : String(v));
+
+const Chip = ({ label, color, selected, onClick }) => (
+  <div
+    className={`casino-coin ${selected ? 'selected' : ''}`}
+    onClick={onClick}
+    style={{ cursor: onClick ? 'pointer' : 'default' }}
+  >
+    <div className='bet-chip-holder' style={{ '--g-chip-inner-color': color }}>
+      <div className='bet-chip'>
+        <div className='bet-chip-front'></div>
+        <div className='bet-chip-top'></div>
+        <div className='bet-chip-amount'>
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            fill='none'
+            viewBox='0 0 108 108'
+          >
+            <text
+              x='50%'
+              y='53.5%'
+              dominantBaseline='middle'
+              textAnchor='middle'
+              fill='#fff'
+              fontSize='32'
+              fontWeight='700'
+            >
+              {label}
+            </text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function MatkaTable({ isMobile, isSuspended }) {
   const dispatch = useDispatch();
@@ -42,6 +80,7 @@ export default function MatkaTable({ isMobile, isSuspended }) {
   const [panaMode, setPanaMode] = useState('sp');
   const [coins, setCoins] = useState([]);
   const [activeMid, setActiveMid] = useState(null);
+  const [showCal, setShowCal] = useState(false);
 
   const rounds = useMemo(
     () => (roundData?.rounds || []).filter((r) => r.mtype === 'OPEN'),
@@ -70,10 +109,22 @@ export default function MatkaTable({ isMobile, isSuspended }) {
 
   const coinTotal = coins.reduce((a, b) => a + b, 0);
 
+  // Local matka market (selection logic hamare end pe): provider sid na ho
+  // to synthetic market banayo — backend LOCAL_MATKA_ODDS se validate karta hy.
+  const localMarket = (key) => ({
+    sid: key,
+    nat: key,
+    b: LOCAL_ODDS[key.split(':')[0]] || 0,
+    gstatus: 'OPEN',
+    min: 10,
+    max: 20000,
+  });
+
   const clickBox = (market, label) => {
     if (isSuspended || !market) return;
     const odds = Number(market.b ?? 0);
     if (!(odds > 1)) return;
+    const sel = String(market.sid);
     if (coinTotal > 0) {
       // 1-click coin bet (reference matka-coins behavior)
       dispatch(
@@ -81,7 +132,7 @@ export default function MatkaTable({ isMobile, isSuspended }) {
           slug: selectedGame,
           roundId: String(mid),
           side: 'back',
-          selection: String(market.sid),
+          selection: sel,
           odds,
           stake: coinTotal,
         })
@@ -94,17 +145,18 @@ export default function MatkaTable({ isMobile, isSuspended }) {
         .catch(() => {});
       return;
     }
-    openBetSlip(label, odds, 'back', isMobile);
+    openBetSlip(sel.includes(':') ? sel : label, odds, 'back', isMobile);
   };
 
-  const Box = ({ label, subLabel, market }) => {
-    const dead = isSuspended || (market && !(Number(market.b) > 1));
+  const Box = ({ label, subLabel, market, sel }) => {
+    const m = market || (sel ? localMarket(sel) : null);
+    const dead = isSuspended || (m && !(Number(m.b) > 1));
     return (
       <div
-        className={`worli-odd-box back ${dead && market ? 'suspended-box' : ''}`}
-        onClick={market ? () => clickBox(market, label) : undefined}
-        style={{ cursor: market && !dead ? 'pointer' : 'not-allowed' }}
-        title={market ? undefined : 'Provider market unavailable'}
+        className={`worli-odd-box back ${dead && m ? 'suspended-box' : ''}`}
+        onClick={m ? () => clickBox(m, label) : undefined}
+        style={{ cursor: m && !dead ? 'pointer' : 'not-allowed' }}
+        title={m ? `odds ${m.b}` : 'Provider market unavailable'}
       >
         <span className='worli-odd'>{label}</span>
         {subLabel && <span className='d-block'>{subLabel}</span>}
@@ -112,11 +164,19 @@ export default function MatkaTable({ isMobile, isSuspended }) {
     );
   };
 
-  const digitRow = (arr) => (
+  const digitRow = (arr, mode = 'single') => (
     <div className='worli-box-row'>
-      {arr.map((d) => (
-        <Box key={d} label={String(d)} market={digitMarket(d)} />
-      ))}
+      {arr.map((d) =>
+        mode === 'display' ? (
+          <Box key={d} label={String(d)} />
+        ) : (
+          <Box
+            key={d}
+            label={String(d)}
+            market={digitMarket(d) || localMarket(`single:${d}`)}
+          />
+        )
+      )}
     </div>
   );
 
@@ -195,26 +255,17 @@ export default function MatkaTable({ isMobile, isSuspended }) {
           </button>
         </div>
         <div className='matka-total-coin'>
-          <div className='casino-coin'>
-            <div
-              className='bet-chip-holder'
-              style={{ '--g-chip-inner-color': '#502b63' }}
-            >
-              <div className='bet-chip'>
-                <div className='bet-chip-front'></div>
-                <div className='bet-chip-top'></div>
-                <div className='bet-chip-amount'>{coinTotal}</div>
-              </div>
-            </div>
-          </div>
+          <Chip label={String(coinTotal)} color='#502b63' />
           <div>=</div>
         </div>
         <div className='matka-other-coins'>
           {COINS.map((c, i) => (
             <React.Fragment key={c}>
               {i > 0 && <div>+</div>}
-              <div
-                className={`casino-coin ${coins.includes(c) ? 'selected' : ''}`}
+              <Chip
+                label={coinLabel(c)}
+                color='#1f6179'
+                selected={coins.includes(c)}
                 onClick={() =>
                   setCoins((prev) =>
                     prev.includes(c)
@@ -222,23 +273,22 @@ export default function MatkaTable({ isMobile, isSuspended }) {
                       : [...prev, c]
                   )
                 }
-                style={{ cursor: 'pointer' }}
-              >
-                <div
-                  className='bet-chip-holder'
-                  style={{ '--g-chip-inner-color': '#1f6179' }}
-                >
-                  <div className='bet-chip'>
-                    <div className='bet-chip-front'></div>
-                    <div className='bet-chip-top'></div>
-                    <div className='bet-chip-amount'>{coinLabel(c)}</div>
-                  </div>
-                </div>
-              </div>
+              />
             </React.Fragment>
           ))}
+          <button
+            type='button'
+            className='btn btn-sm btn-outline-secondary ms-2'
+            onClick={() => setShowCal(true)}
+          >
+            Calendar
+          </button>
         </div>
       </div>
+
+      {showCal && (
+        <MatkaCalendar slug={selectedGame} onClose={() => setShowCal(false)} />
+      )}
 
       {/* Pane tabs (reference worli-tabs tablist) */}
       <div className='nav nav-pills' role='tablist'>
@@ -266,7 +316,11 @@ export default function MatkaTable({ isMobile, isSuspended }) {
               <div className='worli-full'>
                 <div className='worli-box-row'>
                   {Array.from({ length: 100 }, (_, i) => (
-                    <Box key={i} label={`${Math.floor(i / 10)}-${i % 10}`} />
+                    <Box
+                      key={i}
+                      label={`${Math.floor(i / 10)}-${i % 10}`}
+                      sel={`jodi:${Math.floor(i / 10)}${i % 10}`}
+                    />
                   ))}
                 </div>
               </div>
@@ -341,7 +395,15 @@ export default function MatkaTable({ isMobile, isSuspended }) {
                           <span className='worli-odd back'>{d}</span>
                           <div className='worli-sub-odd-box-container'>
                             {spPana(d).map((p) => (
-                              <div className='worli-sub-odd-box back' key={p}>
+                              <div
+                                className='worli-sub-odd-box back'
+                                key={p}
+                                onClick={() =>
+                                  clickBox(localMarket(`sp:${p}`), p)
+                                }
+                                style={{ cursor: 'pointer' }}
+                                title={`odds ${LOCAL_ODDS.sp}`}
+                              >
                                 <span className='worli-odd'>{p}</span>
                               </div>
                             ))}
@@ -357,11 +419,29 @@ export default function MatkaTable({ isMobile, isSuspended }) {
                           <span className='worli-odd back'>{d}</span>
                           <div className='worli-sub-odd-box-container'>
                             {dpPana(d).map((p) => (
-                              <div className='worli-sub-odd-box back' key={p}>
+                              <div
+                                className='worli-sub-odd-box back'
+                                key={p}
+                                onClick={() =>
+                                  clickBox(localMarket(`dp:${dpKey(p)}`), p)
+                                }
+                                style={{ cursor: 'pointer' }}
+                                title={`odds ${LOCAL_ODDS.dp}`}
+                              >
                                 <span className='worli-odd'>{p}</span>
                               </div>
                             ))}
-                            <div className='worli-sub-odd-box back'>
+                            <div
+                              className='worli-sub-odd-box back'
+                              onClick={() =>
+                                clickBox(
+                                  localMarket(`tp:${d}`),
+                                  String(d).repeat(3)
+                                )
+                              }
+                              style={{ cursor: 'pointer' }}
+                              title={`odds ${LOCAL_ODDS.tp}`}
+                            >
                               <span className='worli-odd'>
                                 {String(d).repeat(3)}
                               </span>
@@ -381,8 +461,8 @@ export default function MatkaTable({ isMobile, isSuspended }) {
           <div className='worlibox'>
             <div className='worli-box-title'></div>
             <div className='worli-left'>
-              {digitRow([1, 2, 3, 4, 5])}
-              {digitRow([6, 7, 8, 9, 0])}
+              {digitRow([1, 2, 3, 4, 5], 'display')}
+              {digitRow([6, 7, 8, 9, 0], 'display')}
             </div>
             <div className='worli-right'>
               <div className='worli-box-row'>
@@ -415,8 +495,8 @@ export default function MatkaTable({ isMobile, isSuspended }) {
           <div className='worlibox'>
             <div className='worli-full'>
               <div className='worli-box-title'></div>
-              {digitRow([1, 2, 3, 4, 5])}
-              {digitRow([6, 7, 8, 9, 0])}
+              {digitRow([1, 2, 3, 4, 5], 'display')}
+              {digitRow([6, 7, 8, 9, 0], 'display')}
             </div>
           </div>
         )}
