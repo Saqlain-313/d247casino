@@ -427,13 +427,38 @@ function evalAndarBahar(sel, { winner, cardsDealt }) {
 // result: { open:digit, close:digit, openPana:'147', closePana:'258' }
 function evalMatka(sel, r) {
   const [key, arg] = sel.split(':');
+  const sortedOpen = String(r.openPana ?? '')
+    .split('')
+    .sort()
+    .join('');
+  const sortedClose = String(r.closePana ?? '')
+    .split('')
+    .sort()
+    .join('');
   switch (key) {
     case 'single':
       return bool(Number(arg) === r.open || Number(arg) === r.close);
     case 'jodi':
       return bool(arg === `${r.open}${r.close}`);
     case 'pana':
-      return bool(arg === r.openPana || arg === r.closePana);
+    case 'sp': {
+      const t = String(arg).split('').sort().join('');
+      return bool(t === sortedOpen || t === sortedClose);
+    }
+    case 'dp': {
+      // 2-digit combo: pana me exactly do same + ek different (x,x,y / y,y,x)
+      const [x, y] = String(arg).split('');
+      const combos = [
+        [x, x, y],
+        [y, y, x],
+      ].map((c) => [...c].sort().join(''));
+      return bool(combos.includes(sortedOpen) || combos.includes(sortedClose));
+    }
+    case 'tp':
+    case 'trio': {
+      const t = String(arg).repeat(3);
+      return bool(t === String(r.openPana) || t === String(r.closePana));
+    }
     default:
       throw new Error(`Unknown matka selection: ${sel}`);
   }

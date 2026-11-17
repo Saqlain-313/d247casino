@@ -5,6 +5,11 @@ import { getResultBgColor, getResultLabel } from '../constants';
 const isGoalGame = (gameId) =>
   ['goal2', 'goal', 'soccer'].includes(String(gameId || '').toLowerCase());
 
+// Matka strip reference me bazaar-name chips hota hy (result result-b),
+// nodate result legend rows se (Diamond/World/Taj...)
+const isMatkaGame = (gameId) =>
+  ['worli', 'worli2', 'worli3'].includes(String(gameId || '').toLowerCase());
+
 const getInitial = (name) => {
   const value = String(name || '').trim();
   return value ? value.charAt(0).toUpperCase() : '-';
@@ -62,7 +67,18 @@ const RecentResults = memo(function RecentResults({
       </div>
 
       <div className='min-h-[52px] overflow-x-auto bg-white px-1 py-1.5'>
-        {directResultsLoading && items.length === 0 ? (
+        {isMatkaGame(gameid) && Array.isArray(results) && results.length ? (
+          <div className='casino-last-results matka-result flex justify-end gap-1.5'>
+            {results.slice(0, 10).map((item, index) => (
+              <span
+                className='result result-b'
+                key={`${item?.mid ?? 'b'}-${index}`}
+              >
+                {String(item?.win ?? '').trim()}
+              </span>
+            ))}
+          </div>
+        ) : directResultsLoading && items.length === 0 ? (
           <div className='py-2 text-center text-xs text-gray-500'>
             Loading results...
           </div>
