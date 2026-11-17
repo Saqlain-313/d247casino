@@ -63,13 +63,12 @@ const ThemeBox = ({
       <div className='casino-odds text-center'>{dead ? '-' : odds}</div>
       <div
         className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
-        style={{ width: '100%' }}
         onClick={
           dead
             ? undefined
             : () => openBetSlip(nat, odds, 'back', window.innerWidth < 1200)
         }
-        style={{ cursor: dead ? 'not-allowed' : 'pointer' }}
+        style={{ width: '100%', cursor: dead ? 'not-allowed' : 'pointer' }}
       >
         <span className='casino-odds'>{children}</span>
       </div>
