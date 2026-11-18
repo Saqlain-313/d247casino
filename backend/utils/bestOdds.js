@@ -24,14 +24,18 @@ export const bestBackLay = (odds) => {
   return { back: pick('back'), lay: pick('lay') };
 };
 
-// Listing odds array for the 1/X/2 columns. Reference listing = 3 selections.
-// 3 sections (football home/draw/away) -> [sec0, sec1, sec2]; 2 sections
-// (tennis/cricket) -> [sec0, empty, sec1] (X column empty). Pehle interleaved
-// empty padding [sel0, empty, sel1, empty, sel2] banta tha jisse frontend
-// odds[0]/[1]/[2] galat columns padhta tha (away gayab, draw wrong column).
+// Listing odds array for the 1/X/2 columns. Reference listing = 3 selections
+// ordered by provider sno (Test matches/football send [1, 3, 2] i.e. Home, Away, Draw).
 export const listingOdds = (sections) => {
   const empty = { home: '0', away: '0' };
-  const secs = (Array.isArray(sections) ? sections : []).map((s) => {
+  const sorted = (Array.isArray(sections) ? sections : [])
+    .map((s, idx) => ({ s, idx }))
+    .sort((a, b) => {
+      const snoA = Number.isFinite(Number(a.s?.sno)) ? Number(a.s.sno) : a.idx;
+      const snoB = Number.isFinite(Number(b.s?.sno)) ? Number(b.s.sno) : b.idx;
+      return snoA - snoB || a.idx - b.idx;
+    });
+  const secs = sorted.map(({ s }) => {
     const b = bestBackLay(s?.odds);
     return { home: b.back, away: b.lay };
   });
@@ -40,3 +44,34 @@ export const listingOdds = (sections) => {
   if (secs.length === 1) return [secs[0], empty, empty];
   return [empty, empty, empty];
 };
+
+// Matches D247 reference listing order without dropping multi-day/paused events:
+// 1 <= oid < 2 pinned first, then live (inplay=true, with 2 <= oid < 3 first), then stime ascending.
+export const sortSportsMatches = (matches) =>
+  [...(Array.isArray(matches) ? matches : [])].sort((a, b) => {
+    const oidA = Number(a?.oid);
+    const oidB = Number(b?.oid);
+    const pinnedA = Number.isFinite(oidA) && oidA >= 1 && oidA < 2;
+    const pinnedB = Number.isFinite(oidB) && oidB >= 1 && oidB < 2;
+    if (pinnedA !== pinnedB) return pinnedA ? -1 : 1;
+    if (pinnedA && pinnedB && oidA !== oidB) return oidA - oidB;
+
+    const inplayA = a?.inplay === true;
+    const inplayB = b?.inplay === true;
+    if (inplayA !== inplayB) return inplayA ? -1 : 1;
+
+    if (inplayA && inplayB) {
+      const liveFeatA = Number.isFinite(oidA) && oidA >= 2 && oidA < 3;
+      const liveFeatB = Number.isFinite(oidB) && oidB >= 2 && oidB < 3;
+      if (liveFeatA !== liveFeatB) return liveFeatA ? -1 : 1;
+      if (liveFeatA && liveFeatB && oidA !== oidB) return oidA - oidB;
+    }
+
+    const timeA = new Date(a?.date ?? a?.stime).getTime();
+    const timeB = new Date(b?.date ?? b?.stime).getTime();
+    const validA = Number.isFinite(timeA);
+    const validB = Number.isFinite(timeB);
+    if (validA && validB && timeA !== timeB) return timeA - timeB;
+    if (validA !== validB) return validA ? -1 : 1;
+    return 0;
+  });

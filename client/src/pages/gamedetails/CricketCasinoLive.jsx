@@ -73,7 +73,7 @@ function CricketCasinoLive({ gmid, tvUrl, inplay, hasTv }) {
   const showVideo = Boolean(inplay && hasTv && tvUrl);
 
   return (
-    <div className='casino-video mt-1'>
+    <div className='casino-video mt-1 overflow-hidden'>
       {/* Video box (right-aligned 16:9) — live iframe ya pre-match banner */}
       <div className='video-box-container'>
         <div className='casino-video-box'>
@@ -121,7 +121,7 @@ function CricketCasinoLive({ gmid, tvUrl, inplay, hasTv }) {
 
       {/* FlipClock countdown — bottom-right (reference .clock) */}
       {feed && (
-        <div className='clock flip-clock-wrapper'>
+        <div className='clock flip-clock-wrapper right-2 max-w-full'>
           <FlipClock seconds={feed.lt} />
         </div>
       )}

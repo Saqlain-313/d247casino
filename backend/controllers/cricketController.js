@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import adminModel from '../models/adminModel.js';
 import { getCricketCasino } from '../services/cricketCasinoCache.js';
 import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
-import { bestBackLay } from '../utils/bestOdds.js';
+import { listingOdds, sortSportsMatches } from '../utils/bestOdds.js';
 
 dotenv.config();
 
@@ -16,50 +16,25 @@ export const getCricketData = async (req, res) => {
       const t2 = data.data.t2 || [];
       const allMatches = [...t1, ...t2];
 
-      const transformed = allMatches.map((match) => {
-        // Best back/lay per section (provider order back3→back1 hota hai,
-        // isliye positional pick galat odds deta tha)
-        const sec1 = bestBackLay(match.section?.[0]?.odds);
-        const sec2 =
-          match.section && match.section.length >= 2
-            ? bestBackLay(match.section[1].odds)
-            : { back: '0', lay: '0' };
+      const transformed = allMatches.map((match) => ({
+        id: match.beventId || match.oldgmid || match.gmid,
+        title: match.cname,
+        beventId: match.beventId || null,
+        match: match.ename,
+        date: match.stime,
+        channels: [],
+        odds: listingOdds(match.section),
+        inplay: match.iplay,
+        tv: match.tv,
+        bm: match.bm,
+        f: match.f,
+        iscc: match.iscc || 0,
+        oid: match.oid,
+      }));
 
-        const team1Odds = { home: sec1.back, away: sec1.lay };
-        const team2Odds = { home: sec2.back, away: sec2.lay };
-
-        const oddsArr = [team1Odds, { home: '0', away: '0' }, team2Odds];
-
-        return {
-          id: match.beventId || match.oldgmid || match.gmid,
-          title: match.cname,
-          beventId: match.beventId || null,
-          match: match.ename,
-          date: match.stime,
-          channels: [],
-          odds: oddsArr,
-          inplay: match.iplay,
-          tv: match.tv,
-          bm: match.bm,
-          f: match.f,
-          iscc: match.iscc || 0,
-        };
-      });
-
-      const now = new Date();
-      const filteredMatches = transformed.filter((match) => {
-        const matchDate = new Date(match.date);
-        return match.inplay === true || matchDate >= now;
-      });
-
-      // Reference-site listing order: live (inplay) matches first in provider
-      // order, then upcoming matches sorted by start time.
-      const sortedMatches = [
-        ...filteredMatches.filter((m) => m.inplay === true),
-        ...filteredMatches
-          .filter((m) => m.inplay !== true)
-          .sort((a, b) => new Date(a.date) - new Date(b.date)),
-      ];
+      // Reference-site parity: keep all upstream events (including multi-day
+      // Test matches at stumps or paused events) and match D247 sort order.
+      const sortedMatches = sortSportsMatches(transformed);
 
       return res.status(200).json({ success: true, matches: sortedMatches });
     } else {

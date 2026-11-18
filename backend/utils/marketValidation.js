@@ -8,10 +8,12 @@ dotenv.config();
 const SPORT_NAME_TO_APITYPE = {
   cricket: 'cricket',
   'cricket game': 'cricket',
+  'e-cricket': 'cricket',
   tennis: 'tennis',
   'tennis game': 'tennis',
   soccer: 'soccer',
   'soccer game': 'soccer',
+  football: 'soccer',
   'horse racing': 'horse-racing',
 };
 
@@ -150,6 +152,12 @@ export async function validateSportsMarket(
       : gameType === 'oddeven'
         ? 'oddeven'
         : null;
+  const normMname = (v) =>
+    String(v || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+  const targetMname = normMname(marketName);
   const market = parentMname
     ? markets.find((m) => (m.mname || '') === parentMname)
     : markets.find((m) => {
@@ -157,7 +165,9 @@ export async function validateSportsMarket(
         return (
           mname === marketName ||
           mname === API_MARKET_ALIASES[marketName] ||
-          API_MARKET_ALIASES[mname] === marketName
+          API_MARKET_ALIASES[mname] === marketName ||
+          normMname(mname) === targetMname ||
+          normMname(API_MARKET_ALIASES[mname]) === targetMname
         );
       });
 
@@ -168,19 +178,15 @@ export async function validateSportsMarket(
     };
   }
 
-  // Bookmaker markets from Provider B report market-level status="SUSPENDED"
-  // even when individual runners (section[].gstatus) are ACTIVE and priceable.
-  // The frontend Bookmaker panel deliberately ignores market-level status and
-  // gates only on section gstatus — backend must use the same rule for these
-  // markets or every bookmaker bet gets rejected. Selection-level suspension
-  // is still enforced below, so genuinely suspended runners remain blocked.
-  const isBookmakerMarket =
-    market.mname === 'Bookmaker' || market.mname === 'Bookmaker IPL CUP';
+  // Reference D247 suspension (refrence.js / utils/suspension.js):
+  // gscode === 1 indicates open even when status string says SUSPENDED on
+  // match1 / Bookmaker-style markets; fall back to status when gscode absent.
+  const hasMarketGscode = market.gscode !== undefined && market.gscode !== null;
+  const isMarketOpen = hasMarketGscode
+    ? Number(market.gscode) === 1
+    : market.status !== 'SUSPENDED' && market.gstatus !== 'SUSPENDED';
 
-  if (
-    !isBookmakerMarket &&
-    (market.status === 'SUSPENDED' || market.gstatus === 'SUSPENDED')
-  ) {
+  if (!isMarketOpen) {
     return { valid: false, reason: 'Market is suspended. Bet not accepted.' };
   }
 
@@ -214,10 +220,18 @@ export async function validateSportsMarket(
     };
   }
 
-  if (
-    teamSection.gstatus === 'SUSPENDED' ||
-    teamSection.status === 'SUSPENDED'
-  ) {
+  const secRawStatus = String(
+    teamSection.gstatus || teamSection.status || ''
+  ).toUpperCase();
+  const hasSecGscode =
+    teamSection.gscode !== undefined && teamSection.gscode !== null;
+  const isSectionSuspended =
+    secRawStatus === 'REMOVED' ||
+    (hasSecGscode
+      ? Number(teamSection.gscode) !== 1
+      : secRawStatus === 'SUSPENDED');
+
+  if (isSectionSuspended) {
     return {
       valid: false,
       reason: 'Selection is suspended. Bet not accepted.',
@@ -269,6 +283,7 @@ export async function validateSportsMarket(
     marketMeta: {
       mid: market.mid || null,
       gmid: market.gmid || null,
+      gtype: market.gtype || null,
       fancyId: teamSection.sid || null,
       runners: (market.section || []).map((sec) => ({
         selectionId: sec.sid,
@@ -343,12 +358,22 @@ export async function validateFancyMarket(
       //     reason: 'Market is suspended. Bet not accepted.',
       //   };
       // }
+      const secRawStatus = String(section.gstatus || '')
+        .trim()
+        .toUpperCase();
+      const secOtherStatus = String(section.status || '')
+        .trim()
+        .toUpperCase();
+      const hasSecGscode =
+        section.gscode !== undefined && section.gscode !== null;
       const isNormal = (gameType || '').toLowerCase() === 'normal';
 
       if (isNormal) {
         if (
-          section.gstatus === 'SUSPENDED' ||
-          section.gstatus === 'Ball Running'
+          (hasSecGscode && Number(section.gscode) !== 1) ||
+          secRawStatus === 'SUSPENDED' ||
+          secRawStatus === 'BALL RUNNING' ||
+          secRawStatus === 'REMOVED'
         ) {
           return {
             valid: false,
@@ -357,9 +382,11 @@ export async function validateFancyMarket(
         }
       } else {
         if (
-          section.gstatus === 'SUSPENDED' ||
-          section.gstatus === 'Ball Running' ||
-          section.status === 'SUSPENDED'
+          (hasSecGscode && Number(section.gscode) !== 1) ||
+          secRawStatus === 'SUSPENDED' ||
+          secRawStatus === 'BALL RUNNING' ||
+          secRawStatus === 'REMOVED' ||
+          secOtherStatus === 'SUSPENDED'
         ) {
           return {
             valid: false,
@@ -367,7 +394,13 @@ export async function validateFancyMarket(
           };
         }
 
-        if (market.status === 'SUSPENDED' || market.gstatus === 'SUSPENDED') {
+        const hasMktGscode =
+          market.gscode !== undefined && market.gscode !== null;
+        const mktOpen = hasMktGscode
+          ? Number(market.gscode) === 1
+          : String(market.status || '').toUpperCase() !== 'SUSPENDED' &&
+            String(market.gstatus || '').toUpperCase() !== 'SUSPENDED';
+        if (!mktOpen) {
           return {
             valid: false,
             reason: 'Market is suspended. Bet not accepted.',

@@ -45,6 +45,8 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
             : { rate: null, size: null },
         min: item.min || 0,
         max: formatMax(item.max || 0),
+        minRaw: Number(item.min) || 0,
+        maxRaw: Number(item.max) || 0,
         sid: item.sid,
         status: item.status, // Status from API
       };
@@ -187,8 +189,8 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
                             item.no.rate,
                             'back',
                             item.sid,
-                            item.min,
-                            item.max
+                            item.minRaw,
+                            item.maxRaw
                           )
                         }
                       >
@@ -213,8 +215,8 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
                             item.yes.rate,
                             'lay',
                             item.sid,
-                            item.min,
-                            item.max
+                            item.minRaw,
+                            item.maxRaw
                           )
                         }
                       >
@@ -302,8 +304,8 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
                             item.no.rate,
                             'back',
                             item.sid,
-                            item.min,
-                            item.max
+                            item.minRaw,
+                            item.maxRaw
                           )
                         }
                       >
@@ -328,8 +330,8 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
                             item.yes.rate,
                             'lay',
                             item.sid,
-                            item.min,
-                            item.max
+                            item.minRaw,
+                            item.maxRaw
                           )
                         }
                       >

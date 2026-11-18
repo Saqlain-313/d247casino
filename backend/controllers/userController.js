@@ -3,9 +3,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 import betModel from '../models/betModel.js';
+import CasinoBet from '../models/CasinoBet.js';
 import LoginHistory from '../models/loginHistory.js';
 import passwordHistory from '../models/passwordHistory.js';
 import SubAdmin from '../models/subAdminModel.js';
+import { calcTotalCasinoExposure } from '../services/casinoEngine.js';
 import { calculateAllExposure } from '../utils/exposureUtils.js';
 
 export const registerUser = async (req, res) => {
@@ -150,8 +152,15 @@ export const getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'Sub-admin not found' });
     }
-    const updatedPendingBets = await betModel.find({ userId: id, status: 0 });
-    const currentExposure = calculateAllExposure(updatedPendingBets);
+    const [updatedPendingBets, pendingCasinoBets] = await Promise.all([
+      betModel.find({ userId: id, status: 0 }),
+      CasinoBet.find({ userId: id, status: 'pending' })
+        .select('slug roundId side selection odds stake exposure')
+        .lean(),
+    ]);
+    const sportsExposure = calculateAllExposure(updatedPendingBets);
+    const casinoExposure = calcTotalCasinoExposure(pendingCasinoBets);
+    const currentExposure = sportsExposure + casinoExposure;
 
     const userWithExposure = {
       ...user.toObject(),

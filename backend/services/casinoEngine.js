@@ -92,9 +92,11 @@ function validateBet(slug, bet, { allowLay = true } = {}) {
 
 function isHalfLossMarket(slug, selection) {
   const fam = familyOf(slug);
-  if (fam === 'lucky7') return ['low', 'high'].includes(selection);
-  if (fam === 'aaa') return ['under7', 'over7'].includes(selection);
-  if (fam === 'dt') return ['dragon', 'tiger'].includes(selection);
+  const sel = String(selection || '').toLowerCase();
+  if (fam === 'lucky7')
+    return ['low', 'high', 'lowcard', 'highcard'].includes(sel);
+  if (fam === 'aaa') return ['under7', 'over7'].includes(sel);
+  if (fam === 'dt') return ['dragon', 'tiger'].includes(sel);
   return false;
 }
 
@@ -426,7 +428,48 @@ function evalAndarBahar(sel, { winner, cardsDealt }) {
 // -------------------------------------------------------------------- Matka
 // result: { open:digit, close:digit, openPana:'147', closePana:'258' }
 function evalMatka(sel, r) {
-  const [key, arg] = sel.split(':');
+  let key = '';
+  let arg = '';
+  const selStr = String(sel || '').trim();
+  if (selStr.includes(':')) {
+    [key, arg] = selStr.split(':');
+  } else if (
+    /^\d+\s*single$/i.test(selStr) ||
+    /^single\s*[-:]?\s*\d+$/i.test(selStr)
+  ) {
+    key = 'single';
+    arg = selStr.replace(/\D/g, '');
+  } else if (/line\s*1/i.test(selStr)) {
+    key = 'line1';
+  } else if (/line\s*2/i.test(selStr)) {
+    key = 'line2';
+  } else if (/odd/i.test(selStr)) {
+    key = 'odd';
+  } else if (/even/i.test(selStr)) {
+    key = 'even';
+  } else if (/jodi\s*(\d+)/i.test(selStr) || /^\d{2}$/.test(selStr)) {
+    key = 'jodi';
+    arg = selStr.replace(/\D/g, '');
+  } else if (
+    /pana\s*(\d+)/i.test(selStr) ||
+    /sp\s*[-:]?\s*(\d+)/i.test(selStr) ||
+    /^\d{3}$/.test(selStr)
+  ) {
+    key = 'sp';
+    arg = selStr.replace(/\D/g, '');
+  } else if (/dp\s*[-:]?\s*(\d+)/i.test(selStr)) {
+    key = 'dp';
+    arg = selStr.replace(/\D/g, '');
+  } else if (
+    /trio\s*[-:]?\s*(\d+)/i.test(selStr) ||
+    /tp\s*[-:]?\s*(\d+)/i.test(selStr)
+  ) {
+    key = 'trio';
+    arg = selStr.replace(/\D/g, '');
+  } else {
+    key = selStr.toLowerCase();
+  }
+
   const sortedOpen = String(r.openPana ?? '')
     .split('')
     .sort()
@@ -438,6 +481,18 @@ function evalMatka(sel, r) {
   switch (key) {
     case 'single':
       return bool(Number(arg) === r.open || Number(arg) === r.close);
+    case 'line1':
+      return bool(
+        [1, 2, 3, 4, 5].includes(r.open) || [1, 2, 3, 4, 5].includes(r.close)
+      );
+    case 'line2':
+      return bool(
+        [6, 7, 8, 9, 0].includes(r.open) || [6, 7, 8, 9, 0].includes(r.close)
+      );
+    case 'odd':
+      return bool(Number(r.open) % 2 === 1 || Number(r.close) % 2 === 1);
+    case 'even':
+      return bool(Number(r.open) % 2 === 0 || Number(r.close) % 2 === 0);
     case 'jodi':
       // open+close dono rounds ka result chahiye; adha result ho to pending rho
       if (r.open === undefined || r.close === undefined) {
@@ -484,6 +539,34 @@ const WIN_SIDE = {
 };
 const TRIPLE_SUMS = new Set([3, 6, 9, 12, 15, 18]);
 
+const parseCardCode = (code) => {
+  const s = String(code ?? '')
+    .trim()
+    .toUpperCase();
+  if (!s || s === '1') return null;
+  const m = s.match(/^(10|[2-9AJQK])([SHDC])/);
+  if (!m) return null;
+  const rMap = { A: 1, J: 11, Q: 12, K: 13 };
+  const rank = rMap[m[1]] || Number(m[1]);
+  return { rank, suit: m[2] };
+};
+
+const parseCardList = (cardStr) =>
+  String(cardStr ?? '')
+    .split(/[|,]/)
+    .map(parseCardCode);
+
+const SUIT_NAME = { S: 'spade', H: 'heart', D: 'diamond', C: 'club' };
+
+function evalDtFromCards(sel, d, t) {
+  const [key, who, arg] = sel.split(':');
+  if (key === 'suit') {
+    const c = who === 'dragon' ? d : t;
+    return bool(SUIT_NAME[c.suit] === arg);
+  }
+  return evalDragonTiger(sel, { dragon: d, tiger: t });
+}
+
 function evaluateFromWinCode(slug, sel, rc) {
   const fam = familyOf(slug);
   if (fam === 'roulette') {
@@ -494,8 +577,6 @@ function evaluateFromWinCode(slug, sel, rc) {
     if (Array.isArray(rc.dice) && rc.dice.length === 3) {
       return evalSicBo(sel, { dice: rc.dice });
     }
-    // total-only feed: settle sums/parity outright, big/small/anytriple only
-    // when no triple can produce the same total
     const sum = Number(rc.total);
     if (!Number.isFinite(sum)) throw new Error('sicbo total missing');
     const [key, arg] = sel.split(':');
@@ -519,45 +600,126 @@ function evaluateFromWinCode(slug, sel, rc) {
     }
     throw new Error(`selection ${sel} needs dice`);
   }
-  const side = (WIN_SIDE[fam] || {})[Number(rc.win)];
-  if (!side) throw new Error(`unknown win code ${rc.win} for ${slug}`);
-  const [key] = sel.split(':');
-  switch (fam) {
-    case 'lucky7':
-      if (key === 'low' || key === 'high') {
-        return side === 'seven' ? 'half_loss' : bool(side === key);
-      }
-      break;
-    case 'aaa':
-      if (key === 'amar' || key === 'akbar' || key === 'anthony') {
-        return bool(side === key);
-      }
-      if (key === 'under7') return bool(side === 'amar');
-      break;
-    case 'dt':
-      if (key === 'dragon' || key === 'tiger') {
-        return side === 'tie' ? 'half_loss' : bool(side === key);
-      }
-      if (key === 'tie' || key === 'pair') return bool(side === 'tie');
-      break;
-    case 'baccarat':
-      if (key === 'player' || key === 'banker') {
-        return side === 'tie' ? 'push' : bool(side === key);
-      }
-      if (key === 'tie') return bool(side === 'tie');
-      break;
-    case 'teen':
-    case 'muflis':
-      if (key === 'playerA' || key === 'playerB') return bool(side === key);
-      break;
-    case 'card32': {
-      const p = sel.split(':')[1] || sel.replace('player', '');
-      if (['8', '9', '10', '11'].includes(p)) return bool(p === side);
-      break;
+
+  // Try card-level evaluation when Round snapshot saved dealt cards
+  const cards = rc.card ? parseCardList(rc.card).filter(Boolean) : [];
+  if (fam === 'lucky7' && cards.length >= 1) {
+    try {
+      return evalLucky7(sel, { card: cards[0] });
+    } catch {
+      /* fall back to win-code lookup */
     }
-    default:
-      break;
   }
+  if (fam === 'aaa' && cards.length >= 1) {
+    try {
+      return evalAAA(sel, { card: cards[0] });
+    } catch {
+      /* fall back to win-code lookup */
+    }
+  }
+  if (fam === 'dt' && cards.length >= 2) {
+    try {
+      return evalDtFromCards(sel, cards[0], cards[1]);
+    } catch {
+      /* fall back to win-code lookup */
+    }
+  }
+  if ((fam === 'teen' || fam === 'muflis') && cards.length >= 6) {
+    try {
+      return evalTeen(
+        sel,
+        {
+          A: [cards[0], cards[2], cards[4]],
+          B: [cards[1], cards[3], cards[5]],
+        },
+        { muflis: fam === 'muflis' }
+      );
+    } catch {
+      /* fall back to win-code lookup */
+    }
+  }
+  if (fam === 'baccarat' && cards.length >= 4) {
+    const pCards = [cards[0], cards[2], cards[4]].filter(Boolean);
+    const bCards = [cards[1], cards[3], cards[5]].filter(Boolean);
+    const pts = (arr) =>
+      arr.reduce((s, c) => s + (c.rank >= 10 ? 0 : c.rank), 0) % 10;
+    const pPair = pCards[0] && pCards[1] && pCards[0].rank === pCards[1].rank;
+    const bPair = bCards[0] && bCards[1] && bCards[0].rank === bCards[1].rank;
+    if (sel === 'perfectPair')
+      return bool(
+        (pPair && pCards[0].suit === pCards[1].suit) ||
+          (bPair && bCards[0].suit === bCards[1].suit)
+      );
+    if (sel === 'big') return bool(pCards.length + bCards.length >= 5);
+    if (sel === 'small') return bool(pCards.length + bCards.length === 4);
+    try {
+      return evalBaccarat(sel, {
+        playerPoints: pts(pCards),
+        bankerPoints: pts(bCards),
+        playerPair: Boolean(pPair),
+        bankerPair: Boolean(bPair),
+      });
+    } catch {
+      /* fall back to win-code lookup */
+    }
+  }
+
+  const side = (WIN_SIDE[fam] || {})[Number(rc.win)];
+  if (side) {
+    const [key] = sel.split(':');
+    switch (fam) {
+      case 'lucky7':
+        if (key === 'low' || key === 'high') {
+          return side === 'seven' ? 'half_loss' : bool(side === key);
+        }
+        break;
+      case 'aaa':
+        if (key === 'amar' || key === 'akbar' || key === 'anthony') {
+          return bool(side === key);
+        }
+        if (key === 'under7') return bool(side === 'amar');
+        break;
+      case 'dt':
+        if (key === 'dragon' || key === 'tiger') {
+          return side === 'tie' ? 'half_loss' : bool(side === key);
+        }
+        if (key === 'tie' || key === 'pair') return bool(side === 'tie');
+        break;
+      case 'baccarat':
+        if (key === 'player' || key === 'banker') {
+          return side === 'tie' ? 'push' : bool(side === key);
+        }
+        if (key === 'tie') return bool(side === 'tie');
+        break;
+      case 'teen':
+      case 'muflis':
+        if (key === 'playerA' || key === 'playerB') return bool(side === key);
+        break;
+      case 'card32': {
+        const p = sel.split(':')[1] || sel.replace('player', '');
+        if (['8', '9', '10', '11'].includes(p)) return bool(p === side);
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  // Fallback generic settlement via datedNat (e.g., Goal2 "Robert Lewandowski", Bollywood "Don", Poker "Player A")
+  const dn = String(rc.datedNat ?? '')
+    .trim()
+    .toLowerCase();
+  if (dn) {
+    const cleanSel = String(sel ?? '')
+      .trim()
+      .toLowerCase();
+    if (dn === cleanSel || dn.includes(cleanSel) || cleanSel.includes(dn)) {
+      return 'win';
+    }
+    return 'lose';
+  }
+
+  if (!side) throw new Error(`unknown win code ${rc.win} for ${slug}`);
   throw new Error(`selection ${sel} not decidable from win code`);
 }
 
@@ -594,6 +756,141 @@ function evaluateSelection(slug, selection, result) {
   }
 }
 
+const MAIN_RUNNER_PREFIXES = {
+  dt: new Set(['dragon', 'tiger', 'tie']),
+  baccarat: new Set(['player', 'banker', 'tie']),
+  teen: new Set(['playerA', 'playerB']),
+  muflis: new Set(['playerA', 'playerB']),
+  lucky7: new Set(['low', 'seven', 'high']),
+  aaa: new Set(['amar', 'akbar', 'anthony']),
+  card32: new Set(['player8', 'player9', 'player10', 'player11']),
+};
+
+/**
+ * Worst-case exposure for a user's pending bets in ONE (slug, roundId).
+ * Properly nets Back + Lay hedges:
+ *   1) Mutually-exclusive main runners (plus tie/half-loss rules) via defaultScenarios
+ *   2) Roulette numbers 0..36 via exact evalRoulette
+ *   3) Any same-selection Back + Lay pair on fancy/side/non-family markets
+ */
+function calcRoundExposure(slug, bets) {
+  if (!Array.isArray(bets) || bets.length === 0) return 0;
+
+  const fam = familyOf(slug);
+  const normalizeSel = (s) =>
+    String(s ?? '')
+      .trim()
+      .toLowerCase();
+
+  // Roulette shares the 0..36 wheel across all inside/outside bets
+  if (fam === 'roulette') {
+    let worstNet = 0;
+    for (let n = 0; n <= 36; n++) {
+      let scNet = 0;
+      let valid = true;
+      for (const bet of bets) {
+        try {
+          const out = evalRoulette(bet.selection, { number: n });
+          scNet += settleBet(bet, out).net;
+        } catch {
+          valid = false;
+          break;
+        }
+      }
+      if (valid && scNet < worstNet) worstNet = scNet;
+    }
+    if (worstNet < 0) return round2(-worstNet);
+    // Fallback if any bet used non-canonical selection string
+    const fallbackGroups = new Map();
+    for (const bet of bets) {
+      const k = normalizeSel(bet.selection);
+      if (!fallbackGroups.has(k)) fallbackGroups.set(k, []);
+      fallbackGroups.get(k).push(bet);
+    }
+    let exp = 0;
+    for (const group of fallbackGroups.values()) {
+      let wNet = 0;
+      let lNet = 0;
+      for (const b of group) {
+        wNet += settleBet(b, 'win').net;
+        lNet += settleBet(b, 'lose').net;
+      }
+      exp += Math.max(0, -Math.min(wNet, lNet));
+    }
+    return round2(exp);
+  }
+
+  const mainSet = MAIN_RUNNER_PREFIXES[fam] || null;
+  const mainBets = [];
+  const otherGroups = new Map();
+
+  for (const bet of bets) {
+    const rawSel = String(bet.selection ?? '').trim();
+    if (mainSet && mainSet.has(rawSel)) {
+      mainBets.push(bet);
+    } else {
+      const k = rawSel.toLowerCase();
+      if (!otherGroups.has(k)) otherGroups.set(k, []);
+      otherGroups.get(k).push(bet);
+    }
+  }
+
+  let totalExp = 0;
+
+  // 1. Mutually exclusive main runners bucket
+  if (mainBets.length > 0) {
+    const scenarios = defaultScenarios(slug);
+    if (scenarios.length > 0) {
+      let worstNet = 0;
+      for (const sc of scenarios) {
+        let scNet = 0;
+        for (const bet of mainBets) {
+          const out = evaluateSelection(slug, bet.selection, sc.result);
+          scNet += settleBet(bet, out).net;
+        }
+        if (scNet < worstNet) worstNet = scNet;
+      }
+      totalExp += Math.max(0, -worstNet);
+    } else {
+      for (const b of mainBets) {
+        totalExp += calcExposure(b);
+      }
+    }
+  }
+
+  // 2. Per-selection Back/Lay hedging buckets (covers all side/fancy/generic markets)
+  for (const group of otherGroups.values()) {
+    let winNet = 0;
+    let loseNet = 0;
+    for (const bet of group) {
+      winNet += settleBet(bet, 'win').net;
+      loseNet += settleBet(bet, 'lose').net;
+    }
+    totalExp += Math.max(0, -Math.min(winNet, loseNet));
+  }
+
+  return round2(totalExp);
+}
+
+/**
+ * Total casino exposure across all pending CasinoBet docs of a user,
+ * grouped by (slug, roundId) so hedged positions net accurately.
+ */
+function calcTotalCasinoExposure(allPendingBets) {
+  if (!Array.isArray(allPendingBets) || allPendingBets.length === 0) return 0;
+  const byRound = new Map();
+  for (const bet of allPendingBets) {
+    const key = `${bet.slug || ''}::${bet.roundId || ''}`;
+    if (!byRound.has(key)) byRound.set(key, []);
+    byRound.get(key).push(bet);
+  }
+  let total = 0;
+  for (const group of byRound.values()) {
+    total += calcRoundExposure(group[0]?.slug, group);
+  }
+  return round2(total);
+}
+
 // -------------------------------------------------------------- nation book
 /**
  * Live P&L per scenario. scenarios = [{ id, result }]
@@ -602,13 +899,35 @@ function evaluateSelection(slug, selection, result) {
  */
 function nationBook(slug, bets, scenarios) {
   const book = {};
+  const fam = familyOf(slug);
+  const mainSet = MAIN_RUNNER_PREFIXES[fam] || null;
+  const mainBets = mainSet
+    ? bets.filter((b) => mainSet.has(String(b.selection ?? '')))
+    : [];
+
   for (const sc of scenarios) {
     let pnl = 0;
-    for (const bet of bets) {
+    for (const bet of mainBets) {
       const o = evaluateSelection(slug, bet.selection, sc.result);
       pnl += settleBet(bet, o).net;
     }
     book[sc.id] = round2(pnl);
+  }
+
+  // Add per-selection hedged P&L if won (covers side bets & non-family markets)
+  const bySel = new Map();
+  for (const b of bets) {
+    const k = String(b.selection ?? '').trim();
+    if (!k || (mainSet && mainSet.has(k))) continue;
+    if (!bySel.has(k)) bySel.set(k, []);
+    bySel.get(k).push(b);
+  }
+  for (const [k, group] of bySel.entries()) {
+    let winPnl = 0;
+    for (const b of group) winPnl += settleBet(b, 'win').net;
+    const normKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+    book[k] = round2(winPnl);
+    if (normKey && normKey !== k) book[normKey] = round2(winPnl);
   }
   return book;
 }
@@ -624,6 +943,7 @@ function defaultScenarios(slug) {
         { id: 'tie', result: { dragon: c(7), tiger: c(7) } },
       ];
     case 'teen':
+    case 'muflis':
       return [
         {
           id: 'A',
@@ -657,6 +977,13 @@ function defaultScenarios(slug) {
         { id: 'player', result: { playerPoints: 8, bankerPoints: 3 } },
         { id: 'banker', result: { playerPoints: 3, bankerPoints: 8 } },
         { id: 'tie', result: { playerPoints: 5, bankerPoints: 5 } },
+      ];
+    case 'card32':
+      return [
+        { id: 'player8', result: { cards: { 8: 10, 9: 1, 10: 1, 11: 1 } } },
+        { id: 'player9', result: { cards: { 8: 1, 9: 10, 10: 1, 11: 1 } } },
+        { id: 'player10', result: { cards: { 8: 1, 9: 1, 10: 10, 11: 1 } } },
+        { id: 'player11', result: { cards: { 8: 1, 9: 1, 10: 1, 11: 10 } } },
       ];
     default:
       return [];
@@ -725,6 +1052,8 @@ function rouletteStats(numbers) {
 export {
   baccaratStats,
   calcExposure,
+  calcRoundExposure,
+  calcTotalCasinoExposure,
   compareHands,
   defaultScenarios,
   dragonTigerStats,
@@ -732,6 +1061,7 @@ export {
   familyOf,
   GAME_FAMILY,
   getLimits,
+  isHalfLossMarket,
   lucky7Stats,
   nationBook,
   PAIR_PLUS_ODDS,

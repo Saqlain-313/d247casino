@@ -105,7 +105,7 @@ export const fetchCasinoResultDetailData = createAsyncThunk(
       }
 
       const response = await api.get(
-        `/casino-betting-result-detail?gameId=${gameId}&mid=${mid}`
+        `/casino-betting-result-detail?gtype=${encodeURIComponent(gameId)}&mid=${encodeURIComponent(mid)}`
       );
       console.log('Casino Result Detail Data:', response?.data?.data);
       return response?.data?.data;

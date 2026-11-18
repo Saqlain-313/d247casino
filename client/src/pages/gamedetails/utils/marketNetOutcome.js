@@ -14,18 +14,20 @@ export function computeNetOutcome(team, marketBets, mCashoutPL = 0) {
   return Math.round((netOutcome + mCashoutPL) * 100) / 100;
 }
 
-export function buildMatchOddsStylePendingLeg(bet) {
+export function buildMatchOddsStylePendingLeg(bet, isBhav = false) {
   if (!bet?.stake || !bet?.odds || !bet?.team || !bet?.type) return null;
   const stakeNum = parseFloat(bet.stake);
   const oddsNum = parseFloat(bet.odds);
   if (isNaN(stakeNum) || isNaN(oddsNum) || stakeNum <= 0) return null;
 
+  const useBhav = isBhav || String(bet?.gType || '').toLowerCase() === 'match1';
+  const multiplier = useBhav ? oddsNum / 100 : oddsNum - 1;
   const isLay = bet.type === 'lay';
   return {
     teamName: bet.team,
     otype: bet.type,
-    totalBetAmount: isLay ? stakeNum : stakeNum * (oddsNum - 1),
-    totalPrice: isLay ? stakeNum * (oddsNum - 1) : stakeNum,
+    totalBetAmount: isLay ? stakeNum : stakeNum * multiplier,
+    totalPrice: isLay ? stakeNum * multiplier : stakeNum,
   };
 }
 
@@ -36,6 +38,7 @@ export function createMarketNetOutcomeHelpers({
   pendingBetAmounts,
   cashoutPL,
   cashoutPLKey,
+  isBhav = false,
 }) {
   const matchesGameType = (value) =>
     gameTypes.some((t) => t.toLowerCase() === (value || '').toLowerCase());
@@ -114,7 +117,7 @@ export function createMarketNetOutcomeHelpers({
   };
 
   const getProjectedNetOutcome = (team, bet) => {
-    const pendingLeg = buildMatchOddsStylePendingLeg(bet);
+    const pendingLeg = buildMatchOddsStylePendingLeg(bet, isBhav);
     if (!pendingLeg) return null;
     return computeNetOutcome(
       team,

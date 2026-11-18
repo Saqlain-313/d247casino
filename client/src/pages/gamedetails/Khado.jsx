@@ -4,12 +4,14 @@ import { FaArrowRight } from 'react-icons/fa';
 function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
   // console.log('khadoData from khado', khadoData);
 
-  // Helper function to format max value (handle numbers and strings like "2L")
+  // Format min/max matching reference To component (K/L suffixes)
   const formatMax = (max) => {
     if (typeof max === 'string') return max;
-    if (max >= 100000) return `${(max / 100000).toFixed(0)}L`;
-    if (max >= 1000) return `${(max / 1000).toFixed(0)}k`;
-    return max;
+    const n = Number(max);
+    if (!Number.isFinite(n) || n <= 0) return '0';
+    if (n >= 1e5) return `${parseFloat((n / 1e5).toFixed(2))}L`;
+    if (n >= 1e3) return `${parseFloat((n / 1e3).toFixed(2))}K`;
+    return String(n);
   };
 
   // Transform API data to component format
@@ -19,12 +21,14 @@ function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
     }
 
     return khadoData.map((item, index) => {
-      // Get back odds (Khado only shows Back column)
+      // Get back and lay odds (Khado shows nat - layOdds and Back box per D247 ta)
       const backOdd = item.odds?.find((odd) => odd.otype === 'back');
+      const layOdd = item.odds?.find((odd) => odd.otype === 'lay');
 
       return {
         id: index + 1,
         label: item.team || `Item ${index + 1}`,
+        layOdds: layOdd && layOdd.odds > 0 ? layOdd.odds : null,
         no:
           backOdd && backOdd.odds > 0
             ? {
@@ -32,8 +36,10 @@ function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
                 size: backOdd.size || 0,
               }
             : { rate: null, size: null },
-        min: item.min || 0,
+        min: formatMax(item.min || 0),
         max: formatMax(item.max || 0),
+        minRaw: item.min || 0,
+        maxRaw: item.max || 0,
         sid: item.sid,
         status: item.status, // Status from API
       };
@@ -56,7 +62,7 @@ function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
     };
   };
 
-  const handleOddsClick = (team, rate, sid, min, max, size) => {
+  const handleOddsClick = (team, rate, sid, min, max, size, layOdds) => {
     if (onBetSelect && rate) {
       // For Khado, it's a single item selection - pass the selected item name
       onBetSelect({
@@ -68,6 +74,7 @@ function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
         teams: [team], // Single item - just the selected team/item name
         marketName: team,
         gameType: 'khado',
+        khadoLayOdds: layOdds ?? null,
         maxAmount: max || 0,
         minAmount: min || 0,
         size: size || 0, // Size/price value (the number in parentheses)
@@ -98,7 +105,10 @@ function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
                 className='grid grid-cols-[1fr_60px] border-b border-b-[#c7c8ca] hover:bg-[#f7f7f7] lg:grid-cols-[1fr_60px_60px]'
               >
                 <div className='ml-2 text-[13px] font-[400] text-[#333]'>
-                  <div>{item.label}</div>
+                  <div>
+                    {item.label}
+                    {item.layOdds ? ` - ${item.layOdds}` : ''}
+                  </div>
                   {(() => {
                     const { otype, totalBetAmount, totalPrice, teamName } =
                       getBetDetails(item.label);
@@ -139,9 +149,10 @@ function Khado({ onBetSelect, khadoData, pendingBetAmounts, selectedBet }) {
                           item.label,
                           item.no.rate,
                           item.sid,
-                          item.min,
-                          item.max,
-                          item.no.size
+                          item.minRaw,
+                          item.maxRaw,
+                          item.no.size,
+                          item.layOdds
                         )
                       }
                     >

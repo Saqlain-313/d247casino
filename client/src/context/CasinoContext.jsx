@@ -73,26 +73,30 @@ export function CasinoUiProvider({
 
   const roundMid = casinoData?.mid ? String(casinoData.mid) : '';
 
-  useEffect(() => {
+  const loadNationBook = useCallback(() => {
     if (!gameid || !roundMid) {
       setNationBook({});
-      return;
+      return Promise.resolve();
     }
-    let alive = true;
-    const load = () =>
-      api
-        .get(`/casino/${gameid}/book/${roundMid}`, { withCredentials: true })
-        .then((r) => {
-          if (alive) setNationBook(r.data?.book || {});
-        })
-        .catch(() => {});
-    load();
-    const timer = setInterval(load, 15000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
+    return api
+      .get(`/casino/${gameid}/book/${roundMid}`, { withCredentials: true })
+      .then((r) => {
+        setNationBook(r.data?.book || {});
+      })
+      .catch(() => {});
   }, [gameid, roundMid]);
+
+  useEffect(() => {
+    loadNationBook();
+    if (!gameid || !roundMid) return undefined;
+    const timer = setInterval(loadNationBook, 15000);
+    const onPlaced = () => loadNationBook();
+    window.addEventListener('casino:bet-placed', onPlaced);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('casino:bet-placed', onPlaced);
+    };
+  }, [gameid, roundMid, loadNationBook]);
 
   // =========================================
   // DEBUG LOGS
@@ -140,6 +144,9 @@ export function CasinoUiProvider({
   const hasAnyOpenMarket = marketList.some((item) => {
     const visible = isMarketVisible(item);
     const open = isMarketOpen(item);
+    if (String(gameid).toLowerCase() === 'worli3' && visible && open) {
+      return true;
+    }
     const back = Number(item?.b ?? item?.back ?? item?.odds);
     const lay = Number(item?.l ?? item?.lay);
     return (
@@ -197,7 +204,17 @@ export function CasinoUiProvider({
         });
     });
 
-    return map;
+    return new Proxy(map, {
+      get(target, prop, receiver) {
+        if (Reflect.has(target, prop)) {
+          return Reflect.get(target, prop, receiver);
+        }
+        if (typeof prop === 'string') {
+          return target[normalizeSelection(prop)];
+        }
+        return undefined;
+      },
+    });
   }, [marketList]);
 
   // =========================================
@@ -257,10 +274,10 @@ export function CasinoUiProvider({
 
       // Selection not found
       if (!selectedMarket) {
-        // Matka local markets (jodi/pana/sp/dp/trio): selection logic hamare
+        // Matka local markets (jodi/pana/sp/dp/trio/cycle/motor/charts/abr): selection logic hamare
         // end pe hy — provider sids nahi deta, local payout table use karo.
         const localM = String(nation).match(
-          /^(single|jodi|sp|dp|tp|trio|pana):/
+          /^(single|jodi|sp|dp|tp|trio|pana|cycle|motor|chart56|chart64|abr|commonsp|commondp|colordp):/
         );
         if (['worli', 'worli2', 'worli3'].includes(String(gameid)) && localM) {
           const LOCAL_ODDS = {
@@ -271,11 +288,19 @@ export function CasinoUiProvider({
             dp: 240,
             tp: 700,
             trio: 700,
+            cycle: 9.5,
+            motor: 9.5,
+            chart56: 9.5,
+            chart64: 9.5,
+            abr: 9.5,
+            commonsp: 9.5,
+            commondp: 9.5,
+            colordp: 9.5,
           };
           selectedMarket = {
             sid: String(nation),
             nat: String(nation),
-            b: LOCAL_ODDS[localM[1]],
+            b: LOCAL_ODDS[localM[1]] || 9.5,
             gstatus: 'OPEN',
             min: 10,
             max: 20000,
@@ -322,11 +347,37 @@ export function CasinoUiProvider({
       // Always use the latest odds from the matched provider market.
       // Never trust hardcoded/fallback odds passed by a table component.
       const requestedSide = type === 'lay' ? 'lay' : 'back';
+      const natKeyLower = String(
+        selectedMarket.nat ?? selectedMarket.n ?? selectedMarket.name ?? nation
+      )
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+      const slugLower = String(gameid || '').toLowerCase();
+      const isHalfLoss =
+        (['dt20', 'dt202', 'dt6', 'vdt6'].includes(slugLower) &&
+          ['dragon', 'tiger'].includes(natKeyLower)) ||
+        (['lucky7', 'lucky7eu', 'lucky7eu2', 'lucky5', 'lucky15'].includes(
+          slugLower
+        ) &&
+          ['lowcard', 'low', 'highcard', 'high'].includes(natKeyLower)) ||
+        (['aaa', 'aaa2'].includes(slugLower) &&
+          ['under7', 'over7'].includes(natKeyLower));
+      if (requestedSide === 'lay' && isHalfLoss) {
+        window.alert('Lay not allowed on half-loss markets.');
+        return;
+      }
       const rawOdds =
         requestedSide === 'lay'
           ? (selectedMarket.l ?? selectedMarket.lay)
           : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
-      const numericOdds = Number(rawOdds);
+      const numericOdds =
+        String(gameid).toLowerCase() === 'worli3' &&
+        requestedSide === 'back' &&
+        !(Number(rawOdds) > 1)
+          ? Number(odds) > 1
+            ? Number(odds)
+            : 9.5
+          : Number(rawOdds);
 
       if (!Number.isFinite(numericOdds) || numericOdds <= 1) {
         window.alert(
@@ -436,61 +487,57 @@ export function CasinoUiProvider({
       return;
     }
 
+    const isLocalMatka =
+      ['worli', 'worli2', 'worli3'].includes(String(control.slug)) &&
+      /^(single|jodi|sp|dp|tp|trio|pana|cycle|motor|chart56|chart64|abr|commonsp|commondp|colordp):/.test(
+        String(control.selection)
+      );
+
     // Re-check the selected market immediately before submitting.
     // This prevents a stale slip from placing a bet after the provider closes it.
-    const latestMarket = marketList.find(
-      (item) => String(item?.sid ?? item?.i ?? '') === String(control.selection)
-    );
-    const latestStatus = String(
-      latestMarket?.gstatus ?? latestMarket?.status ?? ''
-    )
-      .trim()
-      .toUpperCase();
-    const latestVisible = isMarketVisible(latestMarket);
-    const latestRawOdds =
-      control.type === 'lay'
-        ? (latestMarket?.l ?? latestMarket?.lay)
-        : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
-    const latestOdds = Number(latestRawOdds);
-
-    if (
-      isSuspended ||
-      !latestMarket ||
-      !latestVisible ||
-      !['OPEN', 'ACTIVE'].includes(latestStatus) ||
-      !Number.isFinite(latestOdds) ||
-      latestOdds <= 1 ||
-      latestOdds !== oddsValue
-    ) {
-      window.alert(
-        'Market changed or is no longer available. Please select it again.'
+    if (!isLocalMatka) {
+      const latestMarket = marketList.find(
+        (item) =>
+          String(item?.sid ?? item?.i ?? '') === String(control.selection)
       );
-      betting.resetBettingState();
-      return;
+      const latestStatus = String(
+        latestMarket?.gstatus ?? latestMarket?.status ?? ''
+      )
+        .trim()
+        .toUpperCase();
+      const latestVisible = isMarketVisible(latestMarket);
+      const latestRawOdds =
+        control.type === 'lay'
+          ? (latestMarket?.l ?? latestMarket?.lay)
+          : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
+      const latestOdds = Number(latestRawOdds);
+
+      if (
+        isSuspended ||
+        !latestMarket ||
+        !latestVisible ||
+        !['OPEN', 'ACTIVE'].includes(latestStatus) ||
+        !Number.isFinite(latestOdds) ||
+        latestOdds <= 1 ||
+        latestOdds !== oddsValue
+      ) {
+        window.alert(
+          'Market changed or is no longer available. Please select it again.'
+        );
+        betting.resetBettingState();
+        return;
+      }
     }
 
     try {
-      console.log('SUBMITTING CASINO BET:', {
-        slug: control.slug,
-        roundId: control.roundId,
-        selection: control.selection,
-        side: control.type,
-        odds: oddsValue,
-        stake,
-      });
-
       await dispatch(
         placeCasinoBet({
           slug: control.slug,
-
           roundId: String(control.roundId),
-
           side: control.type || 'back',
-
           selection: String(control.selection),
-
+          nation: control.nat || String(control.selection),
           odds: oddsValue,
-
           stake,
         })
       ).unwrap();
@@ -498,6 +545,8 @@ export function CasinoUiProvider({
       betting.resetBettingState();
 
       dispatch(getUser());
+      loadNationBook();
+      window.dispatchEvent(new CustomEvent('casino:bet-placed'));
 
       window.alert('Bet placed successfully.');
     } catch (error) {
@@ -509,7 +558,7 @@ export function CasinoUiProvider({
           : error?.message || 'Unable to place bet.'
       );
     }
-  }, [dispatch, betting, marketList, isSuspended]);
+  }, [dispatch, betting, marketList, isSuspended, loadNationBook]);
 
   // =========================================
   // ROULETTE BET
@@ -581,8 +630,14 @@ export function CasinoUiProvider({
 
         liability: isLay ? Math.round(stake * (odds - 1)) : stake,
 
+        min: Number(betting?.betControl?.min ?? 100),
+
+        max: Number(betting?.betControl?.max ?? 100000),
+
         type: isLay ? 'lay' : 'back',
       },
+
+      refreshNationBook: loadNationBook,
 
       closeBetSlip,
 
@@ -608,6 +663,8 @@ export function CasinoUiProvider({
       gameid,
       casinoData?.mid,
       roundData,
+      nationBook,
+      loadNationBook,
       isSuspended,
       openBetSlip,
       betting,

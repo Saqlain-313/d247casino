@@ -228,35 +228,36 @@ function HourseRacingBet() {
             venue={venue}
             time={time}
             onBetSelect={setSelectedBet}
+            pendingBetAmounts={pendingBetAmounts}
           />
         ) : (
           <MatchedBet eventName={gameid} />
         )}
       </main>
-      {hasLiveTv && (
-        <div className='mb-1'>
-          <div
-            className='bg-secondary text-secondary cursor-pointer p-1'
-            onClick={() => setshowlivetv((prev) => !prev)}
-          >
-            <span className='font-bold'>Live Match</span>
-          </div>
-          {showlivetv && (
-            <iframe
-              src={liveTvUrl}
-              title='Horse Racing Live'
-              className='w-full'
-              style={{ height: '50vh' }}
-              allow='autoplay; encrypted-media; picture-in-picture'
-              allowFullScreen
-              loading='lazy'
-            />
-          )}
-        </div>
-      )}
 
       <aside className='sticky top-0 hidden h-fit lg:block'>
         <div className='w-[350px]'>
+          {hasLiveTv && (
+            <div className='mb-1'>
+              <div
+                className='bg-secondary text-secondary cursor-pointer p-1'
+                onClick={() => setshowlivetv((prev) => !prev)}
+              >
+                <span className='font-bold'>Live Match</span>
+              </div>
+              {showlivetv && (
+                <iframe
+                  src={liveTvUrl}
+                  title='Horse Racing Live'
+                  className='w-full'
+                  style={{ height: '50vh' }}
+                  allow='autoplay; encrypted-media; picture-in-picture'
+                  allowFullScreen
+                  loading='lazy'
+                />
+              )}
+            </div>
+          )}
           <div className='mb-1'>
             <div className='bg-secondary text-secondary flex items-center gap-2 p-1 font-bold'>
               <FaTv aria-hidden='true' />

@@ -115,7 +115,7 @@ function CricketBet({ variant = 'sportsbook' }) {
   ];
 
   const matchTitle = match || 'Team 1 v Team 2';
-  const teams = matchTitle.split(' v ');
+  const teams = matchTitle.split(/\s+(?:v|vs|-)\s+/i);
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
 
@@ -138,9 +138,12 @@ function CricketBet({ variant = 'sportsbook' }) {
   }, []);
 
   const [marketFetchFailed, setMarketFetchFailed] = useState(false);
+  const [bettingLoaded, setBettingLoaded] = useState(false);
 
   useEffect(() => {
     if (eventName) {
+      setMarketFetchFailed(false);
+      setBettingLoaded(false);
       setLoader(true);
       dispatch(fetchCricketBatingData(eventName))
         .then((res) => {
@@ -149,15 +152,23 @@ function CricketBet({ variant = 'sportsbook' }) {
           }
         })
         .finally(() => {
+          setBettingLoaded(true);
           setLoader(false);
         });
     }
   }, [dispatch, eventName]);
 
-  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya refreshed
-  // list me event nahi bacha → home pe redirect + "no market" message box.
+  const hasLiveMarkets =
+    (Array.isArray(bettingData) && bettingData.length > 0) ||
+    (Array.isArray(battingData) && battingData.length > 0);
+
+  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya live market
+  // empty + list me match nahi → home pe redirect + "no market" message box.
   useEffect(() => {
-    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+    if (
+      marketFetchFailed ||
+      (bettingLoaded && !hasLiveMarkets && listLoaded && !storeMatch)
+    ) {
       navigate('/', {
         replace: true,
         state: {
@@ -165,7 +176,14 @@ function CricketBet({ variant = 'sportsbook' }) {
         },
       });
     }
-  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
+  }, [
+    marketFetchFailed,
+    bettingLoaded,
+    hasLiveMarkets,
+    listLoaded,
+    storeMatch,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (!eventName) return;
@@ -510,59 +528,110 @@ function CricketBet({ variant = 'sportsbook' }) {
               />
             )}
 
-            {/** Normal */}
-            {NormalData.length > 0 && (
-              <Normal
-                onBetSelect={handleBetSelect}
-                NormalData={NormalData}
-                pendingBetAmounts={pendingBetAmounts}
-                selectedBet={selectedBet}
-              />
+            {(NormalData.length > 0 ||
+              fancy1Data.length > 0 ||
+              khadoData.length > 0 ||
+              oddEvenData.length > 0 ||
+              otherMarkets.length > 0) && (
+              <div className='bg-secondary text-secondary mt-1 flex flex-wrap gap-1 p-1 text-xs font-bold'>
+                {subTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type='button'
+                    onClick={() => setActiveSubTab(tab.id)}
+                    className={`cursor-pointer rounded px-2.5 py-1 transition-colors ${
+                      activeSubTab === tab.id
+                        ? 'bg-white text-[#2c3e50]'
+                        : 'text-white/85 hover:bg-white/15'
+                    }`}
+                  >
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
             )}
+
+            {/** Normal */}
+            {NormalData.length > 0 &&
+              (activeSubTab === 'Normal' || activeSubTab === 'Fancy') && (
+                <Normal
+                  onBetSelect={handleBetSelect}
+                  NormalData={NormalData}
+                  pendingBetAmounts={pendingBetAmounts}
+                  selectedBet={selectedBet}
+                />
+              )}
 
             {/** Fancy1  */}
-            {fancy1Data.length > 0 && (
-              <Fancy1
-                onBetSelect={handleBetSelect}
-                fancy1Data={fancy1Data}
-                pendingBetAmounts={pendingBetAmounts}
-                selectedBet={selectedBet}
-              />
-            )}
+            {fancy1Data.length > 0 &&
+              (activeSubTab === 'Normal' || activeSubTab === 'Fancy') && (
+                <Fancy1
+                  onBetSelect={handleBetSelect}
+                  fancy1Data={fancy1Data}
+                  pendingBetAmounts={pendingBetAmounts}
+                  selectedBet={selectedBet}
+                />
+              )}
 
             {/** Khado */}
-            {khadoData.length > 0 && (
-              <Khado
-                onBetSelect={handleBetSelect}
-                khadoData={khadoData}
-                pendingBetAmounts={pendingBetAmounts}
-                selectedBet={selectedBet}
-              />
-            )}
+            {khadoData.length > 0 &&
+              (activeSubTab === 'Normal' || activeSubTab === 'khado') && (
+                <Khado
+                  onBetSelect={handleBetSelect}
+                  khadoData={khadoData}
+                  pendingBetAmounts={pendingBetAmounts}
+                  selectedBet={selectedBet}
+                />
+              )}
 
             {/** OddEven */}
-            {oddEvenData.length > 0 && (
-              <OddEven
-                onBetSelect={handleBetSelect}
-                oddEvenData={oddEvenData}
-                pendingBetAmounts={pendingBetAmounts}
-                selectedBet={selectedBet}
-              />
-            )}
+            {oddEvenData.length > 0 &&
+              (activeSubTab === 'Normal' || activeSubTab === 'Fancy') && (
+                <OddEven
+                  onBetSelect={handleBetSelect}
+                  oddEvenData={oddEvenData}
+                  pendingBetAmounts={pendingBetAmounts}
+                  selectedBet={selectedBet}
+                />
+              )}
 
             {otherMarkets.length > 0 && (
               <div className='mt-1 flex flex-wrap gap-1'>
-                {otherMarkets.map((market) => (
-                  <div
-                    key={`${market.gmid || eventName}-${market.mid || market.mname}`}
-                    className={marketWidthClass(market)}
-                  >
-                    <CricketMarket
-                      market={market}
-                      onBetSelect={handleBetSelect}
-                    />
-                  </div>
-                ))}
+                {otherMarkets
+                  .filter((market) => {
+                    if (activeSubTab === 'Normal') return true;
+                    const gtype = String(market?.gtype || '').toLowerCase();
+                    const mname = String(market?.mname || '').toLowerCase();
+                    if (activeSubTab === 'Fancy')
+                      return ['fancy', 'fancy1', 'oddeven'].includes(gtype);
+                    if (activeSubTab === 'line')
+                      return (
+                        gtype === 'fancy2' ||
+                        mname.includes('line') ||
+                        mname.includes('over by over')
+                      );
+                    if (activeSubTab === 'ball')
+                      return (
+                        gtype === 'cricketcasino' || mname.includes('ball')
+                      );
+                    if (activeSubTab === 'meter')
+                      return gtype === 'meter' || mname.includes('meter');
+                    if (activeSubTab === 'khado')
+                      return gtype === 'khado' || mname.includes('khado');
+                    return true;
+                  })
+                  .map((market) => (
+                    <div
+                      key={`${market.gmid || eventName}-${market.mid || market.mname}`}
+                      className={marketWidthClass(market)}
+                    >
+                      <CricketMarket
+                        market={market}
+                        onBetSelect={handleBetSelect}
+                        pendingBetAmounts={pendingBetAmounts}
+                      />
+                    </div>
+                  ))}
               </div>
             )}
           </div>

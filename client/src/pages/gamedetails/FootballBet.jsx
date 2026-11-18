@@ -51,9 +51,9 @@ function FootballBet() {
   const hasLiveTv = Boolean(storeMatch?.tv && liveTvUrl);
   const scorecardUrl = getFootballScorecardUrl(streamGmid);
 
-  // Extract team names from match title
+  // Extract team names from match title (handles "A v B", "A vs B", "A - B")
   const matchTitle = match;
-  const teams = matchTitle.split(' v ');
+  const teams = matchTitle.split(/\s+(?:v|vs|-)\s+/i);
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
   console.log(showodds);
@@ -110,15 +110,25 @@ function FootballBet() {
         console.log('Socket closed');
       };
     } else {
-      // Already connected, just send subscription
-      sharedSocketRef.current.send(
-        JSON.stringify({
-          type: 'subscribe',
-          gameid,
-          apitype: 'soccer',
-          userId: userInfo?._id,
-        })
-      );
+      const subscribePayload = JSON.stringify({
+        type: 'subscribe',
+        gameid,
+        apitype: 'soccer',
+        userId: userInfo?._id,
+      });
+      if (sharedSocket.readyState === WebSocket.OPEN) {
+        sharedSocket.send(subscribePayload);
+      } else if (sharedSocket.readyState === WebSocket.CONNECTING) {
+        sharedSocket.addEventListener(
+          'open',
+          () => {
+            if (sharedSocket.readyState === WebSocket.OPEN) {
+              sharedSocket.send(subscribePayload);
+            }
+          },
+          { once: true }
+        );
+      }
     }
     return () => {
       // Optionally leave socket open for reuse
@@ -126,22 +136,35 @@ function FootballBet() {
   }, [gameid, userInfo?._id]);
 
   const [marketFetchFailed, setMarketFetchFailed] = useState(false);
+  const [bettingLoaded, setBettingLoaded] = useState(false);
 
   useEffect(() => {
     if (gameid) {
+      setMarketFetchFailed(false);
+      setBettingLoaded(false);
       dispatch(fetchSoccerBatingData(gameid)) // initial
         .then((res) => {
           if (fetchSoccerBatingData.rejected.match(res)) {
             setMarketFetchFailed(true);
           }
+        })
+        .finally(() => {
+          setBettingLoaded(true);
         });
     }
   }, [gameid, dispatch]);
 
-  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya refreshed
-  // list me event nahi bacha → home pe redirect + "no market" message box.
+  const hasLiveMarkets =
+    (Array.isArray(bettingData) && bettingData.length > 0) ||
+    (Array.isArray(battingData) && battingData.length > 0);
+
+  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya live market
+  // empty + list me match nahi → home pe redirect + "no market" message box.
   useEffect(() => {
-    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+    if (
+      marketFetchFailed ||
+      (bettingLoaded && !hasLiveMarkets && listLoaded && !storeMatch)
+    ) {
       navigate('/', {
         replace: true,
         state: {
@@ -149,7 +172,14 @@ function FootballBet() {
         },
       });
     }
-  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
+  }, [
+    marketFetchFailed,
+    bettingLoaded,
+    hasLiveMarkets,
+    listLoaded,
+    storeMatch,
+    navigate,
+  ]);
 
   useEffect(() => {
     setBettingData(battingData);
@@ -352,6 +382,7 @@ function FootballBet() {
                     <CricketMarket
                       market={market}
                       onBetSelect={handleBetSelect}
+                      pendingBetAmounts={pendingBetAmounts}
                     />
                   </div>
                 ))}

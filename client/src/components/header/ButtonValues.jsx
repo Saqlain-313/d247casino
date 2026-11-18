@@ -51,11 +51,13 @@ function buildButtons(defaults, savedValues) {
   return result;
 }
 
-function ButtonValues({ onClose }) {
+function ButtonValues({ onClose, initialTab = 'game' }) {
   const dispatch = useDispatch();
   const { userInfo, loading } = useSelector((state) => state.auth);
 
-  const [selectedTab, setSelectedTab] = useState('game');
+  const [selectedTab, setSelectedTab] = useState(
+    initialTab === 'casino' ? 'casino' : 'game'
+  );
   const [gameButtons, setGameButtons] = useState(
     GAME_DEFAULTS.map((d) => ({ ...d }))
   );
@@ -118,7 +120,7 @@ function ButtonValues({ onClose }) {
   };
 
   return (
-    <div className='fixed inset-0 z-60 flex items-start justify-center overflow-auto bg-[rgba(17,17,17,0.49)] pt-10'>
+    <div className='fixed inset-0 z-[99999] flex items-start justify-center overflow-auto bg-[rgba(17,17,17,0.49)] pt-10'>
       <div className="w-[95%] max-w-4xl rounded-lg bg-white font-['Times_New_Roman'] shadow-lg md:w-[45%]">
         <div className='bg-primary flex items-center justify-between p-2'>
           <h2 className='text-secondary text-lg font-semibold'>

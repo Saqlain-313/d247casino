@@ -5,10 +5,9 @@ import { getResultBgColor, getResultLabel } from '../constants';
 const isGoalGame = (gameId) =>
   ['goal2', 'goal', 'soccer'].includes(String(gameId || '').toLowerCase());
 
-// Matka strip reference me bazaar-name chips hota hy (result result-b),
-// nodate result legend rows se (Diamond/World/Taj...)
-const isMatkaGame = (gameId) =>
-  ['worli', 'worli2', 'worli3'].includes(String(gameId || '').toLowerCase());
+// Matka strip reference me bazaar-name chips ONLY worli3 me hota hy,
+// worli & worli2 me round 'R' bubble hota hy
+const isMatkaGame = (gameId) => String(gameId || '').toLowerCase() === 'worli3';
 
 const getInitial = (name) => {
   const value = String(name || '').trim();

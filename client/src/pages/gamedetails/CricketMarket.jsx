@@ -4,6 +4,7 @@ import {
   isMarketSuspended,
   isRunnerSuspended as runnerSuspendedByGscode,
 } from '../../utils/suspension';
+import { computeNetOutcome } from './utils/marketNetOutcome';
 
 const formatValue = (value) => {
   if (
@@ -39,10 +40,40 @@ const depthLevel = (odd, slot, depth, isBack) => {
   return isBack ? depth - 1 - slot : slot;
 };
 
-function CricketMarket({ market, onBetSelect }) {
+function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
   const runners = Array.isArray(market.section) ? market.section : [];
   const marketName = market.mname || 'Match Odds';
   const marketMax = market.max || market.maxb || 0;
+  const rawGtype = String(market.gtype || '').toLowerCase();
+  const resolvedGameType =
+    rawGtype === 'match1'
+      ? /tied\s*match/i.test(marketName)
+        ? 'Tied Match'
+        : 'Bookmaker'
+      : rawGtype === 'fancy1'
+        ? 'fancy1'
+        : rawGtype === 'oddeven'
+          ? 'oddeven'
+          : rawGtype === 'meter'
+            ? 'meter'
+            : rawGtype === 'khado'
+              ? 'khado'
+              : rawGtype === 'fancy'
+                ? 'Normal'
+                : 'Match Odds';
+  const marketBets = Array.isArray(pendingBetAmounts)
+    ? pendingBetAmounts.filter(
+        (b) =>
+          b.gameType === resolvedGameType &&
+          String(b.marketName || '')
+            .trim()
+            .toLowerCase() === marketName.trim().toLowerCase()
+      )
+    : [];
+  const runnerNetPL = (runnerName) => {
+    if (!marketBets.length) return null;
+    return computeNetOutcome(runnerName, marketBets, 0);
+  };
   // Reference: suspension is gscode-only (status string is just overlay text).
   const marketUnavailable = isMarketSuspended(market);
   const isRunnerSuspended = (runner) => runnerSuspendedByGscode(market, runner);
@@ -90,7 +121,14 @@ function CricketMarket({ market, onBetSelect }) {
   const gridTemplate = `minmax(0,1fr) repeat(${depth}, minmax(0,56px)) repeat(${depth}, minmax(0,56px))`;
 
   const selectOdds = (runner, odd) => {
-    if (!odd || Number(odd.odds) <= 0 || marketUnavailable) return;
+    if (
+      !odd ||
+      Number(odd.odds) <= 0 ||
+      marketUnavailable ||
+      isRunnerSuspended(runner)
+    ) {
+      return;
+    }
 
     onBetSelect({
       team: runner.nat || runner.tname || `Selection ${runner.sid}`,
@@ -104,7 +142,8 @@ function CricketMarket({ market, onBetSelect }) {
       oname: odd.oname || '',
       tno: odd.tno,
       marketName,
-      gameType: 'Match Odds',
+      gameType: resolvedGameType,
+      gType: rawGtype || 'match',
       maxAmount: marketMax,
       minAmount: market.min || 0,
     });
@@ -245,8 +284,21 @@ function CricketMarket({ market, onBetSelect }) {
               key={runner.sid || `${runnerName}-${index}`}
               className='grid grid-cols-[minmax(0,1fr)_80px] border-b border-gray-300'
             >
-              <div className='flex min-w-0 items-center px-2 py-2 text-xs font-semibold break-words text-[#333] sm:text-sm'>
-                {runnerName}
+              <div className='flex min-w-0 flex-col justify-center px-2 py-2 text-xs font-semibold break-words text-[#333] sm:text-sm'>
+                <span>{runnerName}</span>
+                {runnerNetPL(runnerName) !== null && (
+                  <span
+                    className={`text-[11px] font-bold ${
+                      runnerNetPL(runnerName) >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {runnerNetPL(runnerName) >= 0
+                      ? `+${runnerNetPL(runnerName)}`
+                      : runnerNetPL(runnerName)}
+                  </span>
+                )}
               </div>
               <div className='relative'>
                 <button
@@ -312,15 +364,23 @@ function CricketMarket({ market, onBetSelect }) {
     const selectSession = (runner, odd) => {
       if (!odd || Number(odd.odds) <= 0 || marketUnavailable) return;
       const name = runner.nat || runner.tname || `Selection ${runner.sid}`;
+      const sessionGameType =
+        resolvedGameType === 'fancy1'
+          ? 'fancy1'
+          : resolvedGameType === 'meter'
+            ? 'meter'
+            : 'Normal';
       onBetSelect({
         team: name,
-        teams: [name],
+        teams: sessionGameType === 'fancy1' ? [name] : [name],
         odds: String(odd.odds),
         size: odd.size,
         sid: runner.sid,
         type: odd.otype,
-        marketName: name,
-        gameType: 'Normal',
+        oname: odd.oname || '',
+        marketName: sessionGameType === 'fancy1' ? name : name,
+        gameType: sessionGameType,
+        gType: rawGtype || 'fancy',
         maxAmount: runner.max || 0,
         minAmount: runner.min || 0,
       });
@@ -394,8 +454,21 @@ function CricketMarket({ market, onBetSelect }) {
               key={runner.sid || `${runnerName}-${index}`}
               className={sessionGrid}
             >
-              <div className='flex min-w-0 items-center px-2 py-2 text-xs font-semibold break-words text-[#333] sm:text-sm'>
-                {runnerName}
+              <div className='flex min-w-0 flex-col justify-center px-2 py-2 text-xs font-semibold break-words text-[#333] sm:text-sm'>
+                <span>{runnerName}</span>
+                {runnerNetPL(runnerName) !== null && (
+                  <span
+                    className={`text-[11px] font-bold ${
+                      runnerNetPL(runnerName) >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}
+                  >
+                    {runnerNetPL(runnerName) >= 0
+                      ? `+${runnerNetPL(runnerName)}`
+                      : runnerNetPL(runnerName)}
+                  </span>
+                )}
               </div>
               {sessionBox(runner, leftOdd, leftColor)}
               {sessionBox(runner, rightOdd, rightColor)}
@@ -480,8 +553,21 @@ function CricketMarket({ market, onBetSelect }) {
             className='grid border-b border-gray-300'
             style={{ gridTemplateColumns: gridTemplate }}
           >
-            <div className='flex min-w-0 items-center px-2 py-2 text-xs font-semibold text-[#333] sm:text-sm'>
+            <div className='flex min-w-0 flex-col justify-center px-2 py-2 text-xs font-semibold text-[#333] sm:text-sm'>
               <span className='break-words'>{runnerName}</span>
+              {runnerNetPL(runnerName) !== null && (
+                <span
+                  className={`text-[11px] font-bold ${
+                    runnerNetPL(runnerName) >= 0
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  {runnerNetPL(runnerName) >= 0
+                    ? `+${runnerNetPL(runnerName)}`
+                    : runnerNetPL(runnerName)}
+                </span>
+              )}
             </div>
             {suspended ? (
               // Reference style: dimmed odds with a red SUSPENDED overlay

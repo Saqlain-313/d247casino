@@ -295,9 +295,9 @@ function TennisBet() {
   const liveTvUrl = getLiveTvUrl(3, streamGmid);
   const hasLiveTv = Boolean(storeMatch?.tv && liveTvUrl);
   const scorecardUrl = getTennisScorecardUrl(streamGmid);
-  // Extract team names from match title
+  // Extract team names from match title (handles "A v B", "A vs B", "A - B")
   const matchTitle = match;
-  const teams = matchTitle.split(' v ');
+  const teams = matchTitle.split(/\s+(?:v|vs|-)\s+/i);
   const team1 = teams[0] || 'Team 1';
   const team2 = teams[1] || 'Team 2';
   console.log(showodds);
@@ -364,15 +364,25 @@ function TennisBet() {
         console.log('Socket closed');
       };
     } else {
-      // Already connected, just send subscription
-      sharedSocketRef.current.send(
-        JSON.stringify({
-          type: 'subscribe',
-          gameid,
-          apitype: 'tennis',
-          userId: userInfo?._id,
-        })
-      );
+      const subscribePayload = JSON.stringify({
+        type: 'subscribe',
+        gameid,
+        apitype: 'tennis',
+        userId: userInfo?._id,
+      });
+      if (sharedSocket.readyState === WebSocket.OPEN) {
+        sharedSocket.send(subscribePayload);
+      } else if (sharedSocket.readyState === WebSocket.CONNECTING) {
+        sharedSocket.addEventListener(
+          'open',
+          () => {
+            if (sharedSocket.readyState === WebSocket.OPEN) {
+              sharedSocket.send(subscribePayload);
+            }
+          },
+          { once: true }
+        );
+      }
     }
 
     return () => {
@@ -382,13 +392,20 @@ function TennisBet() {
 
   const [marketFetchFailed, setMarketFetchFailed] = useState(false);
 
+  const [bettingLoaded, setBettingLoaded] = useState(false);
+
   useEffect(() => {
     if (gameid) {
+      setMarketFetchFailed(false);
+      setBettingLoaded(false);
       dispatch(fetchTannisBatingData(gameid)) // initial
         .then((res) => {
           if (fetchTannisBatingData.rejected.match(res)) {
             setMarketFetchFailed(true);
           }
+        })
+        .finally(() => {
+          setBettingLoaded(true);
         });
     }
   }, [gameid, dispatch]);
@@ -401,10 +418,17 @@ function TennisBet() {
     dispatch(getPendingBet(gameid));
   }, [dispatch, gameid]);
 
-  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya refreshed
-  // list me event nahi bacha → home pe redirect + "no market" message box.
+  const hasLiveMarkets =
+    (Array.isArray(bettingData) && bettingData.length > 0) ||
+    (Array.isArray(battingData) && battingData.length > 0);
+
+  // Dead event: odds fetch fail (event provider pe hai hi nahi) ya live market
+  // empty + list me match nahi → home pe redirect + "no market" message box.
   useEffect(() => {
-    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+    if (
+      marketFetchFailed ||
+      (bettingLoaded && !hasLiveMarkets && listLoaded && !storeMatch)
+    ) {
       navigate('/', {
         replace: true,
         state: {
@@ -412,7 +436,14 @@ function TennisBet() {
         },
       });
     }
-  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
+  }, [
+    marketFetchFailed,
+    bettingLoaded,
+    hasLiveMarkets,
+    listLoaded,
+    storeMatch,
+    navigate,
+  ]);
 
   useEffect(() => {
     if (successMessage) {
@@ -557,6 +588,7 @@ function TennisBet() {
                     <CricketMarket
                       market={market}
                       onBetSelect={handleBetSelect}
+                      pendingBetAmounts={pendingBetAmounts}
                     />
                   </div>
                 ))}
@@ -569,7 +601,7 @@ function TennisBet() {
         )}
         {!showodds && (
           <div className='block lg:hidden'>
-            <MatchedBet eventName={match} fetchBets={false} />
+            <MatchedBet eventName={gameid} />
           </div>
         )}
       </div>
@@ -624,7 +656,7 @@ function TennisBet() {
           <div className='bg-secondary text-secondary p-1'>
             <span className='font-bold'>My Bet</span>
           </div>
-          <MatchedBet eventName={match} fetchBets={false} />
+          <MatchedBet eventName={gameid} />
         </div>
       </div>
 

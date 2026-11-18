@@ -29,18 +29,18 @@ export default function OddsBox({
     openBetSlip(nation, odds, type, isMobile);
   };
 
+  const dead = isSuspended || !(Number(odds) > 1);
+
   return (
     <div
-      className={`casino-odds-box ${type} ${isSuspended ? 'suspended-box' : ''} ${
+      className={`casino-odds-box ${type} ${dead ? 'suspended-box' : ''} ${
         isSelected ? 'odds-selected' : ''
       } ${className}`}
-      onClick={isSuspended ? undefined : handleClick}
-      style={{ cursor: isSuspended ? 'not-allowed' : 'pointer' }}
+      onClick={dead ? undefined : handleClick}
+      style={{ cursor: dead ? 'not-allowed' : 'pointer' }}
     >
-      <span className='casino-odds'>{isSuspended ? '-' : odds}</span>
-      {volume && !isSuspended && (
-        <span className='casino-volume'>{volume}</span>
-      )}
+      <span className='casino-odds'>{dead ? '0' : odds}</span>
+      {volume && !dead && <span className='casino-volume'>{volume}</span>}
     </div>
   );
 }

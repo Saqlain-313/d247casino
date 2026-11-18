@@ -22,6 +22,8 @@ export const TWO_PLAYER_GAMES = [
   'teen41',
   'teen42',
   'teen',
+  'pteen',
+  'pteen20',
   'teen6',
   'poker',
   'patti2',
@@ -235,54 +237,111 @@ export const TEEN20_SIDE_BETS = [
   },
 ];
 
+const R_BADGE_GAMES = new Set([
+  '3cardj',
+  'ab20',
+  'ab3',
+  'ab4',
+  'ballbyball',
+  'dolidana',
+  'goal',
+  'joker1',
+  'joker120',
+  'notenum',
+  'teen8',
+  'teenunique',
+  'trio',
+  'vtrio',
+  'worli',
+  'worli2',
+]);
+
+const ROULETTE_GAMES = new Set([
+  'ourroullete',
+  'roulette11',
+  'roulette12',
+  'roulette13',
+]);
+
+const ROULETTE_RED_NUMS = new Set([
+  1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
+]);
+
 // Winner labels for different game types
 export const getWinnerMap = (gameid) => {
-  if (gameid === 'baccarat' || gameid === 'baccarat2') {
-    return {
-      1: 'Player',
-      2: 'Banker',
-      3: 'Tie',
-    };
-  } else if (
-    gameid === 'dt6' ||
-    gameid === 'vdt6' ||
-    gameid === 'dt202' ||
-    gameid === 'dt20'
-  ) {
-    return {
-      1: 'Dragon',
-      2: 'Tiger',
-      3: 'Tie',
-    };
-  } else if (gameid === 'vaaa') {
-    return {
-      1: 'Amar',
-      2: 'Akbar',
-      3: 'Anthony',
-    };
-  } else if (gameid === 'vdtl20') {
-    return {
-      1: 'Dragon',
-      2: 'Tiger',
-      3: 'Lion',
-    };
-  } else if (gameid === 'card32' || gameid === 'card32eu') {
+  const g = String(gameid || '').toLowerCase();
+  if (['baccarat', 'baccarat2', 'pbaccarat'].includes(g)) {
+    return { 1: 'Player', 2: 'Banker', 3: 'Tie' };
+  }
+  if (['dt6', 'vdt6', 'dt202', 'dt20', 'pdt6', 'pdt20'].includes(g)) {
+    return { 1: 'Dragon', 2: 'Tiger', 3: 'Tie' };
+  }
+  if (['vaaa', 'aaa', 'aaa2'].includes(g)) {
+    return { 1: 'Amar', 2: 'Akbar', 3: 'Anthony' };
+  }
+  if (g === 'vdtl20') {
+    return { 1: 'Dragon', 2: 'Tiger', 3: 'Lion' };
+  }
+  if (['card32', 'card32eu', 'pcard32'].includes(g)) {
     return {
       1: 'Player 8',
       2: 'Player 9',
       3: 'Player 10',
       4: 'Player 11',
     };
-  } else if (
-    gameid === 'lucky7' ||
-    gameid === 'lucky7eu' ||
-    gameid === 'lucky7eu2' ||
-    gameid === 'vlucky7'
+  }
+  if (
+    [
+      'lucky7',
+      'lucky7eu',
+      'lucky7eu2',
+      'vlucky7',
+      'plucky7',
+      'lucky5',
+    ].includes(g)
   ) {
+    return { 1: 'Low Card', 2: 'High Card', 3: 'Tie' };
+  }
+  if (g === 'dum10') {
+    return { 1: 'Yes', 2: 'No' };
+  }
+  if (g === 'mogambo') {
+    return { 1: 'Mogambo', 2: 'Daga / Teja' };
+  }
+  if (g === 'race17') {
+    return { 0: 'No', 1: 'Yes' };
+  }
+  if (g === 'teen1') {
+    return { 1: 'Player', 2: 'Dealer' };
+  }
+  if (g === 'teen120') {
+    return { 1: 'Player', 2: 'Dealer', 3: 'Tie' };
+  }
+  if (g === 'superover2') {
+    return { 1: 'Team 1', 2: 'Team 2' };
+  }
+  if (g === 'queen') {
+    return { 1: 'Total 0', 2: 'Total 1', 3: 'Total 2', 4: 'Total 3' };
+  }
+  if (g === 'poker6') {
     return {
-      1: 'Low Card',
-      2: 'High Card',
-      3: 'Tie',
+      0: 'Tie Game',
+      11: 'Player 1',
+      12: 'Player 2',
+      13: 'Player 3',
+      14: 'Player 4',
+      15: 'Player 5',
+      16: 'Player 6',
+    };
+  }
+  if (g === 'lucky15') {
+    return {
+      1: '0 Run',
+      2: '1 Run',
+      3: '2 Run',
+      4: '4 Run',
+      5: '6 Run',
+      6: 'Wicket',
     };
   }
   return {
@@ -293,163 +352,130 @@ export const getWinnerMap = (gameid) => {
 
 // Result display labels
 export const getResultLabel = (gameid, win) => {
-  const isBaccarat = gameid === 'baccarat' || gameid === 'baccarat2';
-  const isDt6 =
-    gameid === 'dt6' ||
-    gameid === 'vdt6' ||
-    gameid === 'dt202' ||
-    gameid === 'dt20';
-  const isCard32 = gameid === 'card32' || gameid === 'card32eu';
-  const isLuck7 =
-    gameid === 'lucky7' ||
-    gameid === 'lucky7eu' ||
-    gameid === 'lucky7eu2' ||
-    gameid === 'vlucky7';
+  const g = String(gameid || '').toLowerCase();
+  const w = String(win ?? '').trim();
 
-  if (gameid === 'vaaa') {
-    switch (win) {
-      case '1':
-        return 'A';
-      case '2':
-        return 'B';
-      case '3':
-        return 'C';
-      default:
-        return 'C';
-    }
-  } else if (gameid === 'vdtl20') {
-    switch (win) {
-      case '1':
-        return 'D';
-      case '2':
-        return 'T';
-      case '3':
-        return 'L';
-      default:
-        return 'L';
-    }
-  } else if (isBaccarat) {
-    switch (win) {
-      case '1':
-        return 'P';
-      case '2':
-        return 'B';
-      case '3':
-        return 'T';
-      default:
-        return 'T';
-    }
-  } else if (isDt6) {
-    switch (win) {
-      case '1':
-        return 'D';
-      default:
-        return 'T';
-    }
-  } else if (isCard32) {
-    switch (win) {
-      case '1':
-        return '8';
-      case '2':
-        return '9';
-      case '3':
-        return '10';
-      default:
-        return '11';
-    }
-  } else if (isLuck7) {
-    switch (win) {
-      case '1':
-        return 'L';
-      case '2':
-        return 'H';
-      default:
-        return 'T';
-    }
-  } else {
-    switch (win) {
-      case '1':
-        return 'A';
-      case '2':
-        return 'B';
-      default:
-        return 'T';
-    }
+  if (R_BADGE_GAMES.has(g)) return 'R';
+  if (ROULETTE_GAMES.has(g)) return w || '-';
+  if (g === 'sicbo' || g === 'sicbo2') return w || '-';
+
+  if (['vaaa', 'aaa', 'aaa2'].includes(g)) {
+    return w === '1' ? 'A' : w === '2' ? 'B' : 'C';
   }
+  if (g === 'vdtl20') {
+    return w === '1' ? 'D' : w === '2' ? 'T' : 'L';
+  }
+  if (['baccarat', 'baccarat2', 'pbaccarat'].includes(g)) {
+    return w === '1' ? 'P' : w === '2' ? 'B' : 'T';
+  }
+  if (['dt6', 'vdt6', 'dt202', 'dt20', 'pdt6', 'pdt20'].includes(g)) {
+    return w === '1' ? 'D' : w === '3' ? 'Tie' : 'T';
+  }
+  if (['card32', 'card32eu', 'pcard32'].includes(g)) {
+    return { 1: '8', 2: '9', 3: '10', 4: '11' }[w] || '11';
+  }
+  if (
+    [
+      'lucky7',
+      'lucky7eu',
+      'lucky7eu2',
+      'vlucky7',
+      'plucky7',
+      'lucky5',
+    ].includes(g)
+  ) {
+    return w === '1' ? 'L' : w === '2' ? 'H' : 'T';
+  }
+  if (g === 'dum10') {
+    return w === '1' ? 'Y' : 'N';
+  }
+  if (g === 'mogambo') {
+    return w === '1' ? 'W' : 'L';
+  }
+  if (g === 'race17') {
+    return w === '1' ? 'Y' : 'N';
+  }
+  if (g === 'superover2') {
+    return w === '1' ? 'E' : 'I';
+  }
+  if (g === 'teen1') {
+    return w === '1' ? 'P' : 'D';
+  }
+  if (g === 'teen120') {
+    return w === '1' ? 'P' : w === '2' ? 'D' : 'T';
+  }
+  if (g === 'queen') {
+    return { 1: '0', 2: '1', 3: '2', 4: '3' }[w] || '0';
+  }
+  if (g === 'poker6') {
+    const num = Number(w);
+    if (num >= 11 && num <= 16) return String(num - 10);
+    return w === '0' ? 'T' : w || '-';
+  }
+  if (g === 'lucky15') {
+    return { 1: '0', 2: '1', 3: '2', 4: '4', 5: '6', 6: 'W' }[w] || 'W';
+  }
+
+  return w === '1' ? 'A' : w === '2' ? 'B' : 'T';
 };
 
 // Result background colors
 export const getResultBgColor = (gameid, win) => {
-  const isBaccarat = gameid === 'baccarat' || gameid === 'baccarat2';
-  const isDt6 =
-    gameid === 'dt6' ||
-    gameid === 'vdt6' ||
-    gameid === 'dt202' ||
-    gameid === 'dt20';
-  const isCard32 = gameid === 'card32' || gameid === 'card32eu';
-  const isLuck7 =
-    gameid === 'lucky7' ||
-    gameid === 'lucky7eu' ||
-    gameid === 'lucky7eu2' ||
-    gameid === 'vlucky7';
+  const g = String(gameid || '').toLowerCase();
+  const w = String(win ?? '').trim();
 
-  if (gameid === 'vaaa' || gameid === 'vdtl20') {
-    switch (win) {
-      case '1':
-        return 'bg-[#ff4500] text-white';
-      case '2':
-        return 'bg-[#e2ee26] text-black';
-      case '3':
-        return 'bg-[#33c6ff] text-black';
-      default:
-        return 'bg-gray-400';
-    }
-  } else if (isBaccarat) {
-    switch (win) {
-      case '1':
-        return 'bg-[#428bca] text-white';
-      case '2':
-        return 'bg-[#d9534f] text-white';
-      case '3':
-        return 'bg-[#5cb85c] text-white';
-      default:
-        return 'bg-gray-400';
-    }
-  } else if (isDt6) {
-    switch (win) {
-      case '1':
-        return 'bg-[#72bbef]';
-      case '2':
-        return 'bg-[#f9a9ba]';
-      case '3':
-        return 'bg-[#ffff33]';
-      default:
-        return 'bg-gray-400';
-    }
-  } else if (isCard32) {
-    switch (win) {
-      default:
-        return 'bg-[#ffff33]';
-    }
-  } else if (isLuck7) {
-    switch (win) {
-      case '1':
-        return 'bg-[#f9a9ba]';
-      case '2':
-        return 'bg-[#72bbef]';
-      default:
-        return 'bg-[#ffff33]';
-    }
-  } else {
-    switch (win) {
-      case '1':
-        return 'bg-[#72bbef]';
-      case '2':
-        return 'bg-[#f9a9ba]';
-      default:
-        return 'bg-gray-400';
-    }
+  if (R_BADGE_GAMES.has(g)) {
+    return 'bg-[#355e3b] text-[#f5cc03]';
   }
+  if (ROULETTE_GAMES.has(g)) {
+    if (w === '0' || w === '00') return 'bg-[#229632] text-white';
+    return ROULETTE_RED_NUMS.has(Number(w))
+      ? 'bg-[#d9534f] text-white'
+      : 'bg-[#222222] text-white';
+  }
+  if (g === 'sicbo' || g === 'sicbo2') {
+    return 'bg-[#355e3b] text-[#f5cc03]';
+  }
+  if (g === 'vaaa' || g === 'vdtl20') {
+    if (w === '1') return 'bg-[#ff4500] text-white';
+    if (w === '2') return 'bg-[#e2ee26] text-black';
+    if (w === '3') return 'bg-[#33c6ff] text-black';
+    return 'bg-gray-400';
+  }
+  if (['baccarat', 'baccarat2', 'pbaccarat'].includes(g)) {
+    if (w === '1') return 'bg-[#428bca] text-white';
+    if (w === '2') return 'bg-[#d9534f] text-white';
+    if (w === '3') return 'bg-[#5cb85c] text-white';
+    return 'bg-gray-400';
+  }
+  if (['dt6', 'vdt6', 'dt202', 'dt20', 'pdt6', 'pdt20'].includes(g)) {
+    if (w === '1') return 'bg-[#72bbef]';
+    if (w === '2') return 'bg-[#f9a9ba]';
+    if (w === '3') return 'bg-[#ffff33]';
+    return 'bg-gray-400';
+  }
+  if (
+    ['card32', 'card32eu', 'pcard32', 'queen', 'poker6', 'lucky15'].includes(g)
+  ) {
+    return 'bg-[#ffff33] text-[#111]';
+  }
+  if (
+    [
+      'lucky7',
+      'lucky7eu',
+      'lucky7eu2',
+      'vlucky7',
+      'plucky7',
+      'lucky5',
+    ].includes(g)
+  ) {
+    if (w === '1') return 'bg-[#f9a9ba]';
+    if (w === '2') return 'bg-[#72bbef]';
+    return 'bg-[#ffff33]';
+  }
+  if (w === '1') return 'bg-[#72bbef]';
+  if (w === '2') return 'bg-[#f9a9ba]';
+  return 'bg-gray-400';
 };
 
 // Video stream timeout (ms)

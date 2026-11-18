@@ -36,6 +36,7 @@ import RecentResults from './components/RecentResults';
 import Spinner2 from './components/Spinner2';
 import VideoStream from './components/VideoStream';
 import RulesPopup from './components/RulesPopup';
+import MatkaTable from '../../components/tables/MatkaTable';
 
 import DesktopBetSlip from '../../components/betting/DesktopBetSlip';
 import NewMobileBetDrawer from '../../components/betting/MobileBetDrawer';
@@ -85,6 +86,105 @@ const normalizeCasinoData = (payload) => {
   return null;
 };
 
+const CONTAINER_CLASS_MAP = {
+  goal2: 'ball-by-ball goal goal2',
+  goal: 'ball-by-ball goal',
+  lucky15: 'ball-by-ball',
+  ballbyball: 'ball-by-ball',
+  worli3: 'worli matka',
+  worli: 'worli',
+  worli2: 'worli',
+  dolidana: 'doli-dana',
+  mogambo: 'teenpatti2cards mogambo',
+  patti2: 'teenpatti2cards',
+  lucky5: 'lucky7a lucky5',
+  lucky7: 'lucky7a',
+  lucky7eu: 'lucky7a',
+  lucky7eu2: 'lucky7a',
+  plucky7: 'lucky7a',
+  vlucky7: 'lucky7a vcasino',
+  roulette11: 'roulette roulette11',
+  roulette12: 'roulette roulette11',
+  roulette13: 'roulette roulette11 roulette13',
+  ourroullete: 'roulette',
+  poison: 'teenpatti-joker',
+  poison20: 'teenpatti-joker',
+  joker20: 'teenpatti-joker',
+  joker1: 'teenpatti-joker1',
+  joker120: 'teenpatti-joker1',
+  teenunique: 'unique-teen20',
+  teen20: 'teenpatti20',
+  teen20b: 'teenpatti20',
+  teen20c: 'teenpatti20',
+  pteen20: 'teenpatti20',
+  vteen20: 'teenpatti20 vcasino',
+  btable: 'bollywood',
+  btable2: 'bollywood',
+  vbtable: 'bollywood vcasino',
+  superover: 'super-over',
+  superover3: 'super-over',
+  superover2: 'super-over super-over2',
+  ab20: 'ab',
+  abj: 'ab2',
+  ab3: 'ab ab3',
+  ab4: 'ab ab3',
+  teen41: 'teenpatti2',
+  teen42: 'teenpatti2',
+  teen6: 'teenpatti2',
+  sicbo: 'sicbo',
+  sicbo2: 'sicbo',
+  teen: 'teenpatti1day',
+  teen32: 'teenpatti1day',
+  teen33: 'teenpatti1day',
+  pteen: 'teenpatti1day',
+  vteen: 'teenpatti1day vcasino',
+  teen9: 'teenpattitest',
+  teen8: 'teenpattiopen',
+  teenmuf: 'teenpattimuflis',
+  vteenmuf: 'teenpattimuflis vcasino',
+  teensin: 'baccarat29',
+  teen1: 'onecard1day',
+  teen120: 'onecard20',
+  cmeter1: 'one-card-meter',
+  teen3: '',
+  poker: 'poker1day',
+  poker20: 'poker20',
+  poker6: 'poker6player',
+  baccarat: 'baccarat',
+  baccarat2: 'baccarat baccarat2',
+  pbaccarat: 'baccarat',
+  dt20: 'dt20',
+  dt202: 'dt20',
+  pdt20: 'dt20',
+  dt6: 'dt1day',
+  pdt6: 'dt1day',
+  vdt6: 'dt1day vcasino',
+  dtl20: 'dtl20',
+  vdtl20: 'dtl20 vcasino',
+  card32: 'cards32a',
+  pcard32: 'cards32a',
+  card32eu: 'cards32b',
+  '3cardj': 'threecardj',
+  aaa: 'aaa',
+  aaa2: 'aaa',
+  vaaa: 'aaa vcasino',
+  lottcard: 'lottery',
+  cricketv3: 'five-cricket',
+  cmatch20: 'cricket20',
+  queen: 'queen',
+  race2: 'queen',
+  race20: 'race20',
+  race17: 'raceto17',
+  trap: 'trap',
+  trio: 'trio',
+  vtrio: 'trio vcasino',
+  notenum: 'note-number',
+  dum10: 'duskadum',
+  kbc: 'kbc',
+  cmeter: 'cmeter',
+  war: 'war',
+};
+
 export default function CasinoBet() {
   const dispatch = useDispatch();
 
@@ -125,7 +225,14 @@ export default function CasinoBet() {
     directCasinoResult,
     directCasinoResultLoading,
     directCasinoResultError,
+    myBets = [],
   } = useSelector((state) => state.casinoBet);
+
+  const isWorliGame = ['worli', 'worli2', 'worli3'].includes(gameid);
+  const isMatkaBazaar = gameid === 'worli3';
+  const containerCls = CONTAINER_CLASS_MAP[gameid] || 'game-market';
+  const [activeWorliMid, setActiveWorliMid] = useState(null);
+  const [mobileMatkaTab, setMobileMatkaTab] = useState('game');
 
   // =============================================
   // CUSTOM HOOKS
@@ -478,148 +585,231 @@ export default function CasinoBet() {
         </div>
       )}
 
-      <div className='mt-0.5 flex gap-px'>
-        {/* Left Section */}
-        <div className='ml-0 w-full min-w-0 md:ml-1 lg:w-[calc(100%-352px)]'>
-          {/* Header — reference casino-header: name+Rules left, Round ID right (desktop) */}
-          <div className='casino-header'>
-            <span className='casino-name'>
-              {match || gameid}
-              <a
-                className='ms-1 cursor-pointer underline'
-                onClick={() => setShowRules(true)}
-              >
-                <small>Rules</small>
-              </a>
-            </span>
-            {mockBettingData.mid && (
-              <span className='casino-rid hidden xl:inline-block'>
-                <small>
-                  Round ID: <span>{mockBettingData.mid}</span>
-                </small>
-              </span>
-            )}
+      <CasinoUiProvider
+        gameid={gameid}
+        bettingData={mockBettingData}
+        betting={betting}
+        isMobile={!isDesktop}
+      >
+        <div className='center-main-container casino-page'>
+          <div className='center-container'>
+            <div className={`casino-page-container ${containerCls}`}>
+              {/* Header */}
+              <div className='casino-header'>
+                <span className='casino-name'>
+                  {isMatkaBazaar ? 'Matka Market' : match || gameid}
+                  <a
+                    className='ms-1 cursor-pointer underline'
+                    onClick={() => setShowRules(true)}
+                  >
+                    <small>Rules</small>
+                  </a>
+                </span>
+                {mockBettingData.mid && (
+                  <span className='casino-rid hidden xl:inline-block'>
+                    <small>
+                      Round ID: <span>{mockBettingData.mid}</span>
+                    </small>
+                  </span>
+                )}
+              </div>
+
+              {/* Top Bazaar rounds tabs (sirf worli3 Matka Market me) */}
+              {isMatkaBazaar && (mockBettingData?.rounds || []).length > 0 && (
+                <div className='matka-tabs'>
+                  <ul className='nav nav-pills'>
+                    {(mockBettingData?.rounds || []).map((r) => (
+                      <li className='nav-item' key={String(r.mid)}>
+                        <a
+                          className={`nav-link ${
+                            String(r.mid) ===
+                            String(
+                              activeWorliMid ||
+                                mockBettingData?.rounds?.[0]?.mid
+                            )
+                              ? 'active'
+                              : ''
+                          }`}
+                          href='#'
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setActiveWorliMid(String(r.mid));
+                          }}
+                        >
+                          <span>{r.mname}</span>
+                          <div className='remaining-time'>
+                            <img
+                              src='https://cdn.926assets.com/g1ver/v111/static/front/img/clock.png'
+                              alt='Clock Icon'
+                            />
+                            <span>{r.ptime || '00:00:00'}</span>
+                          </div>
+                          <div className='game-time'>
+                            <span>{r.mtime}</span>
+                          </div>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Mobile Tab Header (Game / Placed Bet (0)) for Worli/Matka */}
+              {isWorliGame && !isDesktop && (
+                <div className='casino-title-header-mobile d-xl-none'>
+                  <ul className='nav nav-tabs menu-tabs'>
+                    <li className='nav-item'>
+                      <div
+                        className={`nav-link ${mobileMatkaTab === 'game' ? 'active' : ''}`}
+                        onClick={() => setMobileMatkaTab('game')}
+                      >
+                        Game
+                      </div>
+                    </li>
+                    <li className='nav-item'>
+                      <div
+                        className={`nav-link ${mobileMatkaTab === 'bets' ? 'active' : ''}`}
+                        onClick={() => setMobileMatkaTab('bets')}
+                      >
+                        Placed Bet ({myBets?.length || 0})
+                      </div>
+                    </li>
+                  </ul>
+                  <div className='pe-2'></div>
+                </div>
+              )}
+
+              {/* Main Video & Detail Area */}
+              {isWorliGame && !isDesktop && mobileMatkaTab === 'bets' ? (
+                <div className='p-2'>
+                  <MatchedBet eventName={eventName} slug={gameid} />
+                </div>
+              ) : (
+                <div className=''>
+                  {VIRTUAL_SLUGS.has(gameid) ? (
+                    <VirtualGameScreen
+                      slug={gameid}
+                      bettingData={mockBettingData}
+                      showWinner={results.showWinner}
+                      winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+                    />
+                  ) : (
+                    <VideoStream
+                      eventName={casinoEventName}
+                      bettingData={mockBettingData}
+                      showWinner={results.showWinner}
+                      winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+                    />
+                  )}
+
+                  {/* API Error */}
+                  {!bettingData && !loader.betting && error.betting && (
+                    <div className='bg-white p-6 text-center text-[14px] font-semibold text-[#b3001b]'>
+                      {error.betting}
+                    </div>
+                  )}
+
+                  <div className='casino-detail'>
+                    {isWorliGame ? (
+                      <MatkaTable
+                        isMobile={!isDesktop}
+                        isSuspended={betting.isSuspended}
+                        activeMid={activeWorliMid}
+                      />
+                    ) : (mockBettingData.sub || []).length > 0 ? (
+                      <GameMarketTable />
+                    ) : (
+                      !bettingData &&
+                      !loader.betting && (
+                        <div className='bg-white p-4 text-center text-[13px] font-semibold text-[#b3001b]'>
+                          There are no market available in this game
+                        </div>
+                      )
+                    )}
+
+                    {/* Remark */}
+                    {mockBettingData.remark && (
+                      <div className='bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]'>
+                        {mockBettingData.remark}
+                      </div>
+                    )}
+
+                    {/* Mobile My Bets */}
+                    {!isDesktop && !isWorliGame && (
+                      <div>
+                        <div className='bg-secondary text-secondary p-1'>
+                          <span className='font-bold'>My Bet</span>
+                        </div>
+                        <MatchedBet eventName={eventName} slug={gameid} />
+                      </div>
+                    )}
+
+                    {/* Recent Results / Matka Last Results */}
+                    {isMatkaBazaar ? (
+                      <>
+                        <div className='casino-last-result-title'>
+                          <span>Last Result</span>
+                          <span>
+                            <a href={`/casino-results/${gameid}`}>View All</a>
+                          </span>
+                        </div>
+                        <div className='casino-last-results matka-result'>
+                          {(results.resultData?.res || []).map((r, i) => (
+                            <span className='result result-b' key={r.mid || i}>
+                              {r.win}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <RecentResults
+                        gameid={gameid}
+                        currentGameId={results.currentGameId}
+                        results={results.resultData?.res || []}
+                        directResults={directCasinoResult?.data || []}
+                        resultDate={directCasinoResult?.date}
+                        directResultsLoading={directCasinoResultLoading}
+                        directResultsError={directCasinoResultError}
+                        onItemClick={results.setSelectedItem}
+                      />
+                    )}
+
+                    {/* Sidebar Rules payout tables (mobile) */}
+                    {!isDesktop && !isWorliGame && (
+                      <SidebarRulesTable slug={gameid} />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Casino Video Stream — virtual games reference jaisa canvas-style
-              dealer screen use karte hy (iframe nahi) */}
-          {VIRTUAL_SLUGS.has(gameid) ? (
-            <VirtualGameScreen
-              slug={gameid}
-              bettingData={mockBettingData}
-              showWinner={results.showWinner}
-              winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
-            />
-          ) : (
-            <VideoStream
-              eventName={casinoEventName}
-              bettingData={mockBettingData}
-              showWinner={results.showWinner}
-              winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
-            />
-          )}
-
-          {/* API Error */}
-          {!bettingData && !loader.betting && error.betting && (
-            <div className='bg-white p-6 text-center text-[14px] font-semibold text-[#b3001b]'>
-              {error.betting}
-            </div>
-          )}
-
-          {/* Betting Markets — sirf jab provider se round data ho; warna
-              hardcoded fallback tables fake odds dikha deti hy */}
-          {(mockBettingData.sub || []).length > 0 ? (
-            <CasinoUiProvider
-              gameid={gameid}
-              bettingData={mockBettingData}
-              betting={betting}
-              isMobile={!isDesktop}
-            >
-              <GameMarketTable />
-            </CasinoUiProvider>
-          ) : (
-            !bettingData &&
-            !loader.betting && (
-              <div className='bg-white p-4 text-center text-[13px] font-semibold text-[#b3001b]'>
-                There are no market available in this game
-              </div>
-            )
-          )}
-
-          {/* Remark */}
-          {mockBettingData.remark && (
-            <div className='bg-white px-2 py-1 text-[12px] font-semibold text-[#097c93]'>
-              {mockBettingData.remark}
-            </div>
-          )}
-
-          {/* Mobile My Bets */}
-          {!isDesktop && (
-            <div>
-              <div className='bg-secondary text-secondary p-1'>
-                <span className='font-bold'>My Bet</span>
-              </div>
-
-              <MatchedBet eventName={eventName} slug={gameid} />
-            </div>
-          )}
-
-          {/* Recent Results */}
-          <RecentResults
-            gameid={gameid}
-            currentGameId={results.currentGameId}
-            results={results.resultData?.res || []}
-            directResults={directCasinoResult?.data || []}
-            resultDate={directCasinoResult?.date}
-            directResultsLoading={directCasinoResultLoading}
-            directResultsError={directCasinoResultError}
-            onItemClick={results.setSelectedItem}
-          />
-
-          {/* Sidebar Rules payout tables (mobile) — reference d-xl-none box */}
-          {!isDesktop && <SidebarRulesTable slug={gameid} />}
-        </div>
-
-        {/* Desktop Sidebar */}
-        {isDesktop && (
-          <div className='sticky top-0 h-fit'>
-            <div className='w-[350px]'>
+          {/* Desktop Right Sidebar */}
+          {isDesktop && (
+            <div className='sidebar right-sidebar casino-right-sidebar'>
               {ROULETTE_STAT_SLUGS.has(gameid) && (
                 <RouletteStatistics rows={directCasinoResult?.data || []} />
               )}
-              <CasinoUiProvider
-                gameid={eventName}
-                bettingData={mockBettingData}
-                betting={betting}
-                isMobile={false}
-              >
-                <DesktopBetSlip />
-              </CasinoUiProvider>
 
-              <div className='bg-secondary text-secondary p-1'>
-                <span className='font-bold'>My Bet</span>
+              <DesktopBetSlip />
+
+              <div className='sidebar-box my-bet-container'>
+                <div className='sidebar-title'>
+                  <h4>My Bet</h4>
+                </div>
+                <div className='my-bets'>
+                  <MatchedBet eventName={eventName} slug={gameid} />
+                </div>
               </div>
 
-              <MatchedBet eventName={eventName} slug={gameid} />
-
-              {/* Sidebar Rules payout tables — reference sidebar box */}
-              <SidebarRulesTable slug={gameid} />
+              {!isWorliGame && <SidebarRulesTable slug={gameid} />}
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
 
-      {/* Mobile Bet Drawer */}
-      {!isDesktop && (
-        <CasinoUiProvider
-          gameid={gameid}
-          bettingData={mockBettingData}
-          betting={betting}
-          isMobile={true}
-        >
-          <NewMobileBetDrawer />
-        </CasinoUiProvider>
-      )}
+        {/* Mobile Bet Drawer */}
+        {!isDesktop && <NewMobileBetDrawer />}
+      </CasinoUiProvider>
 
       {/* Result Popup */}
       {results.selectedItem && (

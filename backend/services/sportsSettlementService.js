@@ -21,69 +21,24 @@ async function settleSportsBet(bet, user, winner) {
     const winnerNorm = (winner || '').trim().toLowerCase();
     const isWin = betTeam === winnerNorm;
 
-    let balanceChange = 0;
-    let avBalanceChange = 0;
-    let profitLossChange = 0;
-    let resultAmount = 0;
-    let status = 0;
+    // Net P&L handles both normal and reduced/green/red offset positions accurately:
+    // back: win -> betAmount, lose -> -price; lay: win(selection won) -> -price, lose -> betAmount.
+    const rawPnl =
+      bet.otype === 'back'
+        ? isWin
+          ? Number(bet.betAmount || 0)
+          : -Number(bet.price || 0)
+        : isWin
+          ? -Number(bet.price || 0)
+          : Number(bet.betAmount || 0);
+    const pnl = rawPnl === 0 ? 0 : rawPnl;
 
-    // Same logic for all sports bet types
-    if (bet.otype === 'back') {
-      if (isWin) {
-        // Back bet WINS
-        if (bet.betAmount < 0) {
-          // Offset back: net loss despite winning
-          balanceChange = bet.betAmount;
-          avBalanceChange = 0;
-          profitLossChange = bet.betAmount;
-          resultAmount = Math.abs(bet.betAmount);
-          status = 2; // LOSS (user loses money)
-        } else {
-          // Normal back: profit
-          const winAmount = bet.betAmount + bet.price;
-          balanceChange = bet.betAmount;
-          avBalanceChange = winAmount;
-          profitLossChange = bet.betAmount;
-          resultAmount = Math.abs(bet.betAmount);
-          status = 1; // WIN
-        }
-      } else {
-        // Back bet LOSES
-        if (bet.betAmount < 0) {
-          // Offset back: break even
-          balanceChange = 0;
-          avBalanceChange = -bet.betAmount;
-          profitLossChange = 0;
-          resultAmount = 0;
-          status = 1; // WIN (break even)
-        } else {
-          // Normal back: loss
-          balanceChange = -bet.price;
-          avBalanceChange = -bet.price;
-          profitLossChange = -bet.price;
-          resultAmount = Math.abs(bet.price);
-          status = 2; // LOSS
-        }
-      }
-    } else {
-      // LAY BET
-      if (isWin) {
-        // Lay LOSES (selection won, layer loses)
-        balanceChange = -bet.price;
-        avBalanceChange = -bet.price;
-        profitLossChange = -bet.price;
-        resultAmount = Math.abs(bet.price);
-        status = 2; // LOSS
-      } else {
-        // Lay WINS (selection lost, layer wins)
-        const winAmount = bet.betAmount + bet.price;
-        balanceChange = bet.betAmount;
-        avBalanceChange = winAmount;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 1; // WIN
-      }
-    }
+    const status = pnl >= 0 ? 1 : 2; // WIN / break-even when >= 0, LOSS when < 0
+    const balanceChange = pnl;
+    const profitLossChange = pnl;
+    const resultAmount = Math.abs(pnl);
+    const avBalanceChange =
+      pnl >= 0 ? Math.max(0, pnl) + Math.max(0, Number(bet.price || 0)) : pnl;
 
     // NOTE: User updates are applied via atomic $inc in the controller, not here
     // This prevents lost updates from concurrent cron jobs
@@ -143,28 +98,17 @@ async function voidSportsBet(bet) {
 
 async function tiedSportsBet(bet, user) {
   try {
-    let balanceChange = 0;
-    let avBalanceChange = 0;
-    let profitLossChange = 0;
-    let resultAmount = 0;
-    let status = 0;
-
-    if (bet.otype === 'back') {
-      // Back bet LOSES in tied match (no winner means backers lose)
-      balanceChange = -bet.price;
-      avBalanceChange = -bet.price;
-      profitLossChange = -bet.price;
-      resultAmount = Math.abs(bet.price);
-      status = 2; // LOSS
-    } else {
-      // Lay bet WINS in tied match (no selection won, so layers win)
-      const winAmount = bet.betAmount + bet.price;
-      balanceChange = bet.betAmount;
-      avBalanceChange = winAmount;
-      profitLossChange = bet.betAmount;
-      resultAmount = Math.abs(bet.betAmount);
-      status = 1; // WIN
-    }
+    const rawPnl =
+      bet.otype === 'back'
+        ? -Number(bet.price || 0)
+        : Number(bet.betAmount || 0);
+    const pnl = rawPnl === 0 ? 0 : rawPnl;
+    const status = pnl >= 0 ? 1 : 2;
+    const balanceChange = pnl;
+    const profitLossChange = pnl;
+    const resultAmount = Math.abs(pnl);
+    const avBalanceChange =
+      pnl >= 0 ? pnl + Math.max(0, Number(bet.price || 0)) : pnl;
 
     // NOTE: User updates are applied via atomic $inc in the controller, not here
     // This prevents lost updates from concurrent cron jobs

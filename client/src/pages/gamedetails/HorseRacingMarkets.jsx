@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FaHorse } from 'react-icons/fa';
+import { FaAngleDown, FaHorse } from 'react-icons/fa';
+import {
+  isMarketSuspended,
+  isRunnerSuspended as runnerSuspendedByGscode,
+} from '../../utils/suspension';
+import { computeNetOutcome } from './utils/marketNetOutcome';
 
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') return '-';
@@ -46,9 +51,11 @@ export default function HorseRacingMarkets({
   venue,
   time,
   onBetSelect,
+  pendingBetAmounts,
 }) {
   const [changedOdds, setChangedOdds] = useState(() => new Set());
   const [noDataDismissed, setNoDataDismissed] = useState(false);
+  const [expandedRunnerKey, setExpandedRunnerKey] = useState(null);
   const previousOddsRef = useRef(null);
   const clearChangedTimerRef = useRef(null);
   const markets = useMemo(
@@ -171,7 +178,7 @@ export default function HorseRacingMarkets({
         </div>
       )}
 
-      <div className='overflow-x-auto bg-[#f4f4f4]'>
+      <div className='overflow-x-hidden bg-[#f4f4f4]'>
         {markets.map((market) => {
           const runners = market.section.filter(
             (runner) => runner && (runner.nat || runner.tname)
@@ -182,27 +189,37 @@ export default function HorseRacingMarkets({
           return (
             <section
               key={`${market.mid || market.gmid}-${marketName}`}
-              className='mb-1 min-w-[720px]'
+              className='mb-1'
               aria-label={marketName}
             >
               <div className='bg-[#4b5d6d] px-2 py-2 text-sm font-bold text-white sm:text-base'>
                 {marketName.replaceAll('_', ' ')}
               </div>
-              <div className='grid grid-cols-[minmax(260px,1fr)_repeat(3,76px)_repeat(3,76px)] border-b border-gray-300 text-center text-sm font-bold text-[#333]'>
-                <div className='flex items-center px-3 text-left text-xs text-[#097c93]'>
+              {/* D247 market-12 grid: mobile 1 Back + 1 Lay, desktop 3 Back + 3 Lay */}
+              <div className='grid grid-cols-[minmax(0,1fr)_20%_20%] border-b border-gray-300 text-center text-sm font-bold text-[#333] md:grid-cols-[minmax(220px,1fr)_repeat(3,72px)_repeat(3,72px)]'>
+                <div className='flex items-center px-2 text-left text-xs text-[#097c93] sm:px-3'>
                   Max: {formatNumber(marketMax)}
                 </div>
-                <div className='col-span-3 bg-[#72bbef] py-1'>Back</div>
-                <div className='col-span-3 bg-[#faa9ba] py-1'>Lay</div>
+                <div className='col-span-1 bg-[#72bbef] py-1 md:col-span-3'>
+                  Back
+                </div>
+                <div className='col-span-1 bg-[#faa9ba] py-1 md:col-span-3'>
+                  Lay
+                </div>
               </div>
 
               {runners.map((runner, runnerIndex) => {
                 const runnerName =
                   runner.nat || runner.tname || `Runner ${runnerIndex + 1}`;
                 const odds = Array.isArray(runner.odds) ? runner.odds : [];
-                const backOdds = odds
+                const rawBacks = odds
                   .filter((odd) => odd.otype === 'back')
-                  .slice(0, 3);
+                  .slice(-3);
+                // Right-align back depth so best back is always index 2 (adjacent to lay1)
+                const backOdds = [null, null, null];
+                rawBacks.forEach((o, i) => {
+                  backOdds[3 - rawBacks.length + i] = o;
+                });
                 const layOdds = odds
                   .filter((odd) => odd.otype === 'lay')
                   .slice(0, 3);
@@ -210,6 +227,21 @@ export default function HorseRacingMarkets({
                   String(
                     runner.gstatus || runner.status || ''
                   ).toUpperCase() === 'REMOVED';
+                const runnerSuspended =
+                  isMarketSuspended(market) ||
+                  runnerSuspendedByGscode(market, runner);
+                const raceMarketBets = Array.isArray(pendingBetAmounts)
+                  ? pendingBetAmounts.filter(
+                      (b) =>
+                        String(b.marketName || '')
+                          .trim()
+                          .toLowerCase() === marketName.trim().toLowerCase() ||
+                        b.gameType === 'Match Odds'
+                    )
+                  : [];
+                const runnerNetPL = raceMarketBets.length
+                  ? computeNetOutcome(runnerName, raceMarketBets, 0)
+                  : null;
                 const runnerNumber =
                   runner.psrno || runner.sno || runnerIndex + 1;
                 const jockey = getRunnerDetail(runner, [
@@ -225,14 +257,18 @@ export default function HorseRacingMarkets({
                   'trn',
                 ]);
                 const age = getRunnerDetail(runner, ['age', 'hage']);
+                const rKey = String(
+                  runner.sid || `${runnerName}-${runnerIndex}`
+                );
+                const isExpanded = expandedRunnerKey === rKey;
 
                 return (
                   <div
-                    key={runner.sid || `${runnerName}-${runnerIndex}`}
-                    className='grid grid-cols-[minmax(260px,1fr)_repeat(3,76px)_repeat(3,76px)] border-b border-gray-300'
+                    key={rKey}
+                    className='grid grid-cols-[minmax(0,1fr)_20%_20%] border-b border-gray-300 md:grid-cols-[minmax(220px,1fr)_repeat(3,72px)_repeat(3,72px)]'
                   >
-                    <div className='flex min-w-0 items-center gap-2 px-2 py-2 sm:gap-3 sm:px-4'>
-                      <span className='w-6 shrink-0 text-center text-sm text-gray-700'>
+                    <div className='flex min-w-0 items-center gap-1.5 px-2 py-2 sm:gap-3 sm:px-4'>
+                      <span className='w-5 shrink-0 text-center text-xs text-gray-700 sm:w-6 sm:text-sm'>
                         {runnerNumber}
                       </span>
                       <RunnerIcon
@@ -240,11 +276,42 @@ export default function HorseRacingMarkets({
                         sid={runner.sid}
                         name={runnerName}
                       />
-                      <div className='min-w-0'>
-                        <div className='truncate text-sm font-bold text-[#333] sm:text-base'>
-                          {runner.sno || runnerIndex + 1}. {runnerName}
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex items-center gap-1 text-xs font-bold text-[#333] sm:text-base'>
+                          <span className='truncate'>
+                            {runner.sno || runnerIndex + 1}. {runnerName}
+                          </span>
+                          <button
+                            type='button'
+                            onClick={() =>
+                              setExpandedRunnerKey(isExpanded ? null : rKey)
+                            }
+                            className='inline-flex shrink-0 items-center p-0.5 text-gray-600 md:hidden'
+                            aria-label={`Toggle details for ${runnerName}`}
+                          >
+                            <FaAngleDown
+                              className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                          {runnerNetPL !== null && (
+                            <span
+                              className={`ml-1 shrink-0 text-xs font-bold ${
+                                runnerNetPL >= 0
+                                  ? 'text-green-600'
+                                  : 'text-red-600'
+                              }`}
+                            >
+                              {runnerNetPL >= 0
+                                ? `+${runnerNetPL}`
+                                : runnerNetPL}
+                            </span>
+                          )}
                         </div>
-                        <div className='mt-1 flex flex-wrap gap-1 text-[11px] text-black sm:text-xs'>
+                        <div
+                          className={`${
+                            isExpanded ? 'flex' : 'hidden md:flex'
+                          } mt-1 flex-wrap gap-1 text-[10px] text-black sm:text-xs`}
+                        >
                           <span className='bg-[#d2d2d2] px-1 py-0.5'>
                             <strong>Jockey:</strong> {formatNumber(jockey)}
                           </span>
@@ -260,11 +327,15 @@ export default function HorseRacingMarkets({
 
                     {removed ? (
                       <>
-                        <div className='col-span-3 flex items-center justify-center bg-[#4b4f52] px-2 text-center text-sm font-bold text-white'>
+                        <div className='col-span-1 flex items-center justify-center bg-[#4b4f52] px-1 text-center text-xs font-bold text-white md:col-span-3 md:px-2 md:text-sm'>
                           REMOVED
                         </div>
-                        <div className='col-span-3 bg-[#594f52]' />
+                        <div className='col-span-1 bg-[#594f52] md:col-span-3' />
                       </>
+                    ) : runnerSuspended ? (
+                      <div className='relative col-span-2 flex items-center justify-center bg-[#e5e7eb] text-xs font-bold text-red-600 md:col-span-6'>
+                        SUSPENDED
+                      </div>
                     ) : (
                       <>
                         {[0, 1, 2].map((index) => {
@@ -280,7 +351,9 @@ export default function HorseRacingMarkets({
                               onClick={() =>
                                 odd && handleOddsSelect(market, runner, odd)
                               }
-                              className={`flex min-h-[58px] flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
+                              className={`${
+                                index < 2 ? 'hidden md:flex' : 'flex'
+                              } min-h-[52px] flex-col items-center justify-center border-l border-white px-1 text-[#333] md:min-h-[58px] ${
                                 index === 0
                                   ? 'bg-[#b8d9ed]'
                                   : index === 1
@@ -288,11 +361,11 @@ export default function HorseRacingMarkets({
                                     : 'bg-[#72bbef]'
                               } ${odd && Number(odd.odds) > 0 ? 'cursor-pointer hover:brightness-95' : 'cursor-default'} ${changedOdds.has(key) ? 'horse-odds-changed' : ''}`}
                             >
-                              <span className='text-base leading-5 font-bold sm:text-lg'>
+                              <span className='text-sm leading-5 font-bold sm:text-lg'>
                                 {formatNumber(odd?.odds)}
                               </span>
                               {odd && (
-                                <span className='text-xs leading-4'>
+                                <span className='text-[11px] leading-4 sm:text-xs'>
                                   {formatNumber(odd.size)}
                                 </span>
                               )}
@@ -312,7 +385,9 @@ export default function HorseRacingMarkets({
                               onClick={() =>
                                 odd && handleOddsSelect(market, runner, odd)
                               }
-                              className={`flex min-h-[58px] flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
+                              className={`${
+                                index > 0 ? 'hidden md:flex' : 'flex'
+                              } min-h-[52px] flex-col items-center justify-center border-l border-white px-1 text-[#333] md:min-h-[58px] ${
                                 index === 0
                                   ? 'bg-[#faa9ba]'
                                   : index === 1
@@ -320,11 +395,11 @@ export default function HorseRacingMarkets({
                                     : 'bg-[#f5d0d7]'
                               } ${odd && Number(odd.odds) > 0 ? 'cursor-pointer hover:brightness-95' : 'cursor-default'} ${changedOdds.has(key) ? 'horse-odds-changed' : ''}`}
                             >
-                              <span className='text-base leading-5 font-bold sm:text-lg'>
+                              <span className='text-sm leading-5 font-bold sm:text-lg'>
                                 {formatNumber(odd?.odds)}
                               </span>
                               {odd && (
-                                <span className='text-xs leading-4'>
+                                <span className='text-[11px] leading-4 sm:text-xs'>
                                   {formatNumber(odd.size)}
                                 </span>
                               )}

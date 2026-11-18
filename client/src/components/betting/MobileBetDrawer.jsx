@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useCasino } from '../../context/CasinoContext';
+import ButtonValues from '../header/ButtonValues';
 
 // Fallback jab user ne Set Button Value me casino buttons save na kiye hon
 const CASINO_DEFAULTS = [
@@ -16,11 +17,12 @@ const formatStakeLabel = (value) =>
   value >= 1000 ? `${value / 1000}k` : String(value);
 
 export default function MobileBetDrawer() {
-  const { betSlip, closeBetSlip, updateStake, adjustOdds, submitBet } =
-    useCasino();
+  const { betSlip, closeBetSlip, updateStake, submitBet } = useCasino();
   const { userInfo } = useSelector((state) => state.auth);
+  const [showEditButtons, setShowEditButtons] = useState(false);
 
   if (!betSlip.isOpen || betSlip.mode !== 'mobile') return null;
+  const stakeStep = Math.max(10, Number(betSlip.min || 100));
 
   // Casino drawer hamesha user ke configured casinoQuickStakes use karta hai
   // (Set Button Value → Casino Buttons tab), warna defaults.
@@ -82,26 +84,12 @@ export default function MobileBetDrawer() {
               <label className='form-label small text-muted d-block mb-1 text-center'>
                 Odds
               </label>
-              <div className='input-group input-group-sm'>
-                <button
-                  className='btn btn-outline-secondary stepper-btn'
-                  onClick={() => adjustOdds(-0.01)}
-                >
-                  -
-                </button>
-                <input
-                  type='text'
-                  className='form-control fw-bold text-center'
-                  readOnly
-                  value={betSlip.odds}
-                />
-                <button
-                  className='btn btn-outline-secondary stepper-btn'
-                  onClick={() => adjustOdds(0.01)}
-                >
-                  +
-                </button>
-              </div>
+              <input
+                type='text'
+                className='form-control form-control-sm fw-bold text-center'
+                readOnly
+                value={betSlip.odds}
+              />
             </div>
 
             <div className='col-6'>
@@ -110,20 +98,26 @@ export default function MobileBetDrawer() {
               </label>
               <div className='input-group input-group-sm'>
                 <button
+                  type='button'
                   className='btn btn-outline-secondary stepper-btn'
-                  onClick={() => updateStake(betSlip.stake - 100)}
+                  onClick={() =>
+                    updateStake(Math.max(0, betSlip.stake - stakeStep))
+                  }
                 >
                   -
                 </button>
                 <input
                   type='number'
                   className='form-control fw-bold text-center'
-                  value={betSlip.stake}
+                  value={betSlip.stake || ''}
+                  placeholder='0'
+                  min='0'
                   onChange={(e) => updateStake(e.target.value)}
                 />
                 <button
+                  type='button'
                   className='btn btn-outline-secondary stepper-btn'
-                  onClick={() => updateStake(betSlip.stake + 100)}
+                  onClick={() => updateStake(betSlip.stake + stakeStep)}
                 >
                   +
                 </button>
@@ -135,6 +129,7 @@ export default function MobileBetDrawer() {
             {quickStakes.map((stk) => (
               <button
                 key={`${stk.label}-${stk.value}`}
+                type='button'
                 className='btn btn-sm btn-outline-secondary m-quick-stake flex-fill'
                 onClick={() => updateStake(stk.value)}
               >
@@ -142,6 +137,7 @@ export default function MobileBetDrawer() {
               </button>
             ))}
             <button
+              type='button'
               className='btn btn-sm btn-outline-danger m-quick-stake-clear flex-fill'
               onClick={() => updateStake(0)}
             >
@@ -169,10 +165,17 @@ export default function MobileBetDrawer() {
           <div className='d-flex gap-2'>
             <button
               type='button'
-              className='btn btn-secondary flex-fill'
+              className='btn btn-info fw-bold text-white'
+              onClick={() => setShowEditButtons(true)}
+            >
+              Edit
+            </button>
+            <button
+              type='button'
+              className='btn btn-danger flex-fill'
               onClick={closeBetSlip}
             >
-              Cancel
+              Reset
             </button>
             <button
               type='button'
@@ -187,6 +190,12 @@ export default function MobileBetDrawer() {
           </div>
         </div>
       </div>
+      {showEditButtons && (
+        <ButtonValues
+          initialTab='casino'
+          onClose={() => setShowEditButtons(false)}
+        />
+      )}
     </div>
   );
 }

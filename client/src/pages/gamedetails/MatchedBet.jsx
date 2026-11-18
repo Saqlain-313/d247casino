@@ -1,37 +1,49 @@
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { getPendingBet } from '../../redux/reducer/betReducer';
 import { getMyCasinoBets } from '../../redux/reducer/casinoBetSlice';
 
 function MatchedBet({ eventName, slug, fetchBets = true }) {
   const dispatch = useDispatch();
+  const isCasino = Boolean(slug);
 
   const {
     myBets = [],
     myBetsLoading,
     myBetsError,
   } = useSelector((state) => state.casinoBet);
-
-  const casinoSlug = slug || eventName;
+  const { eventName: sportsPendingBets = [], loading: sportsLoading } =
+    useSelector((state) => state.bet);
 
   useEffect(() => {
-    if (!fetchBets || !casinoSlug) return;
-
-    dispatch(getMyCasinoBets(casinoSlug));
-  }, [dispatch, casinoSlug, fetchBets]);
+    if (!fetchBets) return;
+    if (isCasino) {
+      dispatch(getMyCasinoBets(slug));
+    } else if (eventName) {
+      dispatch(getPendingBet(eventName));
+    }
+  }, [dispatch, isCasino, slug, eventName, fetchBets]);
 
   const filteredBetHistory = useMemo(() => {
-    if (!Array.isArray(myBets)) return [];
+    if (isCasino) {
+      if (!Array.isArray(myBets)) return [];
+      return myBets.filter((bet) => {
+        const betSlug = bet?.slug || bet?.gameSlug || bet?.casinoSlug;
+        return betSlug ? String(betSlug) === String(slug) : true;
+      });
+    }
+    if (!Array.isArray(sportsPendingBets)) return [];
+    if (!eventName) return sportsPendingBets;
+    return sportsPendingBets.filter(
+      (bet) =>
+        !bet?.gameId ||
+        String(bet.gameId) === String(eventName) ||
+        String(bet.eventName || '') === String(eventName)
+    );
+  }, [isCasino, myBets, slug, sportsPendingBets, eventName]);
 
-    return myBets.filter((bet) => {
-      const betSlug = bet?.slug || bet?.gameSlug || bet?.casinoSlug;
-
-      if (betSlug) {
-        return String(betSlug) === String(casinoSlug);
-      }
-
-      return true;
-    });
-  }, [myBets, casinoSlug]);
+  const loading = isCasino ? myBetsLoading : sportsLoading;
+  const loadError = isCasino ? myBetsError : null;
 
   const getMatchedBetLabel = (item) => {
     if (!item) return 'N/A';
@@ -69,9 +81,9 @@ function MatchedBet({ eventName, slug, fetchBets = true }) {
         </div>
       </div>
 
-      {myBetsLoading && filteredBetHistory.length === 0 ? (
+      {loading && filteredBetHistory.length === 0 ? (
         <div className='bg-white p-2 text-center text-xs'>Loading...</div>
-      ) : myBetsError ? (
+      ) : loadError ? (
         <div className='bg-white p-2 text-center text-xs text-red-500'>
           Unable to load bets
         </div>

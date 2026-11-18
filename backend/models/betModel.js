@@ -150,6 +150,8 @@ const betSchema = new mongoose.Schema(
 
     fancyId: { type: String },
 
+    runnerCount: { type: Number },
+
     date: {
       type: Date,
       default: Date.now,

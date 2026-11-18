@@ -1,9 +1,8 @@
-import { memo, useEffect, useState } from 'react';
-
-import { VIDEO_LOAD_TIMEOUT } from '../constants';
+import { memo } from 'react';
 import { getVideoStreamUrl } from '../utils/gameUtils';
-
-import CardsDisplay from './CardsDisplay';
+import FlipClock from '../../gamedetails/FlipClock';
+import CricketCard from '../../gamedetails/CricketCard';
+import CardsDisplay, { hasVideoCardsOverlay } from './CardsDisplay';
 
 const VideoStream = memo(function VideoStream({
   eventName,
@@ -11,65 +10,74 @@ const VideoStream = memo(function VideoStream({
   showWinner,
   winnerLabel,
 }) {
-  const [videoload, setVideoload] = useState(true);
-  const [failed, setFailed] = useState(false);
-
+  const slug = String(bettingData?.gtype || eventName || '').toLowerCase();
   const streamUrl = getVideoStreamUrl(eventName);
-
-  // Reset when event changes
-  useEffect(() => {
-    setVideoload(true);
-    setFailed(false);
-  }, [eventName]);
-
-  // Video load timeout
-  useEffect(() => {
-    if (!eventName) return;
-
-    const timeout = setTimeout(() => {
-      setFailed(true);
-      setVideoload(false);
-    }, VIDEO_LOAD_TIMEOUT);
-
-    return () => clearTimeout(timeout);
-  }, [eventName]);
+  const showCards = hasVideoCardsOverlay(slug, bettingData);
+  const showClock = slug !== 'worli3';
+  const rdesc = bettingData?.rdesc;
+  const dum10Card =
+    slug === 'dum10' ? String(bettingData?.card || '').split(',')[0] : '';
 
   return (
-    <div className='relative flex h-[200px] w-full items-center justify-center bg-black md:h-[420px]'>
-      {/* Video Iframe */}
-      {streamUrl ? (
-        <iframe
-          key={eventName}
-          src={streamUrl}
-          title='Casino TV'
-          frameBorder='0'
-          allowFullScreen
-          loading='lazy'
-          allow='autoplay; encrypted-media; fullscreen; picture-in-picture'
-          className='h-full w-full border-0'
-        />
-      ) : (
-        <div className='text-sm text-white'>Casino stream unavailable</div>
-      )}
+    <div className={`casino-video ${showCards ? '' : 'no-cards'}`}>
+      <div className='video-box-container'>
+        <div className='casino-video-box'>
+          {streamUrl ? (
+            <iframe
+              key={eventName}
+              src={streamUrl}
+              title='Casino TV'
+              frameBorder='0'
+              allowFullScreen
+              loading='lazy'
+              allow='autoplay; encrypted-media; fullscreen; picture-in-picture'
+            />
+          ) : (
+            <div className='absolute inset-0 flex items-center justify-center text-sm text-white'>
+              Casino stream unavailable
+            </div>
+          )}
 
-      {/* Loading */}
+          {/* Goal / Lucky15 / BallByBall live result ball popup */}
+          {(slug === 'goal' || slug === 'goal2') && rdesc && (
+            <div className='cricket20ballpopup'>
+              <img src='/assets/img/balls/soccer-ball.png' alt='Goal' />
+              <span>{rdesc}</span>
+            </div>
+          )}
+          {(slug === 'lucky15' || slug === 'ballbyball') && rdesc && (
+            <div className='cricket20ballpopup'>
+              <img src='/balls/cricket20/ball0.png' alt='Ball' />
+              <span>{rdesc}</span>
+            </div>
+          )}
 
-      {/* Cards Overlay */}
-      <div className='absolute top-0 left-0 flex items-start rounded-md'>
-        <div className='bg-black/50 p-3'>
-          <CardsDisplay bettingData={bettingData} />
+          {/* Winner Banner */}
+          {showWinner && winnerLabel && (
+            <div className='absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-tl-[15px] rounded-br-[15px] bg-gradient-to-t from-[#ff5100] to-[#ff8100] px-3 py-1 font-bold text-black shadow-lg'>
+              {winnerLabel} Win
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Timer */}
-      <div className='absolute top-2 right-5 flex h-10 w-10 items-center justify-center rounded-full bg-black text-[20px] font-bold text-white'>
-        {bettingData?.lt || 0}
-      </div>
+      {/* Cards / Dice / Balls Overlay (only for games that render overlay elements) */}
+      {showCards && (
+        <div className='casino-video-cards'>
+          <CardsDisplay bettingData={bettingData} />
+        </div>
+      )}
 
-      {/* Winner */}
-      {showWinner && winnerLabel && (
-        <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-tl-[15px] rounded-br-[15px] bg-gradient-to-t from-[#ff5100] to-[#ff8100] px-2 py-1 text-black'>
-          {winnerLabel} Win
+      {slug === 'dum10' && dum10Card && dum10Card !== '1' && (
+        <div className='casino-video-current-card'>
+          <CricketCard card={dum10Card} />
+        </div>
+      )}
+
+      {/* Authentic D247 FlipClock */}
+      {showClock && (
+        <div className='clock'>
+          <FlipClock seconds={bettingData?.lt || 0} />
         </div>
       )}
     </div>

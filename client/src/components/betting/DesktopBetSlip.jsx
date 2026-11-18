@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCasino } from '../../context/CasinoContext';
+import { getUser } from '../../redux/reducer/authReducer';
+import ButtonValues from '../header/ButtonValues';
 import {
   clearCasinoBetError,
+  getMyCasinoBets,
   placeCasinoBet,
 } from '../../redux/reducer/casinoBetSlice';
 
@@ -25,6 +29,7 @@ export default function DesktopBetSlip() {
     (state) => state.casinoBet
   );
   const { userInfo } = useSelector((state) => state.auth);
+  const [showEditButtons, setShowEditButtons] = useState(false);
 
   if (!betSlip.isOpen) return null;
 
@@ -59,8 +64,16 @@ export default function DesktopBetSlip() {
       return;
     }
 
-    if (!stake || stake < 100) {
-      alert('Minimum stake is ₹100');
+    const minStake = Number(betSlip.min || 100);
+    const maxStake = Number(betSlip.max || Infinity);
+
+    if (!stake || stake < minStake) {
+      alert(`Minimum stake is ₹${minStake}`);
+      return;
+    }
+
+    if (Number.isFinite(maxStake) && stake > maxStake) {
+      alert(`Maximum stake is ₹${maxStake}`);
       return;
     }
 
@@ -78,12 +91,15 @@ export default function DesktopBetSlip() {
           roundId,
           side: betSlip.type,
           selection,
+          nation: betSlip.nation || String(selection),
           odds,
           stake,
         })
       ).unwrap();
 
       if (response.success) {
+        dispatch(getUser());
+        dispatch(getMyCasinoBets(slug));
         alert('Bet placed successfully!');
         closeBetSlip();
       }
@@ -213,25 +229,45 @@ export default function DesktopBetSlip() {
       )}
 
       {/* ACTION BUTTONS */}
-      <div className='place-bet-action-buttons'>
+      <div className='place-bet-action-buttons flex items-center justify-between gap-2 px-2 pb-2'>
         <button
           type='button'
-          className='btn btn-danger'
-          onClick={handleReset}
+          className='btn btn-info cursor-pointer px-3 py-1.5 text-xs font-bold text-white'
+          onClick={() => setShowEditButtons(true)}
           disabled={placeBetLoading}
         >
-          Reset
+          Edit
         </button>
 
-        <button
-          type='button'
-          className='btn btn-success'
-          onClick={handleSubmitBet}
-          disabled={placeBetLoading}
-        >
-          {placeBetLoading ? 'Placing Bet...' : 'Submit'}
-        </button>
+        <div className='flex gap-1.5'>
+          <button
+            type='button'
+            className='btn btn-danger cursor-pointer px-3 py-1.5 text-xs font-bold'
+            onClick={handleReset}
+            disabled={placeBetLoading}
+          >
+            Reset
+          </button>
+
+          <button
+            type='button'
+            className='btn btn-success cursor-pointer px-3 py-1.5 text-xs font-bold'
+            onClick={handleSubmitBet}
+            disabled={
+              placeBetLoading || !betSlip.stake || Number(betSlip.stake) <= 0
+            }
+          >
+            {placeBetLoading ? 'Placing Bet...' : 'Submit'}
+          </button>
+        </div>
       </div>
+
+      {showEditButtons && (
+        <ButtonValues
+          initialTab='casino'
+          onClose={() => setShowEditButtons(false)}
+        />
+      )}
     </div>
   );
 }

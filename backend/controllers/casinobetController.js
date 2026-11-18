@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+import redis, { connectRedis } from '../config/redis.js';
 import betHistoryModel from '../models/betHistoryModel.js';
 import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
@@ -176,6 +177,14 @@ const LOCAL_MATKA_ODDS = {
   dp: 240,
   tp: 700,
   trio: 700,
+  cycle: 9.5,
+  motor: 9.5,
+  chart56: 9.5,
+  chart64: 9.5,
+  abr: 9.5,
+  commonsp: 9.5,
+  commondp: 9.5,
+  colordp: 9.5,
 };
 const LOCAL_MATKA_LABEL = (sel) => {
   const [k, arg] = String(sel).split(':');
@@ -187,63 +196,112 @@ const LOCAL_MATKA_LABEL = (sel) => {
     tp: 'Triple Patti',
     trio: 'Trio',
     pana: 'SP Patti',
+    cycle: 'Cycle',
+    motor: 'Motor SP',
+    chart56: '56 Charts',
+    chart64: '64 Charts',
+    abr: 'ABR',
+    commonsp: 'Common SP',
+    commondp: 'Common DP',
+    colordp: 'Color DP',
   };
   return `${names[k] || k} ${arg ?? ''}`.trim();
 };
+const parseCardRank = (tok) => {
+  const t = String(tok ?? '')
+    .trim()
+    .toLowerCase();
+  if (t === 'a' || t === 'ace') return 1;
+  if (t === 'j' || t === 'jack') return 11;
+  if (t === 'q' || t === 'queen') return 12;
+  if (t === 'k' || t === 'king') return 13;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+};
 const natKey = (fam, nat, market = null) => {
   if (fam === 'matka') {
-    // sub sid 1-10 = digits (display order sr%10), 11-14 Line/ODD/EVEN (engine me nahi)
     const sid = Number(market?.sid ?? market?.i);
     const sr = Number(market?.sr);
     if (sid >= 1 && sid <= 10 && Number.isFinite(sr)) {
       return `single:${sr % 10}`;
     }
+    if (sid === 11) return 'single:line1';
+    if (sid === 12) return 'single:line2';
+    if (sid === 13) return 'single:odd';
+    if (sid === 14) return 'single:even';
     return null;
   }
   const n = String(nat ?? '')
     .trim()
     .toLowerCase();
   if (!n || n === 'undefined') return null;
-  const cardM = n.match(/^card ([a-z0-9]+)$/);
+  const cardM = n.match(/^card\s+([a-z0-9]+)$/);
   switch (fam) {
-    case 'lucky7':
+    case 'lucky7': {
       if (n === 'low card') return 'low';
       if (n === 'high card') return 'high';
+      if (n === 'card 7') return 'seven';
       if (['even', 'odd', 'red', 'black'].includes(n)) return n;
-      if (cardM) return `card:${cardM[1] === 'a' ? 1 : Number(cardM[1])}`;
+      const lm = n.match(/^line\s*([1-4])$/);
+      if (lm) return `group:${lm[1]}`;
+      if (cardM) {
+        const r = parseCardRank(cardM[1]);
+        return r ? `card:${r}` : null;
+      }
       return null;
-    case 'aaa':
+    }
+    case 'aaa': {
       if (
         ['amar', 'akbar', 'anthony', 'even', 'odd', 'red', 'black'].includes(n)
       )
         return n;
       if (n === 'under 7' || n === 'under7') return 'under7';
       if (n === 'over 7' || n === 'over7') return 'over7';
-      if (cardM) return `card:${cardM[1] === 'a' ? 1 : Number(cardM[1])}`;
+      if (cardM) {
+        const r = parseCardRank(cardM[1]);
+        return r ? `card:${r}` : null;
+      }
       return null;
-    case 'dt':
-      if (['dragon', 'tiger', 'tie'].includes(n)) return n;
+    }
+    case 'dt': {
+      if (['dragon', 'tiger', 'tie', 'pair'].includes(n)) return n;
+      if (n === 'suited tie') return 'suitedtie';
+      const dtm = n.match(
+        /^(dragon|tiger)\s+(even|odd|red|black|spade|heart|diamond|club)$/
+      );
+      if (dtm) {
+        const [, who, prop] = dtm;
+        if (prop === 'even' || prop === 'odd') return `parity:${who}:${prop}`;
+        if (prop === 'red' || prop === 'black') return `color:${who}:${prop}`;
+        return `suit:${who}:${prop}`;
+      }
       return null;
+    }
     case 'baccarat':
       if (['player', 'banker', 'tie'].includes(n)) return n;
       if (n === 'player pair') return 'playerPair';
       if (n === 'banker pair') return 'bankerPair';
       if (n === 'either pair') return 'eitherPair';
+      if (n === 'perfect pair') return 'perfectPair';
+      if (n === 'big') return 'big';
+      if (n === 'small') return 'small';
       return null;
     case 'teen':
     case 'muflis': {
       const m = n.match(
-        /^(player|pair plus|total|3 baccarat|m baccarat|black|red)\s+([ab])$/
+        /^(player|pair plus|total|3 baccarat|m baccarat|top 9|black|red)\s+([ab])$/
       );
-      if (!m) return null;
-      const who = m[2].toUpperCase();
-      if (m[1] === 'player') return who === 'A' ? 'playerA' : 'playerB';
-      if (m[1] === 'pair plus') return `pairplus:${who}`;
-      if (m[1] === 'total') return `total:${who}`;
-      if (m[1] === '3 baccarat' || m[1] === 'm baccarat')
-        return `baccarat:${who}`;
-      if (m[1] === 'black') return `redblack:black`;
-      if (m[1] === 'red') return `redblack:red`;
+      if (m) {
+        const who = m[2].toUpperCase();
+        if (m[1] === 'player') return who === 'A' ? 'playerA' : 'playerB';
+        if (m[1] === 'pair plus') return `pairplus:${who}`;
+        if (m[1] === 'total') return `total:${who}`;
+        if (m[1] === '3 baccarat' || m[1] === 'm baccarat')
+          return `baccarat:${who}`;
+        if (m[1] === 'top 9') return `top9:${who}`;
+        if (m[1] === 'black') return `redblack:black`;
+        if (m[1] === 'red') return `redblack:red`;
+      }
       return null;
     }
     case 'sicbo': {
@@ -337,7 +395,8 @@ export const placeBet = async (req, res) => {
     .trim()
     .toLowerCase();
   const userId = getUid(req);
-  const { roundId, side, selection } = req.body || {};
+  const { roundId, side } = req.body || {};
+  let selection = req.body?.selection;
   let odds = Number(req.body?.odds);
   const stake = Number(req.body?.stake);
 
@@ -393,7 +452,11 @@ export const placeBet = async (req, res) => {
       try {
         const engineErrors =
           engine.validateBet(slug, { side, selection, odds, stake }) || [];
-        errors = engineErrors.filter((e) => !/not supported/i.test(String(e)));
+        errors = engineErrors.filter(
+          (e) =>
+            !/not supported/i.test(String(e)) &&
+            !/stake must be between/i.test(String(e))
+        );
       } catch (e) {
         console.warn('engine.validateBet failed:', e.message);
       }
@@ -446,23 +509,66 @@ export const placeBet = async (req, res) => {
     }
 
     // Market live data se hi lo (Round collection ki zarurat nahi)
-    let selectedMarket = liveData.sub?.find(
-      (item) => String(item.sid ?? item.i) === String(selection)
-    );
+    if (family === 'matka') {
+      const s = String(selection).trim();
+      if (/^\d+\s*single$/i.test(s) || /^single\s*[-:]?\s*\d+$/i.test(s)) {
+        selection = `single:${s.replace(/\D/g, '')}`;
+      } else if (/line\s*1/i.test(s)) {
+        selection = 'single:line1';
+      } else if (/line\s*2/i.test(s)) {
+        selection = 'single:line2';
+      } else if (/odd/i.test(s)) {
+        selection = 'single:odd';
+      } else if (/even/i.test(s)) {
+        selection = 'single:even';
+      } else if (/jodi\s*[-:]?\s*(\d+)/i.test(s)) {
+        selection = `jodi:${s.replace(/\D/g, '')}`;
+      } else if (
+        /pana\s*[-:]?\s*(\d+)/i.test(s) ||
+        /sp\s*[-:]?\s*(\d+)/i.test(s)
+      ) {
+        selection = `sp:${s.replace(/\D/g, '')}`;
+      } else if (/dp\s*[-:]?\s*(\d+)/i.test(s)) {
+        selection = `dp:${s.replace(/\D/g, '')}`;
+      } else if (
+        /trio\s*[-:]?\s*(\d+)/i.test(s) ||
+        /tp\s*[-:]?\s*(\d+)/i.test(s)
+      ) {
+        selection = `tp:${s.replace(/\D/g, '')}`;
+      }
+    }
 
-    // Matka local markets (jodi/pana/sp/dp/trio): selection logic hamare end pe —
+    const normNat = (v) =>
+      String(v || '')
+        .trim()
+        .toLowerCase();
+    const reqNation = req.body?.nation;
+    let selectedMarket =
+      (reqNation &&
+        liveData.sub?.find(
+          (item) =>
+            String(item.sid ?? item.i) === String(selection) &&
+            normNat(item.nat ?? item.n ?? item.name) === normNat(reqNation)
+        )) ||
+      liveData.sub?.find(
+        (item) => String(item.sid ?? item.i) === String(selection)
+      );
+
+    // Matka local markets (jodi/pana/sp/dp/trio/cycle/motor/charts/abr): selection logic hamare end pe —
     // provider sub me inke sids nahi hote, odds/limits local payout table se.
     const localMatka =
       !selectedMarket &&
       family === 'matka' &&
-      /^(single|jodi|sp|dp|tp|trio|pana):/.test(String(selection));
+      /^(single|jodi|sp|dp|tp|trio|pana|cycle|motor|chart56|chart64|abr|commonsp|commondp|colordp):/.test(
+        String(selection)
+      );
     if (localMatka) {
       const key = String(selection).split(':')[0];
-      odds = LOCAL_MATKA_ODDS[key]; // server-authoritative payout rate
+      odds = LOCAL_MATKA_ODDS[key] || 9.5; // server-authoritative payout rate
       selectedMarket = {
         sid: String(selection),
         nat: LOCAL_MATKA_LABEL(String(selection)),
-        b: LOCAL_MATKA_ODDS[key],
+        b: odds,
         gstatus: 'OPEN',
         min: 10,
         max: 20000,
@@ -475,18 +581,15 @@ export const placeBet = async (req, res) => {
         .json({ success: false, message: 'Invalid selection for this round' });
     }
 
-    // Sirf explicit band status reject hota hai. Unknown/missing gstatus allow hai.
-    // Testing ke liye .env mein ALLOW_SUSPENDED_BETS=1 se ye check skip ho jata hai.
-    const gs = String(selectedMarket.gstatus ?? '')
-      .trim()
-      .toUpperCase();
-    const BLOCKED = ['SUSPENDED', 'CLOSED', 'INACTIVE', 'BALL RUNNING'];
-    if (process.env.ALLOW_SUSPENDED_BETS !== '1' && BLOCKED.includes(gs)) {
+    // D247 exact open/suspend gate (provider open markets on dt6/vdt6/aaa send visible:0, so only gstatus + odds gate)
+    const rawGs = selectedMarket.gstatus ?? selectedMarket.status;
+    const marketOpen = isActive(rawGs);
+    if (process.env.ALLOW_SUSPENDED_BETS !== '1' && !marketOpen) {
       return res.status(400).json({
         success: false,
         message: 'This selection is suspended',
         selection: selectedMarket.nat || selectedMarket.sid,
-        status: selectedMarket.gstatus || 'UNKNOWN',
+        status: rawGs || 'SUSPENDED',
       });
     }
 
@@ -500,24 +603,57 @@ export const placeBet = async (req, res) => {
       });
     }
 
-    // Production me client odds par bharosa mat karo; provider odds feed se verify karo.
-    // await oddsService.assertOdds(slug, roundId, selection, side, odds);
-
-    // Client sid bhejta hy; engine ko canonical selection key chahiye.
+    // Client sid/nat bhejta hy; engine ko canonical selection key chahiye.
     const providerNat = selectedMarket.nat ?? selectedMarket.n;
     const selKey =
       natKey(family, providerNat, selectedMarket) || String(selection);
 
+    // Authoritative live odds check (D247 rule: no bet on 0/missing rate;
+    // no Lay on Back-only or half-loss markets)
+    const sideLower = String(side || '').toLowerCase();
+    const rawProviderOdds =
+      sideLower === 'lay'
+        ? (selectedMarket.l ?? selectedMarket.lay)
+        : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
+    const providerOdds = Number(rawProviderOdds);
+    if (sideLower === 'lay') {
+      if (!Number.isFinite(providerOdds) || providerOdds <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Lay betting is not available on this selection',
+        });
+      }
+      if (engine.isHalfLossMarket?.(slug, selKey)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Lay not allowed on half-loss markets',
+        });
+      }
+      odds = providerOdds;
+    } else if (!localMatka) {
+      // worli3 live feed sends b:0 with OPEN status (Matka local rate 9.5)
+      if (family === 'matka' && !(providerOdds > 1)) {
+        odds = LOCAL_MATKA_ODDS.single;
+      } else if (!Number.isFinite(providerOdds) || providerOdds <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Betting odds are currently closed',
+        });
+      } else {
+        odds = providerOdds;
+      }
+    }
+
     let exposure = NaN;
     if (family && typeof engine.calcExposure === 'function') {
       try {
-        exposure = engine.calcExposure({ side, stake, odds });
+        exposure = engine.calcExposure({ side: sideLower, stake, odds });
       } catch (e) {
         console.warn('engine.calcExposure failed:', e.message);
       }
     }
     if (!Number.isFinite(exposure) || exposure <= 0) {
-      exposure = localCalcExposure({ side, stake, odds });
+      exposure = localCalcExposure({ side: sideLower, stake, odds });
     }
     if (!Number.isFinite(exposure) || exposure <= 0) {
       return res
@@ -525,10 +661,52 @@ export const placeBet = async (req, res) => {
         .json({ success: false, message: 'Invalid bet exposure' });
     }
 
-    // Atomic debit
+    // D247 Exchange Back/Lay hedging: same round ke existing pending bets ke saath
+    // worst-case round exposure calculate karo aur sirf delta balance se adjust karo.
+    const existingRoundBets = await Bet.find({
+      userId,
+      slug,
+      roundId: currentRoundId,
+      status: 'pending',
+    })
+      .select('slug roundId side selection odds stake exposure')
+      .lean();
+    const oldRoundExposure = engine.calcRoundExposure(slug, existingRoundBets);
+    const newRoundExposure = engine.calcRoundExposure(slug, [
+      ...existingRoundBets,
+      {
+        slug,
+        roundId: currentRoundId,
+        side: sideLower,
+        selection: selKey,
+        odds,
+        stake,
+        exposure,
+      },
+    ]);
+    const deltaExposure =
+      Math.round((newRoundExposure - oldRoundExposure + Number.EPSILON) * 100) /
+      100;
+
+    // Atomic wallet update: agar hedge hone se risk ghat raha hy (delta <= 0)
+    // to main balance nahi katta balki locked exposure wapas avbalance me release hota hy.
+    const balanceFilter =
+      deltaExposure > 0
+        ? {
+            _id: userId,
+            $or: [
+              { avbalance: { $gte: deltaExposure } },
+              {
+                avbalance: { $exists: false },
+                balance: { $gte: deltaExposure },
+              },
+            ],
+          }
+        : { _id: userId };
+
     const debited = await User.findOneAndUpdate(
-      { _id: userId, balance: { $gte: exposure } },
-      { $inc: { balance: -exposure } },
+      balanceFilter,
+      { $inc: { avbalance: -deltaExposure, exposure: deltaExposure } },
       { new: true }
     );
 
@@ -538,34 +716,38 @@ export const placeBet = async (req, res) => {
         .json({ success: false, message: 'Insufficient balance' });
     }
 
+    const nationLabel = String(
+      providerNat ||
+        (family === 'matka'
+          ? `Single ${Number(selectedMarket.sr) % 10}`
+          : req.body?.nation || selKey)
+    );
+
     let bet;
     try {
       bet = await Bet.create({
         userId,
         slug,
         roundId: currentRoundId,
-        side,
+        side: sideLower,
         selection: selKey,
         sid: String(selection),
-        nation: String(
-          providerNat ||
-            (family === 'matka'
-              ? `Single ${Number(selectedMarket.sr) % 10}`
-              : selKey)
-        ),
+        nation: nationLabel,
         odds,
         stake,
         exposure,
         status: 'pending',
       });
     } catch (error) {
-      // Bet insert fail hua to balance wapas
-      await User.updateOne({ _id: userId }, { $inc: { balance: exposure } });
+      // Bet insert fail hua to avbalance/exposure delta wapas
+      await User.updateOne(
+        { _id: userId },
+        { $inc: { avbalance: deltaExposure, exposure: -deltaExposure } }
+      );
       throw error;
     }
 
-    // Account statement (betHistoryModel, gameName 'Casino') me mirror row —
-    // statement isi model se padhta hy, CasinoBet model se nahi.
+    // Account statement & CurrentBets (betHistoryModel, gameName 'Casino') mirror row
     await betHistoryModel
       .create({
         betId: bet._id.toString(),
@@ -574,13 +756,13 @@ export const placeBet = async (req, res) => {
         gameId: slug,
         roundId: String(currentRoundId),
         otype: side,
-        price: odds,
-        xValue: 0,
-        betAmount: stake,
+        price: stake,
+        xValue: odds,
+        betAmount: exposure,
         status: 0,
         eventName: slug,
-        marketName: selKey,
-        teamName: String(providerNat ?? selKey),
+        marketName: String(selectedMarket.mname || 'WINNER'),
+        teamName: nationLabel,
         gameType: 'casino',
         gameName: 'Casino',
       })
@@ -590,13 +772,17 @@ export const placeBet = async (req, res) => {
       success: true,
       message: 'Bet placed successfully',
       bet,
-      balance: debited.balance,
+      balance: debited.avbalance ?? debited.balance,
+      exposure: debited.exposure ?? 0,
       roundId: currentRoundId,
       latestProviderRoundId: currentRoundId,
     });
   } catch (error) {
     console.error('placeBet error:', error);
-    return res.status(500).json({ success: false, message: 'Server error' });
+    return res.status(500).json({
+      success: false,
+      message: 'Server error: ' + (error?.message || error),
+    });
   }
 };
 
@@ -610,86 +796,164 @@ export const placeBet = async (req, res) => {
 const settleCore = async (slug, roundId, result) => {
   roundId = String(roundId);
 
+  const existingRound = await Round.findOne({ slug, roundId }).lean();
+  const enrichedResult = {
+    ...result,
+    card: result?.card || existingRound?.marketData?.card || '',
+    rdesc: result?.rdesc || existingRound?.marketData?.rdesc || '',
+  };
+
   // Round ka result save karo (void round ko overwrite nahi karte)
   await Round.updateOne(
     { slug, roundId, 'result.void': { $ne: true } },
-    { $set: { status: 'settled', result }, $setOnInsert: { slug, roundId } },
+    {
+      $set: { status: 'settled', result: enrichedResult },
+      $setOnInsert: { slug, roundId },
+    },
     { upsert: true }
   ).catch((e) => {
     if (e.code !== 11000) throw e; // duplicate (void round already exists) -> ignore
   });
 
-  const cursor = Bet.find({ slug, roundId, status: 'pending' }).cursor();
+  const pendingAll = await Bet.find({
+    slug,
+    roundId,
+    status: 'pending',
+  }).lean();
+  const byUser = new Map();
+  for (const bet of pendingAll) {
+    const uid = String(bet.userId);
+    if (!byUser.has(uid)) byUser.set(uid, []);
+    byUser.get(uid).push(bet);
+  }
+
+  const r2 = (n) => Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
   let settled = 0;
   let failed = 0;
 
-  for await (const bet of cursor) {
-    try {
-      const selOutcome = engine.evaluateSelection(slug, bet.selection, result);
-      const s = engine.settleBet(bet, selOutcome);
+  for (const [uid, userBets] of byUser.entries()) {
+    const roundExpBefore = engine.calcRoundExposure(slug, userBets);
+    const settledEntries = [];
+    const settledIds = new Set();
 
-      // pending -> settled is the idempotency guard (credit only once)
-      const claimed = await Bet.findOneAndUpdate(
-        { _id: bet._id, status: 'pending' },
-        {
-          status: 'settled',
-          outcome: s.outcome,
-          payout: s.payout,
-          net: s.net,
-          settledAt: new Date(),
-        }
-      );
-      if (claimed && s.payout > 0) {
-        await User.updateOne(
-          { _id: bet.userId },
-          { $inc: { balance: s.payout } }
+    for (const bet of userBets) {
+      try {
+        const selOutcome = engine.evaluateSelection(
+          slug,
+          bet.selection,
+          enrichedResult
         );
+        const s = engine.settleBet(bet, selOutcome);
+
+        // pending -> settled is the idempotency guard (credit only once)
+        const claimed = await Bet.findOneAndUpdate(
+          { _id: bet._id, status: 'pending' },
+          {
+            status: 'settled',
+            outcome: s.outcome,
+            payout: s.payout,
+            net: s.net,
+            settledAt: new Date(),
+          }
+        );
+        if (claimed) {
+          settledIds.add(String(bet._id));
+          settledEntries.push({ bet, s });
+          settled++;
+        }
+      } catch (e) {
+        failed++;
+        console.error(`settle failed for bet ${bet._id}:`, e.message);
       }
-      if (claimed) {
-        await betHistoryModel
-          .updateOne(
-            { betId: bet._id.toString() },
-            {
-              $set: {
-                status: s.net > 0 ? 1 : s.net < 0 ? 2 : 1,
-                betResult:
-                  s.outcome === 'win'
-                    ? 'WON'
-                    : s.outcome === 'push'
-                      ? 'PUSH'
-                      : s.outcome === 'half_loss'
-                        ? 'HALF LOSS'
-                        : 'LOST',
-                profitLossChange: s.net,
-                resultAmount: Math.abs(s.net),
-                settledBy: 'api',
-                settledAt: new Date(),
-              },
-            }
-          )
-          .catch((e) =>
-            console.error('casino history mirror settle:', e.message)
-          );
-      }
-      settled++;
-    } catch (e) {
-      failed++;
-      console.error(`settle failed for bet ${bet._id}:`, e.message);
+    }
+
+    if (!settledEntries.length) continue;
+
+    const remainingPending = userBets.filter(
+      (b) => !settledIds.has(String(b._id))
+    );
+    const roundExpAfter = engine.calcRoundExposure(slug, remainingPending);
+    const exposureRelease = r2(roundExpBefore - roundExpAfter);
+    const totalNet = r2(
+      settledEntries.reduce((sum, entry) => sum + Number(entry.s.net || 0), 0)
+    );
+    const avbalanceDelta = r2(totalNet + exposureRelease);
+
+    const updatedUser = await User.findByIdAndUpdate(
+      uid,
+      {
+        $inc: {
+          balance: totalNet,
+          exposure: -exposureRelease,
+          avbalance: avbalanceDelta,
+        },
+      },
+      { new: true }
+    );
+
+    const finalBal = Number(updatedUser?.balance ?? 0);
+    let runningBal = r2(finalBal - totalNet);
+    for (const { bet, s } of settledEntries) {
+      const beforeBal = runningBal;
+      runningBal = r2(runningBal + Number(s.net || 0));
+      await betHistoryModel
+        .updateOne(
+          { betId: bet._id.toString() },
+          {
+            $set: {
+              status: s.net > 0 ? 1 : s.net < 0 ? 2 : 1,
+              betResult:
+                s.outcome === 'win'
+                  ? 'WON'
+                  : s.outcome === 'push'
+                    ? 'PUSH'
+                    : s.outcome === 'half_loss'
+                      ? 'HALF LOSS'
+                      : 'LOST',
+              profitLossChange: s.net,
+              resultAmount: Math.abs(s.net),
+              balanceBeforeSettlement: beforeBal,
+              balanceAfterSettlement: runningBal,
+              settledBy: 'api',
+              settledAt: new Date(),
+            },
+          }
+        )
+        .catch((e) =>
+          console.error('casino history mirror settle:', e.message)
+        );
     }
   }
   return { settled, failed };
 };
 
-// Ek bet ko void karke exposure refund (voidRound aur stale refund dono use karte hain)
+// Ek bet ko void karke netted exposure refund (voidRound aur stale refund dono use karte hain)
 const voidBet = async (bet) => {
+  const roundPendingBefore = await Bet.find({
+    userId: bet.userId,
+    slug: bet.slug,
+    roundId: bet.roundId,
+    status: 'pending',
+  })
+    .select('slug roundId side selection odds stake exposure')
+    .lean();
+  const expBefore = engine.calcRoundExposure(bet.slug, roundPendingBefore);
+
   const claimed = await Bet.findOneAndUpdate(
     { _id: bet._id, status: 'pending' },
     { status: 'void', payout: bet.exposure, net: 0, settledAt: new Date() }
   );
   if (claimed) {
+    const remaining = roundPendingBefore.filter(
+      (b) => String(b._id) !== String(bet._id)
+    );
+    const expAfter = engine.calcRoundExposure(bet.slug, remaining);
+    const exposureRelease =
+      Math.round((expBefore - expAfter + Number.EPSILON) * 100) / 100;
+
     await User.updateOne(
       { _id: bet.userId },
-      { $inc: { balance: bet.exposure } }
+      { $inc: { exposure: -exposureRelease, avbalance: exposureRelease } }
     );
     await betHistoryModel
       .updateOne(
@@ -769,76 +1033,198 @@ export const settleRoundFromApi = async (req, res) => {
 };
 
 // ======================================================================
-// Auto poller: har 1 minute, saare games (slugs) jinki pending bets hain.
-// Server start par ek baar call karo: startResultPoller();
+// Redis-backed result helpers + fast per-slug settlement
 // ======================================================================
-export const startResultPoller = (everyMs = 60 * 1000) => {
+const CASINO_RESULT_TTL = Number(process.env.CASINO_RESULT_TTL) || 5;
+const CASINO_SETTLE_POLL_MS =
+  Number(process.env.CASINO_SETTLE_POLL_MS) || 5 * 1000;
+const slugSettleInflight = new Map();
+
+const getTodayDateStr = () => {
+  const now = new Date();
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+};
+
+const readRedisJson = async (key) => {
+  try {
+    await connectRedis();
+    const raw = await redis.get(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeRedisJson = async (key, data, ttl = CASINO_RESULT_TTL) => {
+  try {
+    if (data === undefined || data === null) return;
+    await connectRedis();
+    await redis.set(key, JSON.stringify(data), { EX: ttl });
+  } catch {
+    // ignore redis errors — live settlement still continues
+  }
+};
+
+const getCachedOrFetchCasinoResult = async (slug) => {
+  const key = `casino:result:${slug}`;
+  const cached = await readRedisJson(key);
+  const cachedRows = resultRows(cached);
+  if (cachedRows.length) return cachedRows;
+
+  const rows = await fetchCasinoResult(slug);
+  await writeRedisJson(key, { res: rows }, CASINO_RESULT_TTL);
+  return rows;
+};
+
+const getCachedOrFetchDatedResult = async (slug) => {
+  const date = getTodayDateStr();
+  const key = `casino:direct-result-by-date:${date}:${slug}`;
+  const cached = await readRedisJson(key);
+  const cachedRows = Array.isArray(cached?.data)
+    ? cached.data
+    : Array.isArray(cached)
+      ? cached
+      : null;
+  if (cachedRows) return cachedRows;
+
+  const rows = await fetchDatedCasinoResult(slug);
+  await writeRedisJson(
+    key,
+    { date, eventName: slug, data: rows },
+    CASINO_RESULT_TTL
+  );
+  return rows;
+};
+
+/**
+ * Check if `slug` has any pending CasinoBet rows; if yes, settle matching rounds
+ * immediately using any passed WS/REST result hints or 5s Redis result cache.
+ */
+export const settlePendingForSlug = (
+  slug,
+  { resultRowsHint = null, datedRowsHint = null } = {}
+) => {
+  const cleanSlug = String(slug || '')
+    .trim()
+    .toLowerCase();
+  if (!cleanSlug) return Promise.resolve({ settled: 0, skipped: true });
+  if (slugSettleInflight.has(cleanSlug))
+    return slugSettleInflight.get(cleanSlug);
+
+  const task = (async () => {
+    try {
+      const pending = (
+        await Bet.distinct('roundId', { slug: cleanSlug, status: 'pending' })
+      ).map(String);
+      if (!pending.length) return { settled: 0, skipped: true };
+
+      let settledCount = 0;
+      const isMatka = engine.familyOf(cleanSlug) === 'matka';
+
+      if (isMatka) {
+        const rows = Array.isArray(datedRowsHint)
+          ? datedRowsHint
+          : await getCachedOrFetchDatedResult(cleanSlug).catch(() => []);
+        const byBazaar = {};
+        for (const row of rows) {
+          const m = parseMatkaNat(row?.nat);
+          if (!m) continue;
+          byBazaar[m.bazaar] = byBazaar[m.bazaar] || {};
+          byBazaar[m.bazaar][m.kind] = { mid: String(row.mid), ...m };
+        }
+        for (const pair of Object.values(byBazaar)) {
+          const result = {
+            open: pair.OPEN?.digit,
+            close: pair.CLOSE?.digit,
+            openPana: pair.OPEN?.pana,
+            closePana: pair.CLOSE?.pana,
+          };
+          for (const kind of ['OPEN', 'CLOSE']) {
+            const mid = pair[kind]?.mid;
+            if (!mid || !pending.includes(mid)) continue;
+            try {
+              const out = await settleCore(cleanSlug, mid, result);
+              settledCount += out.settled;
+            } catch (e) {
+              console.error(`poller settle ${cleanSlug}/${mid}:`, e.message);
+            }
+          }
+        }
+        return { settled: settledCount };
+      }
+
+      // Refresh live snapshot while bets are pending so final dealt cards/rdesc are captured
+      try {
+        const liveResp = await getCasinoTable(cleanSlug, 0);
+        const liveD = pickLive(liveResp);
+        if (liveD?.mid) await saveCasinoRoundSnapshot(cleanSlug, liveD);
+      } catch {
+        /* best-effort snapshot refresh */
+      }
+
+      const [listRaw, datedRows] = await Promise.all([
+        Array.isArray(resultRowsHint)
+          ? Promise.resolve(resultRowsHint)
+          : getCachedOrFetchCasinoResult(cleanSlug).catch(() => []),
+        Array.isArray(datedRowsHint)
+          ? Promise.resolve(datedRowsHint)
+          : getCachedOrFetchDatedResult(cleanSlug).catch(() => []),
+      ]);
+      const list = resultRows(listRaw);
+
+      for (const row of list) {
+        const midStr = String(row?.mid ?? '');
+        if (!midStr || !pending.includes(midStr)) continue;
+        try {
+          const norm = normalizeResult(cleanSlug, row, list);
+          const datedMatch = datedRows.find((d) => String(d.mid) === midStr);
+          if (datedMatch?.nat) norm.datedNat = datedMatch.nat;
+          const out = await settleCore(cleanSlug, midStr, norm);
+          settledCount += out.settled;
+        } catch (e) {
+          console.error(`poller settle ${cleanSlug}/${midStr}:`, e.message);
+        }
+      }
+
+      return { settled: settledCount };
+    } catch (e) {
+      console.error(`settlePendingForSlug ${cleanSlug}:`, e.message);
+      return { settled: 0, error: e.message };
+    } finally {
+      slugSettleInflight.delete(cleanSlug);
+    }
+  })();
+
+  slugSettleInflight.set(cleanSlug, task);
+  return task;
+};
+
+// ======================================================================
+// Auto poller: har 5 seconds, saare games (slugs) jinki pending bets hain.
+// Redis result cache reuse karta hai + WS/REST updates par turant bhi trigger hota hai.
+// ======================================================================
+export const startResultPoller = (everyMs = CASINO_SETTLE_POLL_MS) => {
   let busy = false;
+  let lastStaleSweepAt = 0;
 
   const tick = async () => {
     if (busy) return;
     busy = true;
     try {
       const slugs = await Bet.distinct('slug', { status: 'pending' });
-
-      for (const slug of slugs) {
-        try {
-          const pending = (
-            await Bet.distinct('roundId', { slug, status: 'pending' })
-          ).map(String);
-          if (!pending.length) continue;
-
-          const isMatka = engine.familyOf(slug) === 'matka';
-          if (isMatka) {
-            // Dated rows: "257  -  4  -  GULF CLOSE" = pana - digit - bazaar+kind.
-            // Jodi ke liye bazaar ke OPEN+CLOSE dono rounds chahiye — pair banne
-            // par dono mids settle karo; adha pair sirf single/sp/dp/tp settle kare.
-            const rows = await fetchDatedCasinoResult(slug).catch(() => []);
-            const byBazaar = {};
-            for (const row of rows) {
-              const m = parseMatkaNat(row?.nat);
-              if (!m) continue;
-              byBazaar[m.bazaar] = byBazaar[m.bazaar] || {};
-              byBazaar[m.bazaar][m.kind] = { mid: String(row.mid), ...m };
-            }
-            for (const pair of Object.values(byBazaar)) {
-              const result = {
-                open: pair.OPEN?.digit,
-                close: pair.CLOSE?.digit,
-                openPana: pair.OPEN?.pana,
-                closePana: pair.CLOSE?.pana,
-              };
-              for (const kind of ['OPEN', 'CLOSE']) {
-                const mid = pair[kind]?.mid;
-                if (!mid || !pending.includes(mid)) continue;
-                try {
-                  await settleCore(slug, mid, result);
-                } catch (e) {
-                  console.error(`poller settle ${slug}/${mid}:`, e.message);
-                }
-              }
-            }
-            continue;
-          }
-
-          const list = resultRows(await fetchCasinoResult(slug)); // newest first
-          for (const row of list) {
-            if (!pending.includes(String(row.mid))) continue;
-            try {
-              await settleCore(slug, row.mid, normalizeResult(slug, row, list));
-            } catch (e) {
-              console.error(`poller settle ${slug}/${row.mid}:`, e.message);
-            }
-          }
-        } catch (e) {
-          // ek slug fail ho to baaki chalte rahein
-          console.error(`poller ${slug}:`, e.message);
-        }
+      if (slugs.length) {
+        await Promise.all(slugs.map((slug) => settlePendingForSlug(slug)));
       }
 
-      // Result API me jo round ab nahi dikhta uski purani pending bets refund
-      if (STALE_BET_MINUTES > 0) {
-        const cutoff = new Date(Date.now() - STALE_BET_MINUTES * 60 * 1000);
+      // Result API me jo round ab nahi dikhta uski purani pending bets refund (every 60s)
+      const now = Date.now();
+      if (STALE_BET_MINUTES > 0 && now - lastStaleSweepAt >= 60 * 1000) {
+        lastStaleSweepAt = now;
+        const cutoff = new Date(now - STALE_BET_MINUTES * 60 * 1000);
         const stale = await Bet.find({
           status: 'pending',
           createdAt: { $lt: cutoff },

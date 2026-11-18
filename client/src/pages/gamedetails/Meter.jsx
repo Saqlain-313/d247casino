@@ -40,6 +40,8 @@ function Meter({ onBetSelect, meterData, pendingBetAmounts, selectedBet }) {
             : { rate: null, size: null },
         min: item.min || 0,
         max: formatMax(item.max || 0),
+        minRaw: Number(item.min) || 0,
+        maxRaw: Number(item.max) || 0,
         sid: item.sid,
         status: item.status, // Status from API
       };
@@ -154,8 +156,8 @@ function Meter({ onBetSelect, meterData, pendingBetAmounts, selectedBet }) {
                             item.no.rate,
                             'back',
                             item.sid,
-                            item.min,
-                            item.max,
+                            item.minRaw,
+                            item.maxRaw,
                             item.no.size
                           )
                         }
@@ -181,8 +183,8 @@ function Meter({ onBetSelect, meterData, pendingBetAmounts, selectedBet }) {
                             item.yes.rate,
                             'lay',
                             item.sid,
-                            item.min,
-                            item.max,
+                            item.minRaw,
+                            item.maxRaw,
                             item.yes.size
                           )
                         }
@@ -281,8 +283,8 @@ function Meter({ onBetSelect, meterData, pendingBetAmounts, selectedBet }) {
                             item.no.rate,
                             'back',
                             item.sid,
-                            item.min,
-                            item.max,
+                            item.minRaw,
+                            item.maxRaw,
                             item.no.size
                           )
                         }
@@ -308,8 +310,8 @@ function Meter({ onBetSelect, meterData, pendingBetAmounts, selectedBet }) {
                             item.yes.rate,
                             'lay',
                             item.sid,
-                            item.min,
-                            item.max,
+                            item.minRaw,
+                            item.maxRaw,
                             item.yes.size
                           )
                         }

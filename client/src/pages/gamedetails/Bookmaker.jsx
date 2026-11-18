@@ -180,6 +180,7 @@ function Bookmaker({
   };
 
   const BOOKMAKER_GAME_TYPES = ['Bookmaker', 'Bookmaker IPL CUP'];
+  const currentMarketName = BookmakerList?.[0]?.mname || 'Bookmaker';
 
   const getHistoryMarketBets = () => {
     if (!Array.isArray(eventName) || !gameid) return [];
@@ -187,7 +188,8 @@ function Bookmaker({
       .filter(
         (b) =>
           String(b.gameId) === String(gameid) &&
-          BOOKMAKER_GAME_TYPES.includes(b.gameType)
+          BOOKMAKER_GAME_TYPES.includes(b.gameType) &&
+          (!b.marketName || b.marketName === currentMarketName)
       )
       .map((b) => ({
         teamName: b.teamName,
@@ -201,13 +203,16 @@ function Bookmaker({
     const historyBets = getHistoryMarketBets();
     if (historyBets.length > 0) return historyBets;
     return (
-      pendingBetAmounts?.filter((item) =>
-        BOOKMAKER_GAME_TYPES.includes(item.gameType)
+      pendingBetAmounts?.filter(
+        (item) =>
+          BOOKMAKER_GAME_TYPES.includes(item.gameType) &&
+          (!item.marketName || item.marketName === currentMarketName)
       ) || []
     );
   };
 
-  const getMarketCashoutPL = () => cashoutPL?.['Bookmaker'] || 0;
+  const getMarketCashoutPL = () =>
+    cashoutPL?.[currentMarketName] || cashoutPL?.['Bookmaker'] || 0;
 
   const computeNetOutcome = (team, marketBets, mCashoutPL = 0) => {
     let netOutcome = 0;
@@ -311,8 +316,9 @@ function Bookmaker({
         stake: '',
         //sid: sid, // Include section id
         teams: allTeams, // Add all teams for Bookmaker
-        marketName: BookmakerList?.[0]?.mname || 'Bookmaker',
+        marketName: currentMarketName,
         gameType: 'Bookmaker',
+        gType: 'match1',
         maxAmount: BookmakerList?.[0]?.max || BookmakerList?.[0]?.maxb || 0,
         minAmount: BookmakerList?.[0]?.min || 0,
       });

@@ -251,14 +251,36 @@ export default function CasinoVideoCards({
   }
 
   // --------------------------------------------------------------------------
-  // 4. Worli Matka & Dolidana (worli, worli2, worli3, dolidana)
+  // 4. Worli Matka (worli, worli2, worli3) - 3 authentic flip cards
   // --------------------------------------------------------------------------
   if (
     selectedGame === 'worli' ||
     selectedGame === 'worli2' ||
-    selectedGame === 'worli3' ||
-    selectedGame === 'dolidana'
+    selectedGame === 'worli3'
   ) {
+    const rawCards = roundData?.card || roundData?.cards?.cards || '';
+    const cardList = String(rawCards).split(',').filter(Boolean);
+    const c1 = cardList[0] || '1';
+    const c2 = cardList[1] || '1';
+    const c3 = cardList[2] || '1';
+
+    return (
+      <div className='casino-video-cards'>
+        <div>
+          <div className='flip-card-container'>
+            <FlipCard card={c1} isFlipped={c1 !== '1'} />
+            <FlipCard card={c2} isFlipped={c2 !== '1'} />
+            <FlipCard card={c3} isFlipped={c3 !== '1'} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // 4b. Dolidana Matka Draw
+  // --------------------------------------------------------------------------
+  if (selectedGame === 'dolidana') {
     const sDigit = roundData.cards?.single || roundData.results?.[0] || '7';
     const pana = roundData.cards?.pana || '128';
 
@@ -275,7 +297,7 @@ export default function CasinoVideoCards({
           className='text-warning fw-bold mb-1'
           style={{ fontSize: '10px' }}
         >
-          {selectedGame === 'dolidana' ? 'DOLIDANA RESULT' : 'WORLI OPEN'}
+          DOLIDANA RESULT
         </small>
         <div className='d-flex align-items-center gap-2'>
           {/* 3 Pana digits */}

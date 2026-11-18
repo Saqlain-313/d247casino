@@ -45,6 +45,8 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
             : { rate: null, stake: null },
         min: item.min || 0,
         max: formatMax(item.max || 0),
+        minRaw: Number(item.min) || 0,
+        maxRaw: Number(item.max) || 0,
         sid: item.sid,
       };
     });
@@ -147,8 +149,8 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                       item.no.rate,
                       'lay',
                       item.sid,
-                      item.min,
-                      item.max,
+                      item.minRaw,
+                      item.maxRaw,
                       item.no.stake
                     )
                   }
@@ -174,8 +176,8 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                       item.yes.rate,
                       'back',
                       item.sid,
-                      item.min,
-                      item.max,
+                      item.minRaw,
+                      item.maxRaw,
                       item.yes.stake
                     )
                   }
@@ -260,8 +262,8 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                       item.no.rate,
                       'lay',
                       item.sid,
-                      item.min,
-                      item.max,
+                      item.minRaw,
+                      item.maxRaw,
                       item.no.stake
                     )
                   }
@@ -287,8 +289,8 @@ function Fancy1({ onBetSelect, fancy1Data, pendingBetAmounts, selectedBet }) {
                       item.yes.rate,
                       'back',
                       item.sid,
-                      item.min,
-                      item.max,
+                      item.minRaw,
+                      item.maxRaw,
                       item.yes.stake
                     )
                   }

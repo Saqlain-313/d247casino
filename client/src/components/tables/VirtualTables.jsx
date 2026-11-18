@@ -31,16 +31,20 @@ const useV = () => {
 
 const entryOf = (markets, nat) => markets[normalizeSelection(nat)];
 const oddsOf = (entry, type = 'back') => {
+  if (!entry) return null;
+  const gs = String(entry.gstatus || '').toUpperCase();
+  if (gs && !['OPEN', 'ACTIVE'].includes(gs)) return null;
   const v = entry?.[type];
-  return entry && Number(v) > 0 ? v : null;
+  return Number(v) > 1 ? v : null;
 };
 
-const Box = ({ markets, nat, type = 'back' }) => {
+const Box = ({ markets, nat, type = 'back', label }) => {
   const odds = oddsOf(entryOf(markets, nat), type);
-  if (!odds) {
+  const { isSuspended } = useV();
+  if (!odds || isSuspended) {
     return (
-      <div className={`casino-odds-box ${type}`}>
-        <span className='casino-odds'>-</span>
+      <div className={`casino-odds-box ${type} suspended-box`}>
+        <span className='casino-odds'>{label || '0'}</span>
       </div>
     );
   }
@@ -60,9 +64,9 @@ const ThemeBox = ({
   const dead = !odds || isSuspended;
   return (
     <div className={wrap} style={wrapStyle}>
-      <div className='casino-odds text-center'>{dead ? '-' : odds}</div>
+      <div className='casino-odds text-center'>{dead ? '0' : odds}</div>
       <div
-        className={`casino-odds-box back casino-odds-box-theme ${isSuspended ? 'suspended-box' : ''}`}
+        className={`casino-odds-box back casino-odds-box-theme ${dead ? 'suspended-box' : ''}`}
         onClick={
           dead
             ? undefined
@@ -127,7 +131,7 @@ const CardRow = ({ markets, nats, title, perBox = false, extraClass = '' }) => {
         return (
           <div
             key={r}
-            className={`card-odd-box ${isSuspended ? 'suspended-box' : ''}`}
+            className={`card-odd-box ${dead ? 'suspended-box' : ''}`}
             onClick={
               dead
                 ? undefined
@@ -137,7 +141,7 @@ const CardRow = ({ markets, nats, title, perBox = false, extraClass = '' }) => {
           >
             {perBox && (
               <div className='casino-odds fw-bold text-center'>
-                {dead ? '-' : odds}
+                {dead ? '0' : odds}
               </div>
             )}
             <div>
@@ -243,7 +247,7 @@ const GroupCards = ({ markets, nat, cards }) => {
   const dead = !odds || isSuspended;
   return (
     <div
-      className={`lucky7cards ${isSuspended ? 'suspended-box' : ''}`}
+      className={`lucky7cards ${dead ? 'suspended-box' : ''}`}
       onClick={
         dead
           ? undefined
@@ -251,7 +255,7 @@ const GroupCards = ({ markets, nat, cards }) => {
       }
       style={{ cursor: dead ? 'not-allowed' : 'pointer' }}
     >
-      <div className='casino-odds fw-bold text-center'>{dead ? '-' : odds}</div>
+      <div className='casino-odds fw-bold text-center'>{dead ? '0' : odds}</div>
       <div className='d-flex justify-content-center gap-1'>
         {cards.map((c) => (
           <div key={c} className='card-odd-box'>
@@ -408,32 +412,70 @@ export function TableVtrio() {
 
 // ---------------------------------------------------------------- vdtl20
 export function TableVdtl20() {
-  const { markets } = useV();
+  const { markets, isSuspended, openBetSlip } = useV();
   const players = [
     { name: 'Dragon', s: 'D' },
     { name: 'Tiger', s: 'T' },
     { name: 'Lion', s: 'L' },
   ];
-  const sides = ['Winner', 'Black', 'Red', 'Odd', 'Even'];
+  const leftSides = [
+    { label: 'Winner', key: 'Winner', icon: null },
+    { label: 'Black', key: 'Black', icon: 'black' },
+    { label: 'Red', key: 'Red', icon: 'red' },
+    { label: 'Odd', key: 'Odd', icon: null },
+    { label: 'Even', key: 'Even', icon: null },
+  ];
+
   return (
-    <div className='vfelt w-full min-w-0 bg-[#f6f6f6] p-1'>
-      <MatrixTable
-        markets={markets}
-        columns={['Dragon', 'Tiger', 'Lion']}
-        rows={sides.map((x) => ({
-          label: x,
-          nats: players.map((p) => `${x} ${p.s}`),
-        }))}
-      />
-      <div className='mt-2 grid grid-cols-1 gap-2 md:grid-cols-3'>
-        {players.map((p) => (
-          <CardRow
-            key={p.s}
-            markets={markets}
-            nats={RANKS.map((r) => `${p.name} ${r}`)}
-            perBox
-          />
-        ))}
+    <div className='vfelt casino-table'>
+      <div className='casino-table-box'>
+        <div className='casino-table-left-box'>
+          <div className='casino-table-header'>
+            <div className='casino-nation-detail' />
+            <div className='casino-odds-box back'>Dragon</div>
+            <div className='casino-odds-box back'>Tiger</div>
+            <div className='casino-odds-box back'>Lion</div>
+          </div>
+          <div className='casino-table-body'>
+            {leftSides.map((row) => (
+              <div className='casino-table-row' key={row.key}>
+                <div className='casino-nation-detail'>
+                  <div className='casino-nation-name'>
+                    {row.label}
+                    {row.icon === 'black' && <BlackSuits />}
+                    {row.icon === 'red' && <RedSuits />}
+                  </div>
+                </div>
+                {players.map((p) => (
+                  <Box key={p.s} markets={markets} nat={`${row.key} ${p.s}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className='casino-table-box-divider' />
+
+        <div className='casino-table-right-box'>
+          <div className='casino-table-header'>
+            <div className='casino-nation-detail' />
+            <div className='casino-odds-box back'>Dragon</div>
+            <div className='casino-odds-box back'>Tiger</div>
+            <div className='casino-odds-box back'>Lion</div>
+          </div>
+          <div className='casino-table-body'>
+            {RANKS.map((r) => (
+              <div className='casino-table-row' key={r}>
+                <div className='casino-nation-detail'>
+                  <div className='casino-nation-name'>Card {r}</div>
+                </div>
+                {players.map((p) => (
+                  <Box key={p.s} markets={markets} nat={`${p.name} ${r}`} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -442,82 +484,178 @@ export function TableVdtl20() {
 // ---------------------------------------------------------------- vdt6
 export function TableVdt6() {
   const { markets } = useV();
-  const sides = [
-    'Even',
-    'Odd',
-    'Red',
-    'Black',
-    'Spade',
-    'Heart',
-    'Diamond',
-    'Club',
-  ];
   return (
-    <div className='vfelt w-full min-w-0 bg-[#f6f6f6] p-1'>
-      <RowTable
-        markets={markets}
-        lay
-        rows={[{ nat: 'Dragon' }, { nat: 'Tiger' }, { nat: 'Pair' }]}
-      />
-      <div className='mt-2 grid grid-cols-1 gap-2 md:grid-cols-2'>
-        <RowTable
-          markets={markets}
-          title='Dragon'
-          rows={sides.map((x) => ({ nat: `Dragon ${x}`, label: x }))}
-        />
-        <RowTable
-          markets={markets}
-          title='Tiger'
-          rows={sides.map((x) => ({ nat: `Tiger ${x}`, label: x }))}
-        />
+    <div className='vfelt casino-table'>
+      <div className='casino-table-box'>
+        <div className='casino-table-left-box'>
+          <div className='casino-table-header'>
+            <div className='casino-nation-detail' />
+            <div className='casino-odds-box back'>Back</div>
+            <div className='casino-odds-box lay'>Lay</div>
+          </div>
+          <div className='casino-table-body'>
+            {['Dragon', 'Tiger'].map((p) => (
+              <div className='casino-table-row' key={p}>
+                <div className='casino-nation-detail'>
+                  <div className='casino-nation-name'>{p}</div>
+                </div>
+                <Box markets={markets} nat={p} type='back' />
+                <Box markets={markets} nat={p} type='lay' />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className='casino-table-right-box dtpair'>
+          <ThemeBox markets={markets} nat='Pair' wrap='w-100'>
+            Pair
+          </ThemeBox>
+        </div>
+      </div>
+
+      <div className='casino-table-box mt-3'>
+        <div className='casino-table-left-box'>
+          <div className='casino-table-header'>
+            <div className='casino-nation-detail' />
+            <div className='casino-odds-box back'>Even</div>
+            <div className='casino-odds-box back'>Odd</div>
+          </div>
+          <div className='casino-table-body'>
+            {['Dragon', 'Tiger'].map((p) => (
+              <div className='casino-table-row' key={p}>
+                <div className='casino-nation-detail'>
+                  <div className='casino-nation-name'>{p}</div>
+                </div>
+                <Box markets={markets} nat={`${p} Even`} />
+                <Box markets={markets} nat={`${p} Odd`} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className='casino-table-right-box dtredblack'>
+          <div className='casino-table-header'>
+            <div className='casino-nation-detail' />
+            <div className='casino-odds-box back'>Red</div>
+            <div className='casino-odds-box back'>Black</div>
+          </div>
+          <div className='casino-table-body'>
+            {['Dragon', 'Tiger'].map((p) => (
+              <div className='casino-table-row' key={p}>
+                <div className='casino-nation-detail'>
+                  <div className='casino-nation-name'>{p}</div>
+                </div>
+                <Box markets={markets} nat={`${p} Red`} />
+                <Box markets={markets} nat={`${p} Black`} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className='casino-table-box mt-3'>
+        {['Spade', 'Heart', 'Diamond', 'Club'].map((su) => (
+          <div
+            className='casino-table-left-box'
+            style={{ width: 'calc(25% - 2px)' }}
+            key={su}
+          >
+            <div className='casino-table-header'>
+              <div className='casino-nation-detail'>{su}</div>
+              <div className='casino-odds-box back'>D</div>
+              <div className='casino-odds-box back'>T</div>
+            </div>
+            <div className='casino-table-body'>
+              <div className='casino-table-row'>
+                <div className='casino-nation-detail'>
+                  <div className='casino-nation-name'>{su}</div>
+                </div>
+                <Box markets={markets} nat={`Dragon ${su}`} />
+                <Box markets={markets} nat={`Tiger ${su}`} />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------- vteen family
-const TeenLayout = ({ markets, sideNames, lay = false }) => (
-  <div className='grid grid-cols-1 gap-2 md:grid-cols-2'>
-    <RowTable
-      markets={markets}
-      title='Main'
-      lay={lay}
-      rows={[{ nat: 'Player A' }, { nat: 'Player B' }]}
-    />
-    <RowTable
-      markets={markets}
-      title='Side Bets'
-      rows={sideNames.map((n) => ({ nat: n }))}
-    />
-  </div>
-);
-
 export function TableVteen20() {
-  const { markets } = useV();
+  const { markets, isSuspended, openBetSlip } = useV();
+  const renderSuitBtn = (nat, suits) => {
+    const odds = oddsOf(entryOf(markets, nat));
+    const dead = !odds || isSuspended;
+    return (
+      <div
+        className={`casino-odds-box back ${dead ? 'suspended-box' : ''}`}
+        onClick={
+          dead
+            ? undefined
+            : () => openBetSlip(nat, odds, 'back', window.innerWidth < 1200)
+        }
+        style={{
+          cursor: dead ? 'not-allowed' : 'pointer',
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+        }}
+      >
+        <div>{suits === 'black' ? <BlackSuits /> : <RedSuits />}</div>
+        <div>
+          <span className='casino-odds'>{dead ? '0' : odds}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className='vfelt w-full min-w-0 bg-[#f6f6f6] p-1'>
-      <MatrixTable
-        markets={markets}
-        columns={['Player', '3 Baccarat', 'Total', 'Pair Plus']}
-        rows={['A', 'B'].map((p) => ({
-          label: `Player ${p}`,
-          nats: [
-            `Player ${p}`,
-            `3 Baccarat ${p}`,
-            `Total ${p}`,
-            `Pair Plus ${p}`,
-          ],
-        }))}
-      />
-      <div className='mt-2'>
-        <MatrixTable
-          markets={markets}
-          columns={['Black', 'Red']}
-          rows={['A', 'B'].map((p) => ({
-            label: `Player ${p}`,
-            nats: [`Black ${p}`, `Red ${p}`],
-          }))}
-        />
+    <div className='vfelt casino-table'>
+      <div className='casino-table-box'>
+        {['A', 'B'].map((p, idx) => (
+          <div
+            key={p}
+            className={
+              idx === 0 ? 'casino-table-left-box' : 'casino-table-right-box'
+            }
+          >
+            <div className='casino-table-header'>
+              <div className='casino-nation-detail'>Player {p}</div>
+            </div>
+            <div className='casino-table-body'>
+              <div className='casino-table-row'>
+                <div className='casino-odds-box'>Player {p}</div>
+                <div className='casino-odds-box'>3 Baccarat {p}</div>
+                <div className='casino-odds-box'>Total {p}</div>
+                <div className='casino-odds-box'>Pair Plus {p}</div>
+              </div>
+              <div className='casino-table-row'>
+                <Box markets={markets} nat={`Player ${p}`} />
+                <Box markets={markets} nat={`3 Baccarat ${p}`} />
+                <Box markets={markets} nat={`Total ${p}`} />
+                <Box markets={markets} nat={`Pair Plus ${p}`} label={p} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className='casino-table-box mt-2' style={{ gap: '4px' }}>
+        <div
+          className='casino-table-left-box'
+          style={{ display: 'flex', gap: '4px' }}
+        >
+          {renderSuitBtn('Black A', 'black')}
+          {renderSuitBtn('Red A', 'red')}
+        </div>
+        <div
+          className='casino-table-right-box'
+          style={{ display: 'flex', gap: '4px' }}
+        >
+          {renderSuitBtn('Black B', 'black')}
+          {renderSuitBtn('Red B', 'red')}
+        </div>
       </div>
     </div>
   );
@@ -526,15 +664,33 @@ export function TableVteen20() {
 export function TableVteenmuf() {
   const { markets } = useV();
   return (
-    <div className='vfelt w-full min-w-0 bg-[#f6f6f6] p-1'>
-      <MatrixTable
-        markets={markets}
-        columns={['Player', 'Top 9', 'M Baccarat']}
-        rows={['A', 'B'].map((p) => ({
-          label: `Player ${p}`,
-          nats: [`Player ${p}`, `Top 9 ${p}`, `M Baccarat ${p}`],
-        }))}
-      />
+    <div className='vfelt casino-table'>
+      <div className='casino-table-box'>
+        {['A', 'B'].map((p, idx) => (
+          <div
+            key={p}
+            className={
+              idx === 0 ? 'casino-table-left-box' : 'casino-table-right-box'
+            }
+          >
+            <div className='casino-table-header'>
+              <div className='casino-nation-detail'>Player {p}</div>
+            </div>
+            <div className='casino-table-body'>
+              <div className='casino-table-row'>
+                <div className='casino-odds-box'>Winner</div>
+                <div className='casino-odds-box'>Top 9</div>
+                <div className='casino-odds-box'>M Baccarat {p}</div>
+              </div>
+              <div className='casino-table-row'>
+                <Box markets={markets} nat={`Player ${p}`} />
+                <Box markets={markets} nat={`Top 9 ${p}`} label={p} />
+                <Box markets={markets} nat={`M Baccarat ${p}`} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -543,31 +699,71 @@ export function TableVteen() {
   const { markets } = useV();
   const suits = ['Spade', 'Diamond', 'Club', 'Heart'];
   return (
-    <div className='vfelt w-full min-w-0 bg-[#f6f6f6] p-1'>
-      <RowTable
-        markets={markets}
-        lay
-        rows={[{ nat: 'Player A' }, { nat: 'Player B' }]}
-      />
-      <div className='mt-2'>
-        <MatrixTable
-          markets={markets}
-          columns={suits}
-          rows={['A', 'B'].map((p) => ({
-            label: `Player ${p}`,
-            nats: suits.map((su) => `Player ${p} ${su}`),
-          }))}
-        />
+    <div className='vfelt casino-table'>
+      <div className='casino-table-box'>
+        {['A', 'B'].map((p, idx) => (
+          <React.Fragment key={p}>
+            {idx === 1 && <div className='casino-table-box-divider' />}
+            <div
+              className={
+                idx === 0 ? 'casino-table-left-box' : 'casino-table-right-box'
+              }
+            >
+              <div className='casino-table-header'>
+                <div className='casino-nation-detail'>Player {p}</div>
+                <div className='casino-odds-box back'>Back</div>
+                <div className='casino-odds-box lay'>Lay</div>
+              </div>
+              <div className='casino-table-body'>
+                <div className='casino-table-row'>
+                  <div className='casino-nation-detail'>
+                    <div className='casino-nation-name'>Main</div>
+                  </div>
+                  <Box markets={markets} nat={`Player ${p}`} type='back' />
+                  <Box markets={markets} nat={`Player ${p}`} type='lay' />
+                </div>
+                {suits.map((su) => (
+                  <div className='casino-table-row' key={su}>
+                    <div className='casino-nation-detail'>
+                      <div className='casino-nation-name'>{su}</div>
+                    </div>
+                    <Box
+                      markets={markets}
+                      nat={`Player ${p} ${su}`}
+                      type='back'
+                    />
+                    <Box
+                      markets={markets}
+                      nat={`Player ${p} ${su}`}
+                      type='lay'
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </React.Fragment>
+        ))}
       </div>
-      <div className='mt-2'>
-        <RowTable
-          markets={markets}
-          title='Cards'
-          rows={['1', '2', '3', '4', '5', '6'].map((c) => ({
-            nat: `Card ${c}`,
-            label: `Card ${c}`,
-          }))}
-        />
+
+      <div className='casino-table-full-box teenpatti1day-other-odds mt-3'>
+        <div className='casino-table-header'>
+          <div className='casino-nation-detail' />
+          {['1', '2', '3', '4', '5', '6'].map((c) => (
+            <div className='casino-odds-box' key={c}>
+              Card {c}
+            </div>
+          ))}
+        </div>
+        <div className='casino-table-body'>
+          <div className='casino-table-row'>
+            <div className='casino-nation-detail'>
+              <div className='casino-nation-name'>Odd / Even</div>
+            </div>
+            {['1', '2', '3', '4', '5', '6'].map((c) => (
+              <Box key={c} markets={markets} nat={`Card ${c}`} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

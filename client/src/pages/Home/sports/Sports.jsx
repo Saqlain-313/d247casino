@@ -10,6 +10,7 @@ import { IoMdTennisball } from 'react-icons/io';
 import { MdSportsEsports } from 'react-icons/md';
 import Cricket from '../Cricket';
 import Football from '../Football';
+import HorseRacing from '../HorseRacing';
 import Tennis from '../Tennis';
 import AllCasino from '../ourcasino/AllCasino';
 const navItems = [
@@ -57,6 +58,7 @@ function Sports() {
         {activeSport === 'CRICKET' && <Cricket />}
         {activeSport === 'FOOTBALL' && <Football />}
         {activeSport === 'TENNIS' && <Tennis />}
+        {activeSport === 'HORSE RACING' && <HorseRacing />}
       </div>
       <div className='mt-1'>
         <AllCasino />

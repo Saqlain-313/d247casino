@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-
 import { useDispatch } from 'react-redux';
 
 import { getUser } from '../../redux/reducer/authReducer';
@@ -10,9 +9,10 @@ import {
 import { useCasino } from '../../context/CasinoContext';
 import MatkaCalendar from './MatkaCalendar';
 
-// worli/matka reference layout: matka-tabs (rounds + countdown + game-time),
-// matka-coins 1-click chip bar, 14 pane tabs. Selection logic hamare end pe:
-// jodi/pana/sp/dp/trio local keys (backend LOCAL_MATKA_ODDS se settleable).
+// D247 Matka specification:
+// 1-Click chip bar (Reset, 0=, 25, 50, 100, 200, 500, 1K)
+// Left vertical tablist (Jodi, Single, Pana, SP, DP, Trio, Cycle, Motor SP, 56 Charts, 64 Charts, ABR, Common SP, Common DP, Color DP)
+// Right tab-content pane (exact worlibox / worli-left / worli-right layout)
 const COINS = [25, 50, 100, 200, 500, 1000];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
 const LOCAL_ODDS = { single: 9.5, jodi: 95, sp: 140, dp: 240, tp: 700 };
@@ -51,11 +51,13 @@ const Chip = ({ label, color, selected, onClick }) => (
         <div className='bet-chip-top'></div>
         <div className='bet-chip-amount'>
           <svg
+            className='bet-chip-amount-in'
             xmlns='http://www.w3.org/2000/svg'
             fill='none'
             viewBox='0 0 108 108'
           >
             <text
+              className='bet-chip-amount-label'
               x='50%'
               y='53.5%'
               dominantBaseline='middle'
@@ -73,27 +75,33 @@ const Chip = ({ label, color, selected, onClick }) => (
   </div>
 );
 
-export default function MatkaTable({ isMobile, isSuspended }) {
+export default function MatkaTable({
+  isMobile,
+  isSuspended,
+  activeMid: propActiveMid,
+}) {
   const dispatch = useDispatch();
   const { roundData, openBetSlip, selectedGame } = useCasino();
+  const isWorli3 = selectedGame === 'worli3';
+  const isWorli2 = selectedGame === 'worli2';
+  const isWorliRegular = selectedGame === 'worli' || isWorli2;
   const [pane, setPane] = useState('single');
   const [panaMode, setPanaMode] = useState('sp');
-  const [coins, setCoins] = useState([]);
-  const [activeMid, setActiveMid] = useState(null);
+  const [coinTotal, setCoinTotal] = useState(0);
   const [showCal, setShowCal] = useState(false);
+  const [selectedBet, setSelectedBet] = useState(null);
 
-  const rounds = useMemo(
-    () => (roundData?.rounds || []).filter((r) => r.mtype === 'OPEN'),
-    [roundData]
-  );
+  const rounds = roundData?.rounds || [];
 
-  const mid = rounds.some((r) => String(r.mid) === String(activeMid))
-    ? activeMid
-    : rounds[0]?.mid;
+  const mid =
+    propActiveMid ||
+    (rounds.length > 0 ? rounds[0]?.mid : null) ||
+    roundData?.mid;
 
   const round =
     roundData?.subs?.[String(mid)] ||
-    (String(roundData?.mid) === String(mid) ? roundData : null);
+    (String(roundData?.mid) === String(mid) ? roundData : null) ||
+    roundData;
 
   const sub = Array.isArray(round?.sub) ? round.sub : [];
   const markets = useMemo(() => {
@@ -107,26 +115,33 @@ export default function MatkaTable({ isMobile, isSuspended }) {
       (x) => Number(x.sr) % 10 === d && Number(x.sid) <= 10
     );
 
-  const coinTotal = coins.reduce((a, b) => a + b, 0);
-
-  // Local matka market (selection logic hamare end pe): provider sid na ho
-  // to synthetic market banayo — backend LOCAL_MATKA_ODDS se validate karta hy.
   const localMarket = (key) => ({
     sid: key,
     nat: key,
-    b: LOCAL_ODDS[key.split(':')[0]] || 0,
+    b: LOCAL_ODDS[key.split(':')[0]] || 9.5,
     gstatus: 'OPEN',
     min: 10,
     max: 20000,
   });
 
+  const effectiveOdds = (market) => {
+    const b = Number(market?.b ?? 0);
+    if (b > 1) return b;
+    const status = String(market?.gstatus ?? '').toUpperCase();
+    if (isWorli3 && (!status || status === 'OPEN' || status === 'ACTIVE')) {
+      return LOCAL_ODDS.single;
+    }
+    return b;
+  };
+
   const clickBox = (market, label) => {
     if (isSuspended || !market) return;
-    const odds = Number(market.b ?? 0);
+    const odds = effectiveOdds(market);
     if (!(odds > 1)) return;
     const sel = String(market.sid);
+    setSelectedBet({ sel, label, odds, market });
+
     if (coinTotal > 0) {
-      // 1-click coin bet (reference matka-coins behavior)
       dispatch(
         placeCasinoBet({
           slug: selectedGame,
@@ -150,13 +165,18 @@ export default function MatkaTable({ isMobile, isSuspended }) {
 
   const Box = ({ label, subLabel, market, sel }) => {
     const m = market || (sel ? localMarket(sel) : null);
-    const dead = isSuspended || (m && !(Number(m.b) > 1));
+    const oddsVal = effectiveOdds(m);
+    const dead = isSuspended || (m && !(oddsVal > 1));
+    const isSelected =
+      selectedBet &&
+      m &&
+      (selectedBet.sel === String(m.sid) || selectedBet.label === label);
     return (
       <div
-        className={`worli-odd-box back ${dead && m ? 'suspended-box' : ''}`}
-        onClick={m ? () => clickBox(m, label) : undefined}
+        className={`worli-odd-box back ${isSelected ? 'selected' : ''} ${dead && m ? 'suspended-box' : ''}`}
+        onClick={m && !dead ? () => clickBox(m, label) : undefined}
         style={{ cursor: m && !dead ? 'pointer' : 'not-allowed' }}
-        title={m ? `odds ${m.b}` : 'Provider market unavailable'}
+        title={m ? `odds ${oddsVal}` : 'Provider market unavailable'}
       >
         <span className='worli-odd'>{label}</span>
         {subLabel && <span className='d-block'>{subLabel}</span>}
@@ -164,163 +184,210 @@ export default function MatkaTable({ isMobile, isSuspended }) {
     );
   };
 
-  const digitRow = (arr, mode = 'single') => (
-    <div className='worli-box-row'>
-      {arr.map((d) =>
-        mode === 'display' ? (
-          <Box key={d} label={String(d)} />
-        ) : (
-          <Box
-            key={d}
-            label={String(d)}
-            market={digitMarket(d) || localMarket(`single:${d}`)}
-          />
-        )
-      )}
-    </div>
-  );
-
-  const specialBoxes = [
-    { label: 'Line 1', sub: '1|2|3|4|5', sid: 11 },
-    { label: 'ODD', sub: '1|3|5|7|9', sid: 13 },
-    { label: 'Line 2', sub: '6|7|8|9|0', sid: 12 },
-    { label: 'EVEN', sub: '2|4|6|8|0', sid: 14 },
-  ];
-
-  const PANES = [
-    { id: 'jodi', name: 'Jodi' },
-    { id: 'single', name: 'Single' },
-    { id: 'pana', name: 'Pana' },
-    { id: 'sp', name: 'SP' },
-    { id: 'dp', name: 'DP' },
-    { id: 'trio', name: 'Trio' },
-    { id: 'cycle', name: 'Cycle' },
-    { id: 'motor', name: 'Motor SP' },
-    { id: 'chart56', name: '56 Charts' },
-    { id: 'chart64', name: '64 Charts' },
-    { id: 'abr', name: 'ABR' },
-    { id: 'commonsp', name: 'Common SP' },
-    { id: 'commondp', name: 'Common DP' },
-    { id: 'colordp', name: 'Color DP' },
-  ];
+  const PANES = isWorliRegular
+    ? [
+        { id: 'single', name: 'Single' },
+        { id: 'pana', name: 'Pana' },
+        { id: 'sp', name: 'SP' },
+        { id: 'dp', name: 'DP' },
+        { id: 'trio', name: 'Trio' },
+        { id: 'cycle', name: 'Cycle' },
+        { id: 'motor', name: 'Motor SP' },
+        { id: 'chart56', name: '56 Charts' },
+        { id: 'chart64', name: '64 Charts' },
+        { id: 'abr', name: 'ABR' },
+        { id: 'commonsp', name: 'Common SP' },
+        { id: 'commondp', name: 'Common DP' },
+        { id: 'colordp', name: 'Color DP' },
+      ]
+    : [
+        { id: 'jodi', name: 'Jodi' },
+        { id: 'single', name: 'Single' },
+        { id: 'pana', name: 'Pana' },
+        { id: 'sp', name: 'SP' },
+        { id: 'dp', name: 'DP' },
+        { id: 'trio', name: 'Trio' },
+        { id: 'cycle', name: 'Cycle' },
+        { id: 'motor', name: 'Motor SP' },
+        { id: 'chart56', name: '56 Charts' },
+        { id: 'chart64', name: '64 Charts' },
+        { id: 'abr', name: 'ABR' },
+        { id: 'commonsp', name: 'Common SP' },
+        { id: 'commondp', name: 'Common DP' },
+        { id: 'colordp', name: 'Color DP' },
+      ];
 
   return (
-    <div className='casino-table worli'>
-      {/* Bazaar tabs = open rounds (reference matka-tabs) */}
-      {rounds.length > 0 && (
-        <div className='matka-tabs'>
-          <ul className='nav nav-pills'>
-            {rounds.map((r) => (
-              <li className='nav-item' key={String(r.mid)}>
-                <a
-                  className={`nav-link ${
-                    String(r.mid) === String(mid) ? 'active' : ''
-                  }`}
-                  href='javascript:void(0)'
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveMid(String(r.mid));
-                  }}
-                >
-                  <span>{r.mname}</span>
-                  <div className='remaining-time'>
-                    <span>{r.ptime}</span>
-                  </div>
-                  <div className='game-time'>
-                    <span>{r.mtime}</span>
-                  </div>
-                </a>
-              </li>
+    <div className='casino-table'>
+      {/* 1. matka-coins: 1-click chip bar (worli3 Matka Market only) */}
+      {isWorli3 && (
+        <div className='matka-coins'>
+          <div className='matka-coin-title'>
+            <span className='d-none d-md-flex'>
+              SET YOUR COIN AMOUNT
+              <br /> AND START 1-CLICK BET!
+            </span>
+            <span className='d-md-none'>
+              SET YOUR COIN AMOUNT AND START 1-CLICK BET!
+            </span>
+            <button
+              type='button'
+              className='btn btn-danger btn-sm'
+              onClick={() => setCoinTotal(0)}
+            >
+              Reset
+            </button>
+          </div>
+          <div className='matka-total-coin'>
+            <Chip label={String(coinTotal)} color='#502b63' />
+            <div>=</div>
+          </div>
+          <div className='matka-other-coins'>
+            {COINS.map((c, i) => (
+              <React.Fragment key={c}>
+                {i > 0 && <div>+</div>}
+                <Chip
+                  label={coinLabel(c)}
+                  color='#1f6179'
+                  selected={coinTotal > 0 && coinTotal % c === 0}
+                  onClick={() => setCoinTotal((prev) => prev + c)}
+                />
+              </React.Fragment>
             ))}
-          </ul>
+            <button
+              type='button'
+              className='btn btn-sm btn-outline-secondary ms-2'
+              onClick={() => setShowCal(true)}
+            >
+              Calendar
+            </button>
+          </div>
         </div>
       )}
-
-      {/* Coin bar — reference matka-coins, 1-click betting */}
-      <div className='matka-coins'>
-        <div className='matka-coin-title'>
-          <span className='d-none d-md-flex'>
-            SET YOUR COIN AMOUNT
-            <br /> AND START 1-CLICK BET!
-          </span>
-          <span className='d-md-none'>
-            SET YOUR COIN AMOUNT AND START 1-CLICK BET!
-          </span>
-          <button
-            type='button'
-            className='btn btn-danger btn-sm'
-            onClick={() => setCoins([])}
-          >
-            Reset
-          </button>
-        </div>
-        <div className='matka-total-coin'>
-          <Chip label={String(coinTotal)} color='#502b63' />
-          <div>=</div>
-        </div>
-        <div className='matka-other-coins'>
-          {COINS.map((c, i) => (
-            <React.Fragment key={c}>
-              {i > 0 && <div>+</div>}
-              <Chip
-                label={coinLabel(c)}
-                color='#1f6179'
-                selected={coins.includes(c)}
-                onClick={() =>
-                  setCoins((prev) =>
-                    prev.includes(c)
-                      ? prev.filter((x) => x !== c)
-                      : [...prev, c]
-                  )
-                }
-              />
-            </React.Fragment>
-          ))}
-          <button
-            type='button'
-            className='btn btn-sm btn-outline-secondary ms-2'
-            onClick={() => setShowCal(true)}
-          >
-            Calendar
-          </button>
-        </div>
-      </div>
 
       {showCal && (
         <MatkaCalendar slug={selectedGame} onClose={() => setShowCal(false)} />
       )}
 
-      {/* Pane tabs (reference worli-tabs tablist) */}
-      <div className='nav nav-pills' role='tablist'>
-        {PANES.map((p) => (
-          <div className='nav-item' key={p.id}>
-            <a
-              role='tab'
-              className={`nav-link ${pane === p.id ? 'active' : ''}`}
-              href='javascript:void(0)'
-              onClick={(e) => {
-                e.preventDefault();
-                setPane(p.id);
-              }}
-            >
-              {p.name}
-            </a>
-          </div>
-        ))}
-      </div>
+      {/* 2. Pane tabs (vertical in worli3 .matka, horizontal in worli, hidden in worli2) */}
+      {!isWorli2 && (
+        <div className='nav nav-pills' role='tablist'>
+          {PANES.map((p) => (
+            <div className='nav-item' key={p.id}>
+              <a
+                role='tab'
+                id={`worli-tabs-tab-${p.id}`}
+                className={`nav-link ${pane === p.id ? 'active' : ''}`}
+                href='#'
+                onClick={(e) => {
+                  e.preventDefault();
+                  setPane(p.id);
+                }}
+              >
+                {p.name}
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* 3. Tab content on right (.casino-box.tab-content) */}
       <div className='casino-box tab-content tab-content w-100'>
-        {pane === 'jodi' && (
-          <div className='casino-table-full-box'>
-            <div className={`worlibox ${isSuspended ? 'suspended-box' : ''}`}>
-              <div className='worli-full'>
+        {/* Single Tab Pane */}
+        {pane === 'single' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-single'
+            aria-labelledby='worli-tabs-tab-single'
+            className='fade single tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-left'>
+                <div className='worli-box-title'>
+                  {isWorliRegular && (
+                    <b>
+                      {digitMarket(1)?.b ??
+                        (selectedGame === 'worli' ? '9.5' : '9')}
+                    </b>
+                  )}
+                </div>
                 <div className='worli-box-row'>
-                  {Array.from({ length: 100 }, (_, i) => (
+                  {[1, 2, 3, 4, 5].map((d) => (
                     <Box
-                      key={i}
-                      label={`${Math.floor(i / 10)}-${i % 10}`}
-                      sel={`jodi:${Math.floor(i / 10)}${i % 10}`}
+                      key={d}
+                      label={String(d)}
+                      market={digitMarket(d) || localMarket(`single:${d}`)}
                     />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box
+                      key={d}
+                      label={String(d)}
+                      market={digitMarket(d) || localMarket(`single:${d}`)}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-title'>
+                  {isWorliRegular && (
+                    <b>
+                      {digitMarket(1)?.b ??
+                        (selectedGame === 'worli' ? '9.5' : '9')}
+                    </b>
+                  )}
+                </div>
+                <div className='worli-box-row'>
+                  <Box
+                    label='Line 1'
+                    subLabel='1|2|3|4|5'
+                    market={markets['11'] || localMarket('single:line1')}
+                  />
+                  <Box
+                    label='ODD'
+                    subLabel='1|3|5|7|9'
+                    market={markets['13'] || localMarket('single:odd')}
+                  />
+                </div>
+                <div className='worli-box-row'>
+                  <Box
+                    label='Line 2'
+                    subLabel='6|7|8|9|0'
+                    market={markets['12'] || localMarket('single:line2')}
+                  />
+                  <Box
+                    label='EVEN'
+                    subLabel='2|4|6|8|0'
+                    market={markets['14'] || localMarket('single:even')}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Jodi Tab Pane */}
+        {pane === 'jodi' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-jodi'
+            aria-labelledby='worli-tabs-tab-jodi'
+            className='fade jodi tab-pane active show'
+          >
+            <div className='casino-table-full-box'>
+              <div className={`worlibox ${isSuspended ? 'suspended-box' : ''}`}>
+                <div className='worli-full'>
+                  <div className='worli-box-title'></div>
+                  {Array.from({ length: 10 }, (_, row) => (
+                    <div className='worli-box-row' key={row}>
+                      {Array.from({ length: 10 }, (_, col) => {
+                        const label = `${row}-${col}`;
+                        const sel = `jodi:${row}${col}`;
+                        return <Box key={label} label={label} sel={sel} />;
+                      })}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -328,205 +395,427 @@ export default function MatkaTable({ isMobile, isSuspended }) {
           </div>
         )}
 
-        {pane === 'single' && (
-          <div className='worlibox'>
-            <div className='worli-left'>
-              <div className='worli-box-title'></div>
-              {digitRow([1, 2, 3, 4, 5])}
-              {digitRow([6, 7, 8, 9, 0])}
-            </div>
-            <div className='worli-right'>
-              <div className='worli-box-title'></div>
-              <div className='worli-box-row'>
-                {specialBoxes.slice(0, 2).map((s) => (
-                  <Box
-                    key={s.sid}
-                    label={s.label}
-                    subLabel={s.sub}
-                    market={markets[String(s.sid)]}
-                  />
-                ))}
-              </div>
-              <div className='worli-box-row'>
-                {specialBoxes.slice(2).map((s) => (
-                  <Box
-                    key={s.sid}
-                    label={s.label}
-                    subLabel={s.sub}
-                    market={markets[String(s.sid)]}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Pana Tab Pane */}
         {pane === 'pana' && (
-          <div className='worlibox'>
-            <div className='worli-full'>
-              <ul className='nav nav-pills'>
-                <li className='nav-item'>
-                  <button
-                    type='button'
-                    className={`nav-link ${panaMode === 'sp' ? 'active' : ''}`}
-                    onClick={() => setPanaMode('sp')}
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-pana'
+            aria-labelledby='worli-tabs-tab-pana'
+            className='fade pana tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-full'>
+                <ul className='nav nav-pills'>
+                  <li className='nav-item'>
+                    <button
+                      type='button'
+                      className={`nav-link ${panaMode === 'sp' ? 'active' : ''}`}
+                      onClick={() => setPanaMode('sp')}
+                    >
+                      SP PANA ({LOCAL_ODDS.sp})
+                    </button>
+                  </li>
+                  <li className='nav-item'>
+                    <button
+                      type='button'
+                      className={`nav-link ${panaMode === 'dp' ? 'active' : ''}`}
+                      onClick={() => setPanaMode('dp')}
+                    >
+                      DP PANA &amp; TRIO ({LOCAL_ODDS.dp})
+                    </button>
+                  </li>
+                </ul>
+                <div className='tab-content'>
+                  <div
+                    className='tab-pane active show'
+                    id={panaMode === 'sp' ? 'sppana' : 'dppana'}
                   >
-                    SP PANA()
-                  </button>
-                </li>
-                <li className='nav-item'>
-                  <button
-                    type='button'
-                    className={`nav-link ${panaMode === 'dp' ? 'active' : ''}`}
-                    onClick={() => setPanaMode('dp')}
-                  >
-                    DP PANA &amp; TRIO()
-                  </button>
-                </li>
-              </ul>
-              <div className='tab-content'>
-                <div
-                  className={`tab-pane ${panaMode === 'sp' ? 'active' : ''}`}
-                >
-                  {panaMode === 'sp' && (
                     <div className='worli-box-row'>
                       {DIGITS.map((d) => (
                         <div className='worli-odd-box' key={d}>
                           <span className='worli-odd back'>{d}</span>
                           <div className='worli-sub-odd-box-container'>
-                            {spPana(d).map((p) => (
-                              <div
-                                className='worli-sub-odd-box back'
-                                key={p}
-                                onClick={() =>
-                                  clickBox(localMarket(`sp:${p}`), p)
-                                }
-                                style={{ cursor: 'pointer' }}
-                                title={`odds ${LOCAL_ODDS.sp}`}
-                              >
-                                <span className='worli-odd'>{p}</span>
-                              </div>
-                            ))}
+                            {(panaMode === 'sp' ? spPana(d) : dpPana(d)).map(
+                              (p) => (
+                                <div
+                                  className='worli-sub-odd-box back'
+                                  key={p}
+                                  onClick={() =>
+                                    clickBox(
+                                      localMarket(
+                                        panaMode === 'sp'
+                                          ? `sp:${p}`
+                                          : `dp:${dpKey(p)}`
+                                      ),
+                                      p
+                                    )
+                                  }
+                                  style={{ cursor: 'pointer' }}
+                                  title={`odds ${panaMode === 'sp' ? LOCAL_ODDS.sp : LOCAL_ODDS.dp}`}
+                                >
+                                  <span className='worli-odd'>{p}</span>
+                                </div>
+                              )
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
-                  )}
-                  {panaMode === 'dp' && (
-                    <div className='worli-box-row'>
-                      {DIGITS.map((d) => (
-                        <div className='worli-odd-box' key={d}>
-                          <span className='worli-odd back'>{d}</span>
-                          <div className='worli-sub-odd-box-container'>
-                            {dpPana(d).map((p) => (
-                              <div
-                                className='worli-sub-odd-box back'
-                                key={p}
-                                onClick={() =>
-                                  clickBox(localMarket(`dp:${dpKey(p)}`), p)
-                                }
-                                style={{ cursor: 'pointer' }}
-                                title={`odds ${LOCAL_ODDS.dp}`}
-                              >
-                                <span className='worli-odd'>{p}</span>
-                              </div>
-                            ))}
-                            <div
-                              className='worli-sub-odd-box back'
-                              onClick={() =>
-                                clickBox(
-                                  localMarket(`tp:${d}`),
-                                  String(d).repeat(3)
-                                )
-                              }
-                              style={{ cursor: 'pointer' }}
-                              title={`odds ${LOCAL_ODDS.tp}`}
-                            >
-                              <span className='worli-odd'>
-                                {String(d).repeat(3)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {['sp', 'dp', 'chart56', 'chart64', 'colordp'].includes(pane) && (
-          <div className='worlibox'>
-            <div className='worli-box-title'></div>
-            <div className='worli-left'>
-              {digitRow([1, 2, 3, 4, 5], 'display')}
-              {digitRow([6, 7, 8, 9, 0], 'display')}
-            </div>
-            <div className='worli-right'>
-              <div className='worli-box-row'>
-                <Box
-                  label={
-                    {
-                      sp: 'SP ALL',
-                      dp: 'DP ALL',
-                      chart56: '56 ALL',
-                      chart64: '64 ALL',
-                      colordp: 'COLOR DP ALL',
-                    }[pane]
-                  }
-                />
+        {/* SP Tab Pane */}
+        {pane === 'sp' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-sp'
+            aria-labelledby='worli-tabs-tab-sp'
+            className='fade sp tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-box-title'></div>
+              <div className='worli-left'>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`sp:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`sp:${d}`} />
+                  ))}
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-row'>
+                  <Box label='SP ALL' sel='sp:all' />
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {pane === 'trio' && (
-          <div className='worli-full'>
-            <div className='worli-box-title'></div>
-            <div className='worli-box-row'>
-              <Box label='ALL TRIO' />
+        {/* DP Tab Pane */}
+        {pane === 'dp' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-dp'
+            aria-labelledby='worli-tabs-tab-dp'
+            className='fade dp tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-box-title'></div>
+              <div className='worli-left'>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`dp:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`dp:${d}`} />
+                  ))}
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-row'>
+                  <Box label='DP ALL' sel='dp:all' />
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {['cycle', 'motor', 'commonsp', 'commondp'].includes(pane) && (
-          <div className='worlibox'>
+        {/* Trio Tab Pane */}
+        {pane === 'trio' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-trio'
+            aria-labelledby='worli-tabs-tab-trio'
+            className='fade trio tab-pane active show'
+          >
             <div className='worli-full'>
               <div className='worli-box-title'></div>
-              {digitRow([1, 2, 3, 4, 5], 'display')}
-              {digitRow([6, 7, 8, 9, 0], 'display')}
+              <div className='worli-box-row'>
+                <Box label='ALL TRIO' sel='tp:all' />
+              </div>
             </div>
           </div>
         )}
 
-        {pane === 'abr' && (
-          <div className='worlibox'>
-            <div className='worli-box-title'></div>
-            <div className='worli-left'>
-              <div className='worli-box-row'>
-                <Box label='A' />
-                <Box label='B' />
-                <Box label='R' />
-              </div>
-              <div className='worli-box-row'>
-                <Box label='AB' />
-                <Box label='AR' />
-                <Box label='BR' />
+        {/* Cycle Tab Pane */}
+        {pane === 'cycle' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-cycle'
+            aria-labelledby='worli-tabs-tab-cycle'
+            className='fade cycle tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-full'>
+                <div className='worli-box-title'>
+                  <b>&nbsp;</b>
+                </div>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`cycle:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`cycle:${d}`} />
+                  ))}
+                </div>
               </div>
             </div>
-            <div className='worli-right'>
+          </div>
+        )}
+
+        {/* Motor SP Tab Pane */}
+        {pane === 'motor' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-motor'
+            aria-labelledby='worli-tabs-tab-motor'
+            className='fade motor tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-full'>
+                <div className='worli-box-title'></div>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`motor:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`motor:${d}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 56 Charts Tab Pane */}
+        {pane === 'chart56' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-chart56'
+            aria-labelledby='worli-tabs-tab-chart56'
+            className='fade chart56 tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-box-title'></div>
+              <div className='worli-left'>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`chart56:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`chart56:${d}`} />
+                  ))}
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-row'>
+                  <Box label='56 ALL' sel='chart56:all' />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 64 Charts Tab Pane */}
+        {pane === 'chart64' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-chart64'
+            aria-labelledby='worli-tabs-tab-chart64'
+            className='fade chart64 tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-box-title'></div>
+              <div className='worli-left'>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`chart64:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`chart64:${d}`} />
+                  ))}
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-row'>
+                  <Box label='64 ALL' sel='chart64:all' />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ABR Tab Pane */}
+        {pane === 'abr' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-abr'
+            aria-labelledby='worli-tabs-tab-abr'
+            className='fade abr tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-box-title'></div>
+              <div className='worli-left'>
+                <div className='worli-box-row'>
+                  <Box label='A' sel='abr:a' />
+                  <Box label='B' sel='abr:b' />
+                  <Box label='R' sel='abr:r' />
+                </div>
+                <div className='worli-box-row'>
+                  <Box label='AB' sel='abr:ab' />
+                  <Box label='AR' sel='abr:ar' />
+                  <Box label='BR' sel='abr:br' />
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-row'>
+                  <Box label='ABR' sel='abr:abr' />
+                </div>
+                <div className='worli-box-row'>
+                  <Box label='ABR CUT' sel='abr:abrcut' />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Common SP Tab Pane */}
+        {pane === 'commonsp' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-commonsp'
+            aria-labelledby='worli-tabs-tab-commonsp'
+            className='fade commonsp tab-pane active show'
+          >
+            <div className='worli-full'>
+              <div className='worli-box-title'></div>
               <div className='worli-box-row'>
-                <Box label='ABR' />
+                {[1, 2, 3, 4, 5].map((d) => (
+                  <Box key={d} label={String(d)} sel={`commonsp:${d}`} />
+                ))}
               </div>
               <div className='worli-box-row'>
-                <Box label='ABR CUT' />
+                {[6, 7, 8, 9, 0].map((d) => (
+                  <Box key={d} label={String(d)} sel={`commonsp:${d}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Common DP Tab Pane */}
+        {pane === 'commondp' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-commondp'
+            aria-labelledby='worli-tabs-tab-commondp'
+            className='fade commondp tab-pane active show'
+          >
+            <div className='worli-full'>
+              <div className='worli-box-title'></div>
+              <div className='worli-box-row'>
+                {[1, 2, 3, 4, 5].map((d) => (
+                  <Box key={d} label={String(d)} sel={`commondp:${d}`} />
+                ))}
+              </div>
+              <div className='worli-box-row'>
+                {[6, 7, 8, 9, 0].map((d) => (
+                  <Box key={d} label={String(d)} sel={`commondp:${d}`} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Color DP Tab Pane */}
+        {pane === 'colordp' && (
+          <div
+            role='tabpanel'
+            id='worli-tabs-tabpane-colordp'
+            aria-labelledby='worli-tabs-tab-colordp'
+            className='fade colordp tab-pane active show'
+          >
+            <div className='worlibox'>
+              <div className='worli-box-title'></div>
+              <div className='worli-left'>
+                <div className='worli-box-row'>
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <Box key={d} label={String(d)} sel={`colordp:${d}`} />
+                  ))}
+                </div>
+                <div className='worli-box-row'>
+                  {[6, 7, 8, 9, 0].map((d) => (
+                    <Box key={d} label={String(d)} sel={`colordp:${d}`} />
+                  ))}
+                </div>
+              </div>
+              <div className='worli-right'>
+                <div className='worli-box-row'>
+                  <Box label='COLOR DP ALL' sel='colordp:all' />
+                </div>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* 4. Action / Clear Bar when clicked */}
+      {selectedBet && (
+        <div className='worli-clear-box container-fluid mt-2'>
+          <div className='row row5 align-items-center'>
+            <div className='col-6 text-center'>
+              <span className='worli-place-card'>{selectedBet.label}</span>
+            </div>
+            <div className='col-6 pe-3 text-end'>
+              <button
+                type='button'
+                className='btn btn-danger btn-sm me-1'
+                onClick={() => setSelectedBet(null)}
+              >
+                Clear
+              </button>
+              <button
+                type='button'
+                className='btn btn-success btn-sm'
+                onClick={() => {
+                  if (coinTotal > 0) {
+                    clickBox(selectedBet.market, selectedBet.label);
+                  } else {
+                    openBetSlip(
+                      selectedBet.sel?.includes(':')
+                        ? selectedBet.sel
+                        : selectedBet.label,
+                      selectedBet.odds,
+                      'back',
+                      isMobile
+                    );
+                  }
+                }}
+              >
+                Place Bet
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

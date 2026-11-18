@@ -365,6 +365,7 @@ function MatchOdds({
         teams: allTeams,
         marketName,
         gameType,
+        gType: 'match',
         maxAmount: matchOddsList?.[0]?.max || matchOddsList?.[0]?.maxb || 0,
         minAmount: matchOddsList?.[0]?.min || 0,
       });

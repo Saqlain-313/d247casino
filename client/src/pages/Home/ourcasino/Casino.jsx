@@ -1,54 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-function CasinoCard({ casino, navigate }) {
-  const [imageError, setImageError] = useState(false);
-
-  const imageUrl = casino.imageUrl || casino.image || '';
-
+export default function Casino({ casinos = [] }) {
   return (
-    <div
-      key={casino.eventName || casino.slug}
-      className='flex min-w-0 cursor-pointer flex-col items-center p-0.5'
-      onClick={() => {
-        navigate(`/casino-bet/${casino.eventName || casino.slug}`);
-      }}
-    >
-      {!imageError && imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={casino.name}
-          loading='lazy'
-          onError={() => setImageError(true)}
-          className='block aspect-[4/3] w-full rounded-sm object-cover'
-        />
-      ) : (
-        <div className='flex aspect-[4/3] w-full items-center justify-center bg-gray-200 text-center text-xs text-gray-500'>
-          {casino.name}
-        </div>
-      )}
+    <div className='casino-list'>
+      {casinos.map((casino) => {
+        const bgImage =
+          casino.image ||
+          `https://cdn.926assets.com/g1-casino-icons/lc/${casino.eventName || casino.slug}.jpg`;
 
-      <span className='flex h-5 w-full items-center justify-center truncate bg-[#0088CC] px-1 text-center text-[10px] font-semibold text-white'>
-        {casino.name}
-      </span>
+        return (
+          <div
+            className='casino-list-item'
+            key={casino.eventName || casino.slug}
+          >
+            <Link to={`/casino/${casino.eventName || casino.slug}`}>
+              <div
+                className='casino-list-item-banner'
+                style={{
+                  backgroundImage: `url("${bgImage}"), url("https://cdn.926assets.com/g1-casino-icons/default.jpg")`,
+                }}
+              />
+            </Link>
+          </div>
+        );
+      })}
     </div>
   );
 }
-
-function Casino({ casinos = [] }) {
-  const navigate = useNavigate();
-
-  return (
-    <div className='grid grid-cols-3 md:grid-cols-7'>
-      {casinos.map((casino) => (
-        <CasinoCard
-          key={casino.eventName || casino.slug}
-          casino={casino}
-          navigate={navigate}
-        />
-      ))}
-    </div>
-  );
-}
-
-export default Casino;

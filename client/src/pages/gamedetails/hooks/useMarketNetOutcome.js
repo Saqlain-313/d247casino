@@ -1,12 +1,18 @@
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+
 import {
   getPendingBet,
   getPendingBetAmo,
 } from '../../../redux/reducer/betReducer';
 import { createMarketNetOutcomeHelpers } from '../utils/marketNetOutcome';
 
-export function useMarketNetOutcome({ gameTypes, gameId, cashoutPLKey }) {
+export function useMarketNetOutcome({
+  gameTypes,
+  gameId,
+  cashoutPLKey,
+  isBhav = false,
+}) {
   const dispatch = useDispatch();
   const { pendingBet, pendingBetAmounts, cashoutPL } = useSelector(
     (state) => state.bet
@@ -28,7 +34,16 @@ export function useMarketNetOutcome({ gameTypes, gameId, cashoutPLKey }) {
         pendingBetAmounts,
         cashoutPL,
         cashoutPLKey,
+        isBhav,
       }),
-    [gameTypes, gameId, pendingBet, pendingBetAmounts, cashoutPL, cashoutPLKey]
+    [
+      gameTypes,
+      gameId,
+      pendingBet,
+      pendingBetAmounts,
+      cashoutPL,
+      cashoutPLKey,
+      isBhav,
+    ]
   );
 }

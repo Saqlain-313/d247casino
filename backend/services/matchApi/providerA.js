@@ -8,9 +8,10 @@ export function createProviderA() {
   const API_KEY = process.env.API_KEY;
   const RESULT_API_URL = process.env.RESULT_API_URL;
 
-  // Matka family round-based feed: base /data/<slug> = rounds list, markets
-  // /data/<slug>_<mid>, rates /sections/<slug> (idle {} normal state hy).
-  const ROUND_BASED_SLUGS = new Set(['worli', 'worli2', 'worli3']);
+  // Matka bazaar round-based feed (worli3 only): base /tabdata/worli3 = rounds list,
+  // markets /data/worli3_<mid>. worli & worli2 use standard /data/<slug> + /sections/<slug>.
+  const ROUND_BASED_SLUGS = new Set(['worli3']);
+  const MATKA_SLUGS = new Set(['worli', 'worli2', 'worli3']);
   const MATKA_SPECIAL = { 11: 'Line 1', 12: 'Line 2', 13: 'ODD', 14: 'EVEN' };
   const sectionsCache = new Map(); // slug -> { at, value }
 
@@ -257,9 +258,18 @@ export function createProviderA() {
       // Everything downstream (socket polling, bet validation, the API) expects
       // { success, data }, so unwrap it once here.
       const table = response.data?.data;
+      let payloadData = table?.data ?? null;
+      if (payloadData && MATKA_SLUGS.has(eventName)) {
+        const sections = await fetchSections(eventName);
+        payloadData = {
+          ...payloadData,
+          sub: augmentMatkaSub(payloadData.sub, sections),
+          sections,
+        };
+      }
       return {
-        success: Boolean(table?.success && table?.data),
-        data: table?.data ?? null,
+        success: Boolean(table?.success && payloadData),
+        data: payloadData,
       };
     },
 
@@ -273,9 +283,10 @@ export function createProviderA() {
         { timeout: 10000 }
       );
       const table = response.data?.data;
+      const payloadData = table?.data ?? null;
       return {
-        success: Boolean(table?.success && table?.data),
-        data: table?.data ?? null,
+        success: Boolean(table?.success && payloadData),
+        data: payloadData,
       };
     },
     // async fetchCasinoData(eventName) {

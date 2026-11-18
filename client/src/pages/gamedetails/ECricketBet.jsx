@@ -44,6 +44,7 @@ function ECricketBet() {
   const [showOdds, setShowOdds] = useState(true);
   const [showRules, setShowRules] = useState(false);
   const [marketFetchFailed, setMarketFetchFailed] = useState(false);
+  const [bettingLoaded, setBettingLoaded] = useState(false);
   const { pendingBetAmounts, successMessage, errorMessage } = useSelector(
     (state) => state.bet
   );
@@ -52,14 +53,23 @@ function ECricketBet() {
 
   useEffect(() => {
     if (!eventName) return;
+    setMarketFetchFailed(false);
+    setBettingLoaded(false);
     dispatch(fetchCricketBatingData(eventName)).then((res) => {
+      setBettingLoaded(true);
       if (fetchCricketBatingData.rejected.match(res))
         setMarketFetchFailed(true);
     });
   }, [dispatch, eventName]);
 
   useEffect(() => {
-    if (marketFetchFailed || (listLoaded && !storeMatch)) {
+    const hasLiveMarkets =
+      (Array.isArray(bettingData) && bettingData.length > 0) ||
+      (Array.isArray(battingData) && battingData.length > 0);
+    if (
+      marketFetchFailed ||
+      (bettingLoaded && !hasLiveMarkets && listLoaded && !storeMatch)
+    ) {
       navigate('/', {
         replace: true,
         state: {
@@ -67,7 +77,15 @@ function ECricketBet() {
         },
       });
     }
-  }, [marketFetchFailed, listLoaded, storeMatch, navigate]);
+  }, [
+    marketFetchFailed,
+    bettingLoaded,
+    bettingData,
+    battingData,
+    listLoaded,
+    storeMatch,
+    navigate,
+  ]);
 
   // Betting + score over WebSocket (sports poller 1s inplay / 10s idle).
   useEffect(() => {
@@ -137,6 +155,7 @@ function ECricketBet() {
     (m) => Array.isArray(m?.section) && m.section.length > 0
   );
   const eRules = getGameRulesContent('ecricket', match);
+  const eTeams = String(match || '').split(/\s+(?:v|vs|-)\s+/i);
 
   const renderPlaceBet = (isMobile = false) => (
     <PlaceBet
@@ -144,8 +163,8 @@ function ECricketBet() {
       onBetChange={setSelectedBet}
       onClose={() => setSelectedBet(null)}
       isMobile={isMobile}
-      team1={match}
-      team2='E-Cricket'
+      team1={eTeams[0] || match}
+      team2={eTeams[1] || 'E-Cricket'}
       item={null}
       gameId={streamGmid}
       eventName={match}
@@ -219,7 +238,11 @@ function ECricketBet() {
                   key={`${market.mid || market.mname}`}
                   className='w-full min-w-0 md:w-[calc(50%-4px)]'
                 >
-                  <CricketMarket market={market} onBetSelect={setSelectedBet} />
+                  <CricketMarket
+                    market={market}
+                    onBetSelect={setSelectedBet}
+                    pendingBetAmounts={pendingBetAmounts}
+                  />
                 </div>
               ))}
             </div>

@@ -5,7 +5,9 @@ import dotenv from 'dotenv';
 import { WebSocketServer } from 'ws';
 
 import { getBestOddsForTeam } from '../controllers/cashoutController.js';
+import { settlePendingForSlug } from '../controllers/casinobetController.js';
 import betModel from '../models/betModel.js';
+import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
 import { getCricketCasino } from '../services/cricketCasinoCache.js';
 import {
@@ -255,10 +257,20 @@ const pollCasinoBettingData = async () => {
 
           cachedData[cacheKey] = newBettingData;
 
-          // Session complete (round mid badla) -> result turant refresh karo,
-          // 5s poll ka wait nahi. Broadcast refreshCasinoResult karta hy.
+          // Final dealt cards/rdesc miss na hon: WS feed par bhi snapshot save karo
           const prevMid = prevBetting?.data?.mid;
           const newMid = newBettingData?.data?.mid;
+          if (newMid && prevMid && newMid !== prevMid && prevBetting?.data) {
+            saveCasinoRoundSnapshot(gameid, prevBetting.data).catch(() => {});
+          }
+          if (newBettingData.data?.mid) {
+            saveCasinoRoundSnapshot(gameid, newBettingData.data).catch(
+              () => {}
+            );
+          }
+
+          // Session complete (round mid badla) -> result turant refresh karo,
+          // 5s poll ka wait nahi. Broadcast refreshCasinoResult karta hy.
           if (newMid && prevMid && newMid !== prevMid) {
             refreshCasinoResult(gameid);
           }
@@ -311,6 +323,12 @@ const refreshCasinoResult = (gameid) => {
       const prev = cachedCasinoResults.get(gameid);
       if (JSON.stringify(prev) === JSON.stringify(res.data)) return;
       cachedCasinoResults.set(gameid, res.data);
+
+      if (Array.isArray(res.data?.res) && res.data.res.length) {
+        settlePendingForSlug(gameid, { resultRowsHint: res.data.res }).catch(
+          () => {}
+        );
+      }
 
       const message = JSON.stringify({
         type: 'casino_result',

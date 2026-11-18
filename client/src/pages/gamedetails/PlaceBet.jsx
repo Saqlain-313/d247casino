@@ -9,6 +9,7 @@ import {
 } from '../../redux/reducer/betReducer';
 import { getUser } from '../../redux/reducer/authReducer';
 import { toast } from 'react-toastify';
+import ButtonValues from '../../components/header/ButtonValues';
 
 function PlaceBet({
   selectedBet,
@@ -69,10 +70,16 @@ function PlaceBet({
   const [odds, setOdds] = useState(selectedBet?.odds || '');
   const [betFor, setBetFor] = useState(selectedBet?.team || '');
   const [betType, setBetType] = useState(selectedBet?.type || ''); // 'back' or 'lay'
+  const [showEditButtons, setShowEditButtons] = useState(false);
   const prevBetKeyRef = React.useRef('');
   const autoCloseTimerRef = React.useRef(null);
   const onCloseRef = React.useRef(onClose);
   const loadingRef = React.useRef(loading);
+  const editModalOpenRef = React.useRef(false);
+
+  useEffect(() => {
+    editModalOpenRef.current = showEditButtons;
+  }, [showEditButtons]);
 
   // Update ref when onClose changes
   useEffect(() => {
@@ -118,9 +125,13 @@ function PlaceBet({
         autoCloseTimerRef.current = null;
       }
 
-      // Set new timer to close after 5 seconds (only close if not still placing bet)
+      // Set new timer to close after 5 seconds (pause while placing or editing buttons)
       autoCloseTimerRef.current = setTimeout(() => {
-        if (!loadingRef.current && onCloseRef.current) {
+        if (
+          !loadingRef.current &&
+          !editModalOpenRef.current &&
+          onCloseRef.current
+        ) {
           onCloseRef.current();
         }
         autoCloseTimerRef.current = null;
@@ -153,7 +164,11 @@ function PlaceBet({
       // Set new timer only if onClose is available
       if (onCloseRef.current) {
         autoCloseTimerRef.current = setTimeout(() => {
-          if (!loadingRef.current && onCloseRef.current) {
+          if (
+            !loadingRef.current &&
+            !editModalOpenRef.current &&
+            onCloseRef.current
+          ) {
             onCloseRef.current();
           }
           autoCloseTimerRef.current = null;
@@ -162,33 +177,53 @@ function PlaceBet({
     }
   }, [selectedBet]); // Removed onClose from dependencies
 
+  const isBhavGtype =
+    String(selectedBet?.gType || '').toLowerCase() === 'match1';
+
   const isBookmakerStyleMarket = () =>
     gameType === 'Bookmaker' ||
     gameType === 'Bookmaker IPL CUP' ||
-    marketName === 'Bookmaker';
+    marketName === 'Bookmaker' ||
+    isBhavGtype;
 
   const isMatchOddsStyleMarket = () =>
-    gameType === 'Match Odds' ||
-    gameType === 'Winner' ||
-    gameType === 'Tied Match' ||
-    gameType === 'OVER_UNDER_05' ||
-    gameType === 'OVER_UNDER_15' ||
-    gameType === 'OVER_UNDER_25' ||
-    gameType === 'OVER_UNDER_35' ||
-    gameType === 'fancy1' ||
-    marketName === 'MATCH_ODDS' ||
-    marketName === 'TOURNAMENT_WINNER';
+    !isBhavGtype &&
+    (gameType === 'Match Odds' ||
+      gameType === 'Winner' ||
+      gameType === 'Tied Match' ||
+      gameType === 'OVER_UNDER_05' ||
+      gameType === 'OVER_UNDER_15' ||
+      gameType === 'OVER_UNDER_25' ||
+      gameType === 'OVER_UNDER_35' ||
+      gameType === 'fancy1' ||
+      marketName === 'MATCH_ODDS' ||
+      marketName === 'TOURNAMENT_WINNER');
 
   const usesProjectedNetOutcome = () =>
     isMatchOddsStyleMarket() || isBookmakerStyleMarket();
+
+  const normalizeMarketKey = (value) => {
+    const norm = String(value || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+    if (norm === 'match_odds' || norm === 'match odds') return 'match odds';
+    if (norm === 'tied_match' || norm === 'tied match') return 'tied match';
+    return norm;
+  };
 
   const matchesMarketGameType = (item) => {
     const gameTypeToMatch = gameType || marketName || '';
     const marketNameToMatch = marketName || gameType || '';
     if (
-      (gameType === 'Match Odds' || gameType === 'Winner') &&
+      (gameType === 'Match Odds' ||
+        gameType === 'Winner' ||
+        gameType === 'Bookmaker' ||
+        gameType === 'Bookmaker IPL CUP' ||
+        isBhavGtype) &&
       marketName &&
-      item.marketName !== marketName
+      item.marketName &&
+      normalizeMarketKey(item.marketName) !== normalizeMarketKey(marketName)
     ) {
       return false;
     }
@@ -214,7 +249,9 @@ function PlaceBet({
 
   const getMarketCashoutPL = () => {
     if (isBookmakerStyleMarket()) {
-      return cashoutPL?.['Bookmaker'] || 0;
+      return (
+        cashoutPL?.[marketName || 'Bookmaker'] || cashoutPL?.['Bookmaker'] || 0
+      );
     }
     const key =
       gameType === 'MATCH_ODDS' || marketName === 'MATCH_ODDS'
@@ -354,52 +391,55 @@ function PlaceBet({
       (otype && totalBetAmount) || (totalPrice && teamName && isMatchedTeam);
 
     // Determine calculation method based on game type
-    // Games using (odds / 100): Bookmaker, Normal, Meter, Khado
-    // Games using (odds - 1): Match Odds, OverUnder, TiedMatch, Fancy1, OddEven
-    const usesFancyCalculation = [
-      'Bookmaker',
+    // Bhav markets (Bookmaker, Bookmaker IPL CUP, match1 Tied Match): stake * (odds / 100)
+    // Fancy session markets (Normal, meter, line, ball, khado): stake * (size / 100)
+    // Decimal markets (Match Odds, Winner, OverUnder, Fancy1, OddEven, decimal Tied Match): stake * (odds - 1)
+    const isFancySession = [
       'Normal',
       'meter',
+      'line',
+      'ball',
       'khado',
     ].includes(gameType);
-    const isBookmaker = gameType === 'Bookmaker';
+    const isBookmaker = isBookmakerStyleMarket();
     const isKhado = gameType === 'khado';
+    const usesFancyCalculation = isBookmaker || isFancySession;
+    const effectiveFancyRate =
+      isFancySession && parseFloat(selectedBet?.size) > 0
+        ? parseFloat(selectedBet.size)
+        : oddsNum;
 
     if (!existingBet) {
       // No existing bet - calculate based on game type
       let profit;
       if (usesFancyCalculation) {
-        // Bookmaker, Normal, Meter, Khado: profit = stake * (odds / 100)
         if (isKhado) {
-          profit = stakeNum * (oddsNum / 100); // Khado only has back
+          profit = stakeNum * (effectiveFancyRate / 100);
         } else if (isBookmaker) {
-          // Bookmaker: b = otype === 'lay' ? p : p * (x / 100), p = otype === 'lay' ? p * (x / 100) : p
           const p = stakeNum;
           const x = oddsNum;
           const b = selectedType === 'lay' ? p : p * (x / 100);
           const pCalc = selectedType === 'lay' ? p * (x / 100) : p;
 
           if (selectedType === 'back') {
-            profit = b; // For BACK: profit = stake * (odds / 100)
+            profit = b;
             return {
               value: Math.abs(profit),
               color: profit >= 0 ? 'green' : 'red',
             };
           } else {
-            // For LAY: if selected team wins, you lose pCalc (stake * odds / 100)
-            // The value should be negative to show loss
-            profit = -pCalc; // Negative because it's a loss if selected team wins
-            return { value: Math.abs(profit), color: 'red' }; // Always red for LAY loss on selected team
+            profit = -pCalc;
+            return { value: Math.abs(profit), color: 'red' };
           }
         } else {
-          // Normal, Meter
+          // Normal, meter, line, ball use size bhav rate (default 100)
           profit =
             selectedType === 'back'
-              ? stakeNum * (oddsNum / 100)
-              : stakeNum * (1 - oddsNum / 100);
+              ? stakeNum * (effectiveFancyRate / 100)
+              : stakeNum * (1 - effectiveFancyRate / 100);
         }
       } else {
-        // Match Odds, OverUnder, TiedMatch, Fancy1, OddEven: profit = stake * (odds - 1)
+        // Match Odds, Winner, OverUnder, TiedMatch (decimal), Fancy1, OddEven: profit = stake * (odds - 1)
         profit =
           selectedType === 'back'
             ? stakeNum * (oddsNum - 1)
@@ -602,24 +642,26 @@ function PlaceBet({
         return suggestion.value.toFixed(2);
       }
       // Fallback: calculate profit if selected team wins
-      const usesFancyCalculation = [
-        'Bookmaker',
+      const isFancySession = [
         'Normal',
         'meter',
+        'line',
+        'ball',
         'khado',
       ].includes(gameType);
-      const isKhado = gameType === 'khado';
+      const isBhav = isBookmakerStyleMarket();
+      const effectiveFancyRate =
+        isFancySession && parseFloat(selectedBet?.size) > 0
+          ? parseFloat(selectedBet.size)
+          : oddsNum;
 
       let profitValue;
-      if (usesFancyCalculation) {
-        if (isKhado) {
-          profitValue = stakeNum * (oddsNum / 100);
-        } else {
-          // Bookmaker, Normal, Meter
-          profitValue = stakeNum * (oddsNum / 100);
-        }
+      if (isBhav) {
+        profitValue = stakeNum * (oddsNum / 100);
+      } else if (isFancySession) {
+        profitValue = stakeNum * (effectiveFancyRate / 100);
       } else {
-        // Match Odds, OverUnder, etc.
+        // Match Odds, Winner, OverUnder, Fancy1, OddEven, decimal Tied Match
         profitValue = stakeNum * (oddsNum - 1);
       }
       return profitValue.toFixed(2);
@@ -683,28 +725,103 @@ function PlaceBet({
   const handleClearStake = () => {
     setStake('');
     resetAutoCloseTimer(); // Reset timer on interaction
+    if (onBetChange && selectedBet) {
+      onBetChange({ ...selectedBet, stake: '' });
+    }
   };
 
   const handleOddsChange = (value) => {
     setOdds(value);
     resetAutoCloseTimer(); // Reset timer on interaction
-    if (onBetChange && selectedBet) {
-      onBetChange({ ...selectedBet, odds: value });
+    if (selectedBet) {
+      prevBetKeyRef.current = `${selectedBet.team}-${value}-${selectedBet.sid}-${selectedBet.type}`;
+      if (onBetChange) {
+        onBetChange({ ...selectedBet, odds: value, stake });
+      }
     }
   };
 
+  const isHorseRacingBet =
+    Number(sid) === 10 ||
+    Number(sid) === 65 ||
+    String(gameName || '').toLowerCase() === 'horse racing';
+  const isFancySessionMarket = [
+    'Normal',
+    'meter',
+    'line',
+    'ball',
+    'khado',
+  ].includes(gameType);
+  const canStepOdds =
+    !isHorseRacingBet &&
+    !isBookmakerStyleMarket() &&
+    !isFancySessionMarket &&
+    gameType !== 'oddeven' &&
+    gameType !== 'fancy1';
+
+  // D247 Betfair odds tick ladder (pA in reference chunk)
+  const getBetfairTickStep = (rate) => {
+    if (rate < 2) return 0.01;
+    if (rate < 3) return 0.02;
+    if (rate < 4) return 0.05;
+    if (rate < 6) return 0.1;
+    if (rate < 10) return 0.2;
+    if (rate < 20) return 0.5;
+    if (rate < 30) return 1;
+    if (rate < 50) return 2;
+    if (rate < 100) return 5;
+    if (rate < 1000) return 10;
+    return 0;
+  };
+
+  const oddsStep =
+    gameType === 'khado'
+      ? 1
+      : getBetfairTickStep(parseFloat(odds) || 0) || 0.01;
+
   const handleOddsIncrement = () => {
+    if (!canStepOdds) return;
     const currentOdds = parseFloat(odds) || 0;
-    handleOddsChange((currentOdds + 0.01).toFixed(2));
-    // Timer reset is handled in handleOddsChange
+    if (gameType === 'khado') {
+      const baseOdds = parseFloat(selectedBet?.odds) || currentOdds;
+      const maxAllowed = baseOdds + 100;
+      const minAllowed = baseOdds - 100;
+      if (currentOdds > minAllowed && currentOdds < maxAllowed) {
+        handleOddsChange(String(Math.round(currentOdds + 1)));
+      }
+      return;
+    }
+    if (currentOdds >= 10000) {
+      handleOddsChange('10000');
+      return;
+    }
+    const step = getBetfairTickStep(currentOdds);
+    if (!step) return;
+    const next = Number((currentOdds + step).toFixed(2));
+    handleOddsChange(String(next));
   };
 
   const handleOddsDecrement = () => {
+    if (!canStepOdds) return;
     const currentOdds = parseFloat(odds) || 0;
-    if (currentOdds > 0.01) {
-      handleOddsChange((currentOdds - 0.01).toFixed(2));
-      // Timer reset is handled in handleOddsChange
+    if (gameType === 'khado') {
+      const baseOdds = parseFloat(selectedBet?.odds) || currentOdds;
+      const maxAllowed = baseOdds + 100;
+      const minAllowed = baseOdds - 100;
+      if (currentOdds > minAllowed && currentOdds < maxAllowed) {
+        const next = Math.round(currentOdds - 1);
+        handleOddsChange(String(next < 2 ? 1 : next));
+      }
+      return;
     }
+    if (currentOdds <= 1.01) {
+      handleOddsChange('1.01');
+      return;
+    }
+    const step = getBetfairTickStep(currentOdds);
+    if (!step) return;
+    const next = Number(Math.max(1.01, currentOdds - step).toFixed(2));
+    handleOddsChange(String(next));
   };
 
   const handleReset = () => {
@@ -729,13 +846,15 @@ function PlaceBet({
     }
 
     // Validate min/max amounts
-    if (minAmount && stakeNum < minAmount) {
-      toast.error(`Minimum bet amount is ${minAmount}`);
+    const minLimit = Number(minAmount);
+    const maxLimit = Number(maxAmount);
+    if (Number.isFinite(minLimit) && minLimit > 0 && stakeNum < minLimit) {
+      toast.error(`Minimum bet amount is ${minLimit}`);
       return;
     }
 
-    if (maxAmount && stakeNum > maxAmount) {
-      toast.error(`Maximum bet amount is ${maxAmount}`);
+    if (Number.isFinite(maxLimit) && maxLimit > 0 && stakeNum > maxLimit) {
+      toast.error(`Maximum bet amount is ${maxLimit}`);
       return;
     }
 
@@ -745,13 +864,12 @@ function PlaceBet({
     const fancyBetTypes = ['Normal', 'meter', 'line', 'ball', 'khado'];
     const isFancyBet = fancyBetTypes.includes(gameType);
 
-    // For all fancy bets (Normal, Meter, Khado):
+    // For all fancy bets (Normal, Meter, line, ball, Khado):
     // fancyScore = original odds value (rate), xValue = size value, price = stake
-    // For other fancy bets: use existing logic
     let finalFancyScore = fancyScore || null;
     let finalXValue = oddsNum.toString();
 
-    const fancyBetTypesWithSize = ['Normal', 'meter', 'khado'];
+    const fancyBetTypesWithSize = ['Normal', 'meter', 'line', 'ball', 'khado'];
     if (
       fancyBetTypesWithSize.includes(gameType) &&
       selectedBet?.size !== undefined &&
@@ -768,6 +886,7 @@ function PlaceBet({
       otype: betType,
       oname: selectedBet?.oname || '',
       tno: selectedBet?.tno,
+      gType: selectedBet?.gType || '',
       price: stakeNum,
       xValue: finalXValue,
       gameType: gameType,
@@ -779,14 +898,15 @@ function PlaceBet({
     };
 
     try {
-      if (isFancyBet) {
-        await dispatch(createfancyBet(formData));
-      } else {
-        await dispatch(createBet(formData));
+      const action = isFancyBet
+        ? await dispatch(createfancyBet(formData))
+        : await dispatch(createBet(formData));
+
+      if (action?.error) {
+        return;
       }
 
-      // Close right away; balances are also pushed over the websocket, so the
-      // refreshes below run in the background instead of delaying the UI.
+      // Close right away only after confirmed acceptance; keep open on error so user can adjust stake/odds.
       setStake('');
       if (onClose) {
         onClose();
@@ -810,378 +930,522 @@ function PlaceBet({
   };
 
   const handleEdit = () => {
-    // Handle edit logic here
-    console.log('Editing bet');
-    resetAutoCloseTimer(); // Reset timer on interaction
+    setShowEditButtons(true);
+    resetAutoCloseTimer();
   };
 
   if (!selectedBet) {
     return null;
   }
 
+  const slipDisplayName =
+    gameType === 'Normal' && selectedBet?.size
+      ? `${betFor} - ${selectedBet.size}`
+      : gameType === 'khado' && selectedBet?.khadoLayOdds
+        ? `${betFor} - ${selectedBet.khadoLayOdds}`
+        : betFor;
+
+  const isBlueSlip = isOddEvenMarket || betType === 'back';
+
   return (
     <div className='bg-white'>
       {/* Header */}
       <div
-        className={`${isMobile ? 'bg-primary' : 'bg-secondary'} flex items-center justify-between p-1 text-[15px] font-bold text-white`}
+        className={`${isMobile ? 'bg-primary px-2 py-1.5' : 'bg-secondary p-1'} flex items-center justify-between text-[15px] font-bold text-white`}
       >
         <span>Place Bet</span>
         {isMobile && onClose && (
-          <div className='flex items-center gap-2'>
-            {(() => {
-              // Don't show profit for these bet types - only show after placing bet from API
-              const noSuggestionMarkets = [
-                'khado',
-                'Normal',
-                'meter',
-                'oddeven',
-              ];
-              const hideProfit = noSuggestionMarkets.includes(gameType);
-              return (
-                !hideProfit && (
-                  <span className='text-[12px]'>Profit: {profit}</span>
-                )
-              );
-            })()}
-            <button
-              onClick={onClose}
-              className='text-[20px] font-normal text-white hover:text-gray-200'
-              style={{ lineHeight: '1' }}
-            >
-              ×
-            </button>
-          </div>
+          <button
+            type='button'
+            onClick={onClose}
+            aria-label='Close bet slip'
+            className='cursor-pointer text-[20px] font-normal text-white hover:text-gray-200'
+            style={{ lineHeight: '1' }}
+          >
+            ×
+          </button>
         )}
       </div>
 
-      {/* Betting Details Table */}
-
-      {/* Table Headers */}
-      <div className='grid grid-cols-4 bg-[#cccccc] text-[12px] font-bold text-black'>
-        <div className='p-2'>(Bet for)</div>
-        <div className='p-2'>Odds</div>
-        <div className='p-2'>Stake</div>
-        <div className='p-2'>Profit</div>
-      </div>
+      {/* Desktop 4-column Header */}
+      {!isMobile && (
+        <div className='grid grid-cols-4 bg-[#cccccc] text-[12px] font-bold text-black'>
+          <div className='p-2'>(Bet for)</div>
+          <div className='p-2'>Odds</div>
+          <div className='p-2'>Stake</div>
+          <div className='p-2'>Profit</div>
+        </div>
+      )}
 
       <div
-        className={`${betType === 'back' ? 'bg-[#72bbef]' : 'bg-[#faa9ba]'}`}
+        className={`${isBlueSlip ? 'bg-[#72bbef]' : 'bg-[#faa9ba]'} ${
+          isMobile ? 'place-bet-modal p-2.5 text-black' : ''
+        }`}
       >
-        {/* Table Data Row */}
-        <div className={`grid grid-cols-4 text-[12px] text-black`}>
-          <div className='p-2 text-[12px] text-[#000000]'>{betFor}</div>
-          <div className='flex gap-1 p-2'>
-            <input
-              type='number'
-              value={odds}
-              onChange={(e) => handleOddsChange(e.target.value)}
-              step='0.01'
-              min='0.01'
-              className='h-[25px] w-full bg-white px-1 py-0.5 text-[12px]'
-            />
-            <div className='flex flex-col'>
+        {isMobile ? (
+          /* Mobile D247 .place-bet-modal layout */
+          <>
+            <div className='flex items-center justify-between gap-2 text-[13px]'>
+              <b className='min-w-0 break-words'>{slipDisplayName}</b>
+              <span className='shrink-0 text-[12px] font-bold'>
+                Profit: {profit}
+              </span>
+            </div>
+
+            <div className='odd-stake-box mt-1.5 bg-[#ffffff45] p-1.5'>
+              <div className='grid grid-cols-2 gap-2 text-center text-[12px] font-bold'>
+                <div>Odds</div>
+                <div>Amount</div>
+              </div>
+              <div className='mt-1 grid grid-cols-2 items-center gap-2'>
+                <div className='flex items-center'>
+                  {isHorseRacingBet ? (
+                    <input
+                      type='text'
+                      value={odds}
+                      readOnly
+                      disabled
+                      className='stakeinput h-[28px] w-full border border-[#666] bg-white px-1 text-center text-[13px] font-bold text-black'
+                    />
+                  ) : (
+                    <>
+                      <button
+                        type='button'
+                        onClick={handleOddsDecrement}
+                        disabled={!canStepOdds}
+                        aria-label='Decrease odds'
+                        className={`stakeactionminus bg-secondary text-secondary flex h-[28px] w-[28px] shrink-0 items-center justify-center text-sm font-bold ${
+                          canStepOdds
+                            ? 'cursor-pointer hover:opacity-90'
+                            : 'cursor-not-allowed opacity-50'
+                        }`}
+                      >
+                        −
+                      </button>
+                      <input
+                        type='number'
+                        value={odds}
+                        readOnly={!canStepOdds}
+                        onChange={(e) =>
+                          canStepOdds && handleOddsChange(e.target.value)
+                        }
+                        step={oddsStep}
+                        min='0.01'
+                        className='stakeinput h-[28px] min-w-0 flex-1 border-y border-[#666] bg-white px-1 text-center text-[13px] font-bold text-black'
+                      />
+                      <button
+                        type='button'
+                        onClick={handleOddsIncrement}
+                        disabled={!canStepOdds}
+                        aria-label='Increase odds'
+                        className={`stakeactionplus bg-secondary text-secondary flex h-[28px] w-[28px] shrink-0 items-center justify-center text-sm font-bold ${
+                          canStepOdds
+                            ? 'cursor-pointer hover:opacity-90'
+                            : 'cursor-not-allowed opacity-50'
+                        }`}
+                      >
+                        +
+                      </button>
+                    </>
+                  )}
+                </div>
+                <div>
+                  <input
+                    type='number'
+                    value={stake}
+                    onChange={(e) => handleStakeChange(e.target.value)}
+                    placeholder='0'
+                    min='0'
+                    className='stakeinput h-[28px] w-full border border-[#666] bg-white px-2 text-center text-[13px] font-bold text-black'
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className='place-bet-buttons mt-1.5 grid grid-cols-4 gap-1'>
+              {quickStakes.map((item, i) => (
+                <button
+                  key={i}
+                  type='button'
+                  onClick={() => handleQuickStake(item.value)}
+                  className='btn-place-bet bg-secondary text-secondary cursor-pointer py-1.5 text-center text-[12px] font-bold whitespace-nowrap hover:opacity-90'
+                >
+                  +{item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className='place-bet-btn-box mt-1.5 grid grid-cols-4 gap-1'>
               <button
-                onClick={handleOddsIncrement}
-                className='bg-white text-[10px] leading-none hover:bg-gray-100'
-                style={{
-                  width: '16px',
-                  height: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                }}
+                type='button'
+                onClick={handleClearStake}
+                className='btn cursor-pointer py-1.5 text-[12px] font-bold text-[#212529] underline'
               >
-                ▲
+                Clear
               </button>
               <button
-                onClick={handleOddsDecrement}
-                className='bg-white text-[10px] leading-none hover:bg-gray-100'
-                style={{
-                  width: '16px',
-                  height: '12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                }}
+                type='button'
+                onClick={handleEdit}
+                className='btn cursor-pointer border border-[#097c93] bg-[#097c93] py-1.5 text-[12px] font-bold text-white hover:bg-[#086a82]'
               >
-                ▼
+                Edit
+              </button>
+              <button
+                type='button'
+                onClick={handleReset}
+                className='btn cursor-pointer border border-[#bd1828] bg-[#bd1828] py-1.5 text-[12px] font-bold text-white hover:bg-[#c82333]'
+              >
+                Reset
+              </button>
+              <button
+                type='button'
+                onClick={handleSubmit}
+                disabled={loading || !stake || Number(stake) <= 0}
+                className='btn cursor-pointer border border-[#198754] bg-[#198754] py-1.5 text-[12px] font-bold text-white hover:bg-[#157347] disabled:cursor-not-allowed disabled:opacity-60'
+              >
+                {loading ? 'Placing...' : 'Place Bet'}
               </button>
             </div>
-          </div>
-          <div className='p-2'>
-            <input
-              type='number'
-              value={stake}
-              onChange={(e) => handleStakeChange(e.target.value)}
-              placeholder=''
-              className='h-[25px] w-full bg-white px-1 py-0.5 text-[12px]'
-            />
-          </div>
-          <div className='p-2'>
-            {(() => {
-              // Don't show profit for these bet types - only show after placing bet from API
-              const noSuggestionMarkets = [
-                'khado',
-                'Normal',
-                'meter',
-                'oddeven',
-              ];
-              const hideProfit = noSuggestionMarkets.includes(gameType);
-              return hideProfit ? '-' : profit;
-            })()}
-          </div>
-        </div>
 
-        {/* Quick Stake Buttons */}
-        <div className='p-2'>
-          <div className='mb-1 flex flex-wrap gap-1'>
-            {quickStakes.map((item, i) => (
+            {!isMatchOddsStyleMarket() && (minAmount > 0 || maxAmount > 0) && (
+              <div className='mt-1.5 text-[11px] font-semibold text-[#212529]'>
+                Range: {minAmount || 0} to {maxAmount || 0}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Desktop D247 .place-bet-box layout */
+          <>
+            {/* Table Data Row */}
+            <div className='grid grid-cols-4 items-center text-[12px] text-black'>
+              <div className='p-2 text-[12px] font-semibold break-words text-[#000000]'>
+                {slipDisplayName}
+              </div>
+              <div className='flex items-center gap-0.5 p-2'>
+                <input
+                  type='number'
+                  value={odds}
+                  readOnly={!canStepOdds}
+                  onChange={(e) =>
+                    canStepOdds && handleOddsChange(e.target.value)
+                  }
+                  step={oddsStep}
+                  min='0.01'
+                  className='h-[25px] w-full border border-gray-400 bg-white px-1 py-0.5 text-center text-[12px] font-bold text-black'
+                />
+                {canStepOdds && (
+                  <div className='flex flex-col'>
+                    <button
+                      type='button'
+                      onClick={handleOddsIncrement}
+                      className='bg-secondary text-secondary cursor-pointer text-[10px] leading-none hover:opacity-90'
+                      style={{
+                        width: '16px',
+                        height: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                      }}
+                    >
+                      ▲
+                    </button>
+                    <button
+                      type='button'
+                      onClick={handleOddsDecrement}
+                      className='bg-secondary text-secondary cursor-pointer text-[10px] leading-none hover:opacity-90'
+                      style={{
+                        width: '16px',
+                        height: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 0,
+                      }}
+                    >
+                      ▼
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className='p-2'>
+                <input
+                  type='number'
+                  value={stake}
+                  onChange={(e) => handleStakeChange(e.target.value)}
+                  placeholder='0'
+                  min='0'
+                  className='h-[25px] w-full border border-gray-400 bg-white px-1 py-0.5 text-center text-[12px] font-bold text-black'
+                />
+              </div>
+              <div className='p-2 font-bold'>{profit}</div>
+            </div>
+
+            {/* Quick Stake Buttons (D247 5-column layout, zero clipping) */}
+            <div className='px-2 pt-1 pb-1'>
+              <div className='grid grid-cols-5 gap-1'>
+                {quickStakes.map((item, i) => (
+                  <button
+                    key={i}
+                    type='button'
+                    onClick={() => handleQuickStake(item.value)}
+                    className='cursor-pointer border border-[#a5a5a5] bg-[#d4d4d4] px-1 py-1.5 text-center text-[12px] font-bold whitespace-nowrap text-[#000000] hover:bg-[#bfbfbf]'
+                  >
+                    +{item.label}
+                  </button>
+                ))}
+              </div>
+              <div className='mt-1 flex items-center justify-between text-[11px] text-[#212529]'>
+                <span>
+                  {(minAmount > 0 || maxAmount > 0) &&
+                    `Min: ${minAmount || 0} | Max: ${maxAmount || '-'}`}
+                </span>
+                <button
+                  type='button'
+                  onClick={handleClearStake}
+                  className='cursor-pointer font-semibold text-[#212529] underline'
+                >
+                  clear
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons (D247 layout: Edit left, Reset + Submit right) */}
+            <div className='flex items-center justify-between gap-2 p-2'>
               <button
-                key={i}
-                onClick={() => handleQuickStake(item.value)}
-                className='bg-[#cccccc] px-4 py-1 text-[14px] font-bold text-[#000000] hover:bg-gray-500'
-                style={{ width: 'calc(20% - 4px)' }}
+                type='button'
+                onClick={handleEdit}
+                className='cursor-pointer border border-[#097c93] bg-[#097c93] px-4 py-1.5 text-[12px] font-bold text-white hover:bg-[#086a82]'
               >
-                +{item.label}
+                Edit
               </button>
-            ))}
-          </div>
-          <div className='mt-1 flex justify-end'>
-            <button
-              onClick={handleClearStake}
-              className='cursor-pointer text-[12px] text-[#212529] underline'
-            >
-              clear
-            </button>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className='flex gap-1 p-2'>
-          <button
-            onClick={handleEdit}
-            className='flex-1 border border-[#097c93] bg-[#097c93] py-2 text-[12px] font-bold text-white hover:bg-[#086a82]'
-          >
-            Edit
-          </button>
-          <button
-            onClick={handleReset}
-            className='flex-1 border border-[#bd1828] bg-[#bd1828] py-2 text-[12px] font-bold text-white hover:bg-[#c82333]'
-          >
-            Reset
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className={`flex-1 border border-[#198754] bg-[#198754] py-2 text-[12px] font-bold text-white hover:bg-[#157347] ${
-              loading ? 'cursor-not-allowed opacity-70' : ''
-            }`}
-          >
-            {loading ? 'Placing...' : isMobile ? 'Place Bet' : 'Submit'}
-          </button>
-        </div>
+              <div className='flex gap-1.5'>
+                <button
+                  type='button'
+                  onClick={handleReset}
+                  className='cursor-pointer border border-[#bd1828] bg-[#bd1828] px-4 py-1.5 text-[12px] font-bold text-white hover:bg-[#c82333]'
+                >
+                  Reset
+                </button>
+                <button
+                  type='button'
+                  onClick={handleSubmit}
+                  disabled={loading || !stake || Number(stake) <= 0}
+                  className='cursor-pointer border border-[#198754] bg-[#198754] px-4 py-1.5 text-[12px] font-bold text-white hover:bg-[#157347] disabled:cursor-not-allowed disabled:opacity-60'
+                >
+                  {loading ? 'Placing...' : 'Submit'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Bet Summary Footer - Mobile Only */}
-        {isMobile && allTeams.length > 0 && !isOddEvenMarket && (
-          <div
-            className={`${betType === 'back' ? 'bg-[#ffffff45]' : 'bg-[#ffffff45]'} p-2`}
-          >
-            {allTeams.map((team, index) => {
-              // Don't show suggestions for these bet types - only show after placing bet from API
-              const noSuggestionMarkets = [
-                'khado',
-                'Normal',
-                'meter',
-                'oddeven',
-              ];
-              const shouldHideSuggestions =
-                noSuggestionMarkets.includes(gameType);
+        {isMobile &&
+          allTeams.length > 0 &&
+          !isHorseRacingBet &&
+          !isOddEvenMarket && (
+            <div className='odds-count mt-1.5 bg-[#ffffff45] p-2'>
+              {allTeams.map((team, index) => {
+                // Don't show suggestions for these bet types - only show after placing bet from API
+                const noSuggestionMarkets = [
+                  'khado',
+                  'Normal',
+                  'meter',
+                  'oddeven',
+                ];
+                const shouldHideSuggestions =
+                  noSuggestionMarkets.includes(gameType);
 
-              // Check for existing bet
-              const {
-                otype,
-                totalBetAmount,
-                totalPrice,
-                teamName,
-                netOutcome,
-                hasMarketBets,
-              } = getBetDetails(team);
-              const isMatchedTeam =
-                teamName?.toLowerCase() === team?.toLowerCase();
-              const existingBet =
-                hasMarketBets ||
-                (otype && totalBetAmount) ||
-                (totalPrice && teamName && isMatchedTeam);
-              const useProjectedPL = usesProjectedNetOutcome();
+                // Check for existing bet
+                const {
+                  otype,
+                  totalBetAmount,
+                  totalPrice,
+                  teamName,
+                  netOutcome,
+                  hasMarketBets,
+                } = getBetDetails(team);
+                const isMatchedTeam =
+                  teamName?.toLowerCase() === team?.toLowerCase();
+                const existingBet =
+                  hasMarketBets ||
+                  (otype && totalBetAmount) ||
+                  (totalPrice && teamName && isMatchedTeam);
+                const useProjectedPL = usesProjectedNetOutcome();
 
-              // For these bet types, only show existing bet values, no suggestions
-              if (shouldHideSuggestions) {
+                // For these bet types, only show existing bet values, no suggestions
+                if (shouldHideSuggestions) {
+                  return (
+                    <div
+                      key={index}
+                      className='mb-1 flex items-center justify-between'
+                    >
+                      <span className='text-[12px] text-black'>{team}</span>
+                      {existingBet && (
+                        <span
+                          className={`text-[12px] font-semibold ${
+                            otype === 'lay'
+                              ? isMatchedTeam
+                                ? 'text-[#dc3545]'
+                                : 'text-[#28a745]'
+                              : otype === 'back'
+                                ? isMatchedTeam
+                                  ? 'text-[#28a745]'
+                                  : 'text-[#dc3545]'
+                                : 'text-[#28a745]'
+                          }`}
+                        >
+                          {(() => {
+                            if (otype === 'lay') {
+                              return isMatchedTeam
+                                ? formatNumber(totalPrice)
+                                : formatNumber(totalBetAmount);
+                            } else if (otype === 'back') {
+                              return isMatchedTeam
+                                ? formatNumber(totalBetAmount)
+                                : formatNumber(totalPrice);
+                            }
+                            return '';
+                          })()}
+                        </span>
+                      )}
+                    </div>
+                  );
+                }
+
+                const singleItemMarkets = [
+                  'fancy1',
+                  'khado',
+                  'Normal',
+                  'meter',
+                  'oddeven',
+                ];
+                const isSingleItemMarket = singleItemMarkets.includes(gameType);
+                const isSelectedTeam =
+                  team?.toLowerCase() === betFor?.toLowerCase();
+                const shouldShowSuggestion = isSingleItemMarket
+                  ? isSelectedTeam
+                  : true;
+
+                let suggestionValue = null;
+                let suggestionColor = 'green';
+                let currentDisplayValue = null;
+                let currentDisplayColor = 'green';
+
+                if (useProjectedPL && hasMarketBets && netOutcome !== null) {
+                  currentDisplayValue = netOutcome;
+                  currentDisplayColor = netOutcome >= 0 ? 'green' : 'red';
+                }
+
+                if (stake && selectedBet && shouldShowSuggestion) {
+                  if (useProjectedPL) {
+                    const projectedNet = getProjectedNetOutcome(team);
+                    if (projectedNet !== null) {
+                      suggestionValue = projectedNet;
+                      suggestionColor = projectedNet >= 0 ? 'green' : 'red';
+                    }
+                  } else if (isSelectedTeam) {
+                    const suggestion = calculateSuggestion(
+                      team,
+                      betFor,
+                      betType,
+                      stake,
+                      odds
+                    );
+                    if (suggestion) {
+                      if (isBookmakerStyleMarket() && betType === 'lay') {
+                        suggestionValue = -suggestion.value;
+                        suggestionColor = 'red';
+                      } else {
+                        suggestionValue = suggestion.value;
+                        suggestionColor = suggestion.color;
+                      }
+                    }
+                  } else if (!isSingleItemMarket) {
+                    const stakeNum = parseFloat(stake);
+                    if (!isNaN(stakeNum) && stakeNum > 0) {
+                      if (betType === 'back') {
+                        suggestionValue = stakeNum;
+                        suggestionColor = 'red';
+                      } else {
+                        suggestionValue = stakeNum;
+                        suggestionColor = 'green';
+                      }
+                    }
+                  }
+                }
+
                 return (
                   <div
                     key={index}
                     className='mb-1 flex items-center justify-between'
                   >
                     <span className='text-[12px] text-black'>{team}</span>
-                    {existingBet && (
-                      <span
-                        className={`text-[12px] font-semibold ${
-                          otype === 'lay'
-                            ? isMatchedTeam
-                              ? 'text-[#dc3545]'
-                              : 'text-[#28a745]'
-                            : otype === 'back'
-                              ? isMatchedTeam
+                    {(stake || existingBet) && (
+                      <div className='flex items-center gap-1'>
+                        {existingBet && (
+                          <span
+                            className={`text-[12px] font-semibold ${
+                              currentDisplayValue !== null
+                                ? currentDisplayColor === 'green'
+                                  ? 'text-[#28a745]'
+                                  : 'text-[#dc3545]'
+                                : otype === 'lay'
+                                  ? isMatchedTeam
+                                    ? 'text-[#dc3545]'
+                                    : 'text-[#28a745]'
+                                  : otype === 'back'
+                                    ? isMatchedTeam
+                                      ? 'text-[#28a745]'
+                                      : 'text-[#dc3545]'
+                                    : 'text-[#28a745]'
+                            }`}
+                          >
+                            {currentDisplayValue !== null
+                              ? `${currentDisplayValue < 0 ? '-' : ''}${formatNumber(Math.abs(currentDisplayValue))}`
+                              : (() => {
+                                  if (otype === 'lay') {
+                                    return isMatchedTeam
+                                      ? formatNumber(totalPrice)
+                                      : formatNumber(totalBetAmount);
+                                  }
+                                  if (otype === 'back') {
+                                    return isMatchedTeam
+                                      ? formatNumber(totalBetAmount)
+                                      : formatNumber(totalPrice);
+                                  }
+                                  return '';
+                                })()}
+                          </span>
+                        )}
+                        {suggestionValue !== null && (
+                          <span
+                            className={`text-[12px] font-semibold ${
+                              suggestionColor === 'green'
                                 ? 'text-[#28a745]'
                                 : 'text-[#dc3545]'
-                              : 'text-[#28a745]'
-                        }`}
-                      >
-                        {(() => {
-                          if (otype === 'lay') {
-                            return isMatchedTeam
-                              ? formatNumber(totalPrice)
-                              : formatNumber(totalBetAmount);
-                          } else if (otype === 'back') {
-                            return isMatchedTeam
-                              ? formatNumber(totalBetAmount)
-                              : formatNumber(totalPrice);
-                          }
-                          return '';
-                        })()}
-                      </span>
+                            }`}
+                          >
+                            {existingBet || currentDisplayValue !== null
+                              ? `(${suggestionValue < 0 ? '-' : ''}${formatNumber(Math.abs(suggestionValue))})`
+                              : `${suggestionValue < 0 ? '-' : ''}${formatNumber(Math.abs(suggestionValue))}`}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
-              }
-
-              const singleItemMarkets = [
-                'fancy1',
-                'khado',
-                'Normal',
-                'meter',
-                'oddeven',
-              ];
-              const isSingleItemMarket = singleItemMarkets.includes(gameType);
-              const isSelectedTeam =
-                team?.toLowerCase() === betFor?.toLowerCase();
-              const shouldShowSuggestion = isSingleItemMarket
-                ? isSelectedTeam
-                : true;
-
-              let suggestionValue = null;
-              let suggestionColor = 'green';
-              let currentDisplayValue = null;
-              let currentDisplayColor = 'green';
-
-              if (useProjectedPL && hasMarketBets && netOutcome !== null) {
-                currentDisplayValue = netOutcome;
-                currentDisplayColor = netOutcome >= 0 ? 'green' : 'red';
-              }
-
-              if (stake && selectedBet && shouldShowSuggestion) {
-                if (useProjectedPL) {
-                  const projectedNet = getProjectedNetOutcome(team);
-                  if (projectedNet !== null) {
-                    suggestionValue = projectedNet;
-                    suggestionColor = projectedNet >= 0 ? 'green' : 'red';
-                  }
-                } else if (isSelectedTeam) {
-                  const suggestion = calculateSuggestion(
-                    team,
-                    betFor,
-                    betType,
-                    stake,
-                    odds
-                  );
-                  if (suggestion) {
-                    if (gameType === 'Bookmaker' && betType === 'lay') {
-                      suggestionValue = -suggestion.value;
-                      suggestionColor = 'red';
-                    } else {
-                      suggestionValue = suggestion.value;
-                      suggestionColor = suggestion.color;
-                    }
-                  }
-                } else if (!isSingleItemMarket) {
-                  const stakeNum = parseFloat(stake);
-                  if (!isNaN(stakeNum) && stakeNum > 0) {
-                    if (betType === 'back') {
-                      suggestionValue = stakeNum;
-                      suggestionColor = 'red';
-                    } else {
-                      suggestionValue = stakeNum;
-                      suggestionColor = 'green';
-                    }
-                  }
-                }
-              }
-
-              return (
-                <div
-                  key={index}
-                  className='mb-1 flex items-center justify-between'
-                >
-                  <span className='text-[12px] text-black'>{team}</span>
-                  {(stake || existingBet) && (
-                    <div className='flex items-center gap-1'>
-                      {existingBet && (
-                        <span
-                          className={`text-[12px] font-semibold ${
-                            currentDisplayValue !== null
-                              ? currentDisplayColor === 'green'
-                                ? 'text-[#28a745]'
-                                : 'text-[#dc3545]'
-                              : otype === 'lay'
-                                ? isMatchedTeam
-                                  ? 'text-[#dc3545]'
-                                  : 'text-[#28a745]'
-                                : otype === 'back'
-                                  ? isMatchedTeam
-                                    ? 'text-[#28a745]'
-                                    : 'text-[#dc3545]'
-                                  : 'text-[#28a745]'
-                          }`}
-                        >
-                          {currentDisplayValue !== null
-                            ? `${currentDisplayValue < 0 ? '-' : ''}${formatNumber(Math.abs(currentDisplayValue))}`
-                            : (() => {
-                                if (otype === 'lay') {
-                                  return isMatchedTeam
-                                    ? formatNumber(totalPrice)
-                                    : formatNumber(totalBetAmount);
-                                }
-                                if (otype === 'back') {
-                                  return isMatchedTeam
-                                    ? formatNumber(totalBetAmount)
-                                    : formatNumber(totalPrice);
-                                }
-                                return '';
-                              })()}
-                        </span>
-                      )}
-                      {suggestionValue !== null && (
-                        <span
-                          className={`text-[12px] font-semibold ${
-                            suggestionColor === 'green'
-                              ? 'text-[#28a745]'
-                              : 'text-[#dc3545]'
-                          }`}
-                        >
-                          {existingBet || currentDisplayValue !== null
-                            ? `(${suggestionValue < 0 ? '-' : ''}${formatNumber(Math.abs(suggestionValue))})`
-                            : `${suggestionValue < 0 ? '-' : ''}${formatNumber(Math.abs(suggestionValue))}`}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
+              })}
+            </div>
+          )}
       </div>
+      {showEditButtons && (
+        <ButtonValues
+          initialTab='game'
+          onClose={() => setShowEditButtons(false)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 
 import { fetchMatchData, fetchMatchList } from '../services/matchApi/index.js';
-import { listingOdds } from '../utils/bestOdds.js';
+import { listingOdds, sortSportsMatches } from '../utils/bestOdds.js';
 
 dotenv.config();
 
@@ -23,20 +23,13 @@ export const fetchSoccerData = async (req, res) => {
       bm: match.bm,
       f: match.f,
       iscc: match.iscc || 0,
+      oid: match.oid,
       channels: match.f ? ['F'] : [],
       odds: listingOdds(match.section),
     }));
 
-    // Reference-site listing order: live (inplay) matches first in provider
-    // order, then upcoming matches sorted by start time.
-    const now = new Date();
-    const upcoming = combinedData
-      .filter((m) => m.inplay !== true && new Date(m.date) >= now)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-    const sortedData = [
-      ...combinedData.filter((m) => m.inplay === true),
-      ...upcoming,
-    ];
+    // Reference-site parity: keep all upstream events and match D247 sort order.
+    const sortedData = sortSportsMatches(combinedData);
 
     res.status(200).json({ success: true, data: sortedData });
   } catch (error) {

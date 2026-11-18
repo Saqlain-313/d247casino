@@ -14,11 +14,14 @@ function TiedMatch({
   selectedBet,
   gameid,
 }) {
+  const isBhavMarket =
+    String(tiedMatchList?.[0]?.gtype || '').toLowerCase() === 'match1';
   const { getBetDetails, getProjectedNetOutcome, isSelectedBetInMarket } =
     useMarketNetOutcome({
       gameTypes: MARKET_GAME_TYPES,
       gameId: gameid,
       cashoutPLKey: 'Tied Match',
+      isBhav: isBhavMarket,
     });
   const backBg = ['bg-[#72bbef7f]', 'bg-[#72bbefbf]', 'bg-[#72bbef]'];
   const layBg = ['bg-[#faa9ba]', 'bg-[#faa9babf]', 'bg-[#faa9ba7f]'];
@@ -60,6 +63,7 @@ function TiedMatch({
         teams: allTeams, // Add all options (YES/NO) for TiedMatch
         marketName: tiedMatchList?.[0]?.mname || 'Tied Match',
         gameType: 'Tied Match',
+        gType: isBhavMarket ? 'match1' : 'match',
         maxAmount: tiedMatchList?.[0]?.max || tiedMatchList?.[0]?.maxb || 0,
         minAmount: tiedMatchList?.[0]?.min || 0,
       });

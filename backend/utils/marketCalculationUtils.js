@@ -1,4 +1,4 @@
-export function calculateOutcomeScenarios(bets) {
+export function calculateOutcomeScenarios(bets, totalRunners = null) {
   if (!Array.isArray(bets) || bets.length === 0) {
     return {};
   }
@@ -36,17 +36,25 @@ export function calculateOutcomeScenarios(bets) {
     scenarios[winningTeam] = netResult;
   }
 
-  // For binary markets, ensure we have both outcomes
-  if (teams.length === 1) {
-    // Single team means we need to add the "other team wins" scenario
+  // Add '__OTHER__' whenever un-bet runners remain in the market (e.g. betting
+  // 2 teams in a 3-way Test/Football market or 2 horses in a 7-runner race).
+  // Falls back to binary single-team check when runnerCount isn't recorded.
+  const inferredRunners = bets.reduce(
+    (max, b) => Math.max(max, Number(b?.runnerCount) || 0),
+    Number(totalRunners) || 0
+  );
+  const hasUnbetRunners =
+    inferredRunners > 0 ? teams.length < inferredRunners : teams.length === 1;
+
+  if (hasUnbetRunners) {
     let otherResult = 0;
 
     for (const bet of bets) {
       if (bet.otype === 'back') {
-        // BACK loses when other team wins
+        // BACK loses when an un-bet runner wins
         otherResult -= bet.price;
       } else {
-        // LAY wins when other team wins
+        // LAY wins when an un-bet runner wins
         otherResult += bet.betAmount;
       }
     }
@@ -339,7 +347,8 @@ export function validateBetWithNewBetOffset(
   newOtype,
   newStake,
   newLiability,
-  newBetAmount
+  newBetAmount,
+  totalRunners = null
 ) {
   // SIMULATION-BASED VALIDATION: Instead of comparing effectiveBalance >= liability,
   // we simulate the combined position and check if balance can cover the new total exposure.
@@ -352,7 +361,7 @@ export function validateBetWithNewBetOffset(
   // Step 1: Calculate current market exposure from existing bets
   const currentScenarios =
     Array.isArray(marketBets) && marketBets.length > 0
-      ? calculateOutcomeScenarios(marketBets)
+      ? calculateOutcomeScenarios(marketBets, totalRunners)
       : {};
   const currentMarketExposure = calculateMarketExposure(currentScenarios);
 
@@ -362,9 +371,13 @@ export function validateBetWithNewBetOffset(
     otype: newOtype,
     price: newLiability,
     betAmount: newBetAmount,
+    ...(Number(totalRunners) > 0 ? { runnerCount: Number(totalRunners) } : {}),
   };
   const combinedBets = [...(marketBets || []), simulatedNewBet];
-  const combinedScenarios = calculateOutcomeScenarios(combinedBets);
+  const combinedScenarios = calculateOutcomeScenarios(
+    combinedBets,
+    totalRunners
+  );
   const newMarketExposure = calculateMarketExposure(combinedScenarios);
 
   // Step 3: Calculate post-bet available balance

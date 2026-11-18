@@ -3,7 +3,7 @@ import { FaRegMinusSquare, FaRegPlusSquare } from 'react-icons/fa';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { RiCloseCircleLine } from 'react-icons/ri';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import HorseRacing from '../../pages/Home/HorseRacing';
 import { fetchCricketData } from '../../redux/reducer/cricketSlice';
 import { fetchHorseRacingData } from '../../redux/reducer/horseRacingSlice';
@@ -12,6 +12,7 @@ import { fetchTennisData } from '../../redux/reducer/tennisSlice';
 
 function Sidebar({ isOpen, onClose }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
   const { matches: cricketMatches } = useSelector((state) => state.cricket);
   const { matches: tennisMatches } = useSelector((state) => state.tennis);
@@ -101,15 +102,73 @@ function Sidebar({ isOpen, onClose }) {
   const racingSports = ['Horse Racing', 'Greyhound Racing'];
 
   const others = [
-    { name: 'Our Casino', animate: true, path: '/casino-list' },
-    { name: 'Our VIP Casino', animate: true, path: '/our-vip-casino' },
-    { name: 'Our Premium Casino', animate: true, path: '/our-prem-casino' },
-    { name: 'Our Virtual', animate: true, path: '/our-virtual-casino' },
-    { name: 'Tembo', animate: false },
-    { name: 'Live Casino', animate: false },
-    { name: 'Slot Game', animate: false },
-    { name: 'Fantasy Game', animate: false },
+    {
+      name: 'Our Casino',
+      animate: true,
+      path: '/casino-list/LC/4',
+      cType: '4',
+    },
+    {
+      name: 'Our VIP Casino',
+      animate: true,
+      path: '/casino-list/LC/10',
+      cType: '10',
+    },
+    {
+      name: 'Our Premium Casino',
+      animate: true,
+      path: '/casino-list/LC/11',
+      cType: '11',
+    },
+    {
+      name: 'Our Virtual',
+      animate: true,
+      path: '/casino-list/LC/19',
+      cType: '19',
+    },
+    {
+      name: 'Tembo',
+      animate: false,
+      path: '/casino-list/LC/tembo',
+      cType: 'tembo',
+    },
+    {
+      name: 'Live Casino',
+      animate: false,
+      path: '/live-casino-list',
+      cType: 'live',
+    },
+    { name: 'Slot Game', animate: false, path: '/slot-list', cType: 'slot' },
+    {
+      name: 'Fantasy Game',
+      animate: false,
+      path: '/fantasy-list',
+      cType: 'fantasy',
+    },
   ];
+
+  const isItemActive = (item) => {
+    const path = location.pathname;
+    if (item.cType === '4') {
+      return path === '/casino-list' || path.startsWith('/casino-list/LC/4');
+    }
+    if (item.cType === '10') {
+      return (
+        path === '/our-vip-casino' || path.startsWith('/casino-list/LC/10')
+      );
+    }
+    if (item.cType === '11') {
+      return (
+        path === '/our-prem-casino' || path.startsWith('/casino-list/LC/11')
+      );
+    }
+    if (item.cType === '19') {
+      return (
+        path === '/our-virtual-casino' || path.startsWith('/casino-list/LC/19')
+      );
+    }
+    return Boolean(item.path && path === item.path);
+  };
   const politics = [
     { name: 'Bihar Election 2025', electionName: 'Bihar Election 2025' },
   ];
@@ -294,16 +353,32 @@ function Sidebar({ isOpen, onClose }) {
 
             {isExpanded('others') && (
               <div className='w-full'>
-                {others.map((item) => (
-                  <button
-                    key={item.name}
-                    type='button'
-                    onClick={() => navigate(item.path)}
-                    className='block w-full cursor-pointer border-b border-b-[#9e9e9e] bg-transparent p-2 pl-4 text-left text-sm font-[400] !text-gray-600 opacity-100 transition-colors hover:!text-gray-800'
-                  >
-                    {item.name}
-                  </button>
-                ))}
+                {others.map((item) => {
+                  const active = isItemActive(item);
+                  return (
+                    <button
+                      key={item.name}
+                      type='button'
+                      onClick={() => {
+                        if (item.path) {
+                          navigate(item.path);
+                          if (onClose) onClose();
+                        }
+                      }}
+                      className={`block w-full cursor-pointer border-b border-b-[#9e9e9e] p-2 pl-4 text-left text-sm transition-colors ${
+                        active
+                          ? 'bg-[#0088CC] font-[500] !text-white'
+                          : 'bg-transparent font-[400] !text-gray-600 opacity-100 hover:!text-gray-800'
+                      }`}
+                    >
+                      {item.animate && !active ? (
+                        <span className='blink_me'>{item.name}</span>
+                      ) : (
+                        item.name
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

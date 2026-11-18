@@ -36,6 +36,20 @@ function LegacyCasinoRedirect() {
   return <Navigate to={`/casino-bet/${gameid}`} replace />;
 }
 
+// D247-style event URLs (/game-detail/:etId/:id, e.g. /game-detail/4/857488570)
+// map cleanly to our sport detail routes.
+function GameDetailRedirect() {
+  const { etId, id } = useParams();
+  const code = Number(etId);
+  if (code === 4) return <Navigate to={`/cricket-bet/${id}`} replace />;
+  if (code === 1) return <Navigate to={`/football-bet/${id}`} replace />;
+  if (code === 2) return <Navigate to={`/tennis-bet/${id}`} replace />;
+  if (code === 10 || code === 65) {
+    return <Navigate to={`/hourse-racing-bet/${id}`} replace />;
+  }
+  return <Navigate to='/' replace />;
+}
+
 function App() {
   return (
     <>
@@ -47,6 +61,7 @@ function App() {
             <Route path='cricket' element={<Cricket />} />
             <Route path='football' element={<Football />} />
             <Route path='tennis' element={<Tennis />} />
+            <Route path='/casino/:gameid' element={<CasinoBet />} />
             <Route path='/casino-bet/:gameid' element={<CasinoBet />} />
             <Route path='cricket-bet/:id' element={<CricketBet />} />
             {/* iscc-based dedicated casino game pages (reference routing) */}
@@ -66,6 +81,10 @@ function App() {
             <Route path='football-bet/:id' element={<FootballBet />} />
             <Route path='tennis-bet/:id' element={<TennisBet />} />
             <Route path='hourse-racing-bet/:id' element={<HourseRacingBet />} />
+            <Route
+              path='game-detail/:etId/:id'
+              element={<GameDetailRedirect />}
+            />
             {/* legacy 2-segment URLs → ID-only routes */}
             <Route
               path='cricket-bet/:game/:id'
@@ -87,6 +106,10 @@ function App() {
               path='casino-bet/:match/:gameid'
               element={<LegacyCasinoRedirect />}
             />
+            <Route
+              path='casino/:match/:gameid'
+              element={<LegacyCasinoRedirect />}
+            />
             <Route path='account-statement' element={<AccountStatement />} />
             <Route path='current-bets' element={<CurrentBets />} />
             <Route path='activity-log' element={<ActivityLog />} />
@@ -94,6 +117,14 @@ function App() {
             <Route path='casino-results' element={<CasinoResults />} />
             <Route path='casino-list' element={<CasinoList />} />
             <Route path='casino-list/:category' element={<CasinoList />} />
+            <Route
+              path='casino-list/:provider/:tabId'
+              element={<CasinoList />}
+            />
+            <Route
+              path='casino-list/:provider/:tabId/:subTabId'
+              element={<CasinoList />}
+            />
             <Route path='our-vip-casino' element={<OurVipCasino />} />
             <Route path='our-virtual-casino' element={<OurVirtualCasino />} />
             <Route path='our-prem-casino' element={<OurPremCasino />} />

@@ -33,8 +33,19 @@ const PER_TEAM_MARKET_TYPES = [
 
 import betHistoryModel from '../models/betHistoryModel.js';
 import betModel from '../models/betModel.js';
+import CasinoBet from '../models/CasinoBet.js';
 import SubAdmin from '../models/subAdminModel.js';
 import TransactionHistory from '../models/transtionHistoryModel.js';
+import { calcTotalCasinoExposure } from '../services/casinoEngine.js';
+
+const calcUserTotalExposure = async (userId, pendingSportsBets) => {
+  const sportsExp = calculateAllExposure(pendingSportsBets || []);
+  const pendingCasino = await CasinoBet.find({ userId, status: 'pending' })
+    .select('slug roundId side selection odds stake exposure')
+    .lean();
+  const casinoExp = calcTotalCasinoExposure(pendingCasino);
+  return Math.round((sportsExp + casinoExp + Number.EPSILON) * 100) / 100;
+};
 import {
   cachedData,
   clients,
@@ -100,7 +111,8 @@ async function validateFancyMarket(
   otype,
   sid,
   fancyScore,
-  oname
+  oname,
+  gameType
 ) {
   return _validateFancyMarket(cachedData, {
     gameId,
@@ -112,6 +124,7 @@ async function validateFancyMarket(
     sid,
     fancyScore,
     oname,
+    gameType,
   });
 }
 
@@ -765,8 +778,8 @@ const placeCasinoBet = async (req, res) => {
       );
 
       if (hasCasinoBets) {
-        // Use scenario-based exposure calculation
-        user.exposure = calculateAllExposure(updatedPendingBets);
+        // Use scenario-based exposure calculation (+ pending D247 CasinoBet exposure)
+        user.exposure = await calcUserTotalExposure(id, updatedPendingBets);
         user.avbalance = user.balance - user.exposure;
 
         // CRITICAL SAFETY CHECK: PTI must never be negative
@@ -779,7 +792,7 @@ const placeCasinoBet = async (req, res) => {
       }
     } else {
       // Always recalculate exposure from pending bets using scenario-based logic
-      user.exposure = calculateAllExposure(updatedPendingBets);
+      user.exposure = await calcUserTotalExposure(id, updatedPendingBets);
       user.avbalance = user.balance - user.exposure;
 
       // CRITICAL SAFETY CHECK: PTI must never be negative
@@ -984,11 +997,21 @@ const placeBet = async (req, res) => {
     let x = Number(parseFloat(xValue).toFixed(2));
     let betAmount = 0;
 
-    // Validate minimum odds - odds of 1.00 produce zero liability (invalid bet)
-    if (x < 1.01) {
-      return res
-        .status(400)
-        .json({ message: 'Invalid odds: minimum allowed is 1.01' });
+    const isBhavBookmaker =
+      gameType === 'Bookmaker' || gameType === 'Bookmaker IPL CUP';
+    // Provider D247 serves Tied Match and secondary Bookmakers with gtype 'match1'
+    // (bhav percentage rate per 100); support both match1 bhav and decimal odds.
+    const isBhavRate =
+      isBhavBookmaker ||
+      String(marketCheck.marketMeta?.gtype || '').toLowerCase() === 'match1' ||
+      String(req.body?.gType || '').toLowerCase() === 'match1';
+
+    if (isBhavRate ? x <= 0 : x < 1.01) {
+      return res.status(400).json({
+        message: isBhavRate
+          ? 'Invalid Bookmaker rate'
+          : 'Invalid odds: minimum allowed is 1.01',
+      });
     }
 
     // Calculate bet amount based on game type and otype
@@ -1001,9 +1024,12 @@ const placeBet = async (req, res) => {
       case 'OVER_UNDER_05':
       case 'OVER_UNDER_15':
       case 'OVER_UNDER_25':
-        betAmount = otype === 'lay' ? p : p * (x - 1);
-        p = otype === 'lay' ? p * (x - 1) : p;
+      case 'OVER_UNDER_35': {
+        const multiplier = isBhavRate ? x / 100 : x - 1;
+        betAmount = otype === 'lay' ? p : p * multiplier;
+        p = otype === 'lay' ? p * multiplier : p;
         break;
+      }
       case 'Bookmaker':
       case 'Bookmaker IPL CUP':
         betAmount = otype === 'lay' ? p : p * (x / 100);
@@ -1023,9 +1049,9 @@ const placeBet = async (req, res) => {
 
     // BET PLACEMENT - EXPOSURE CALCULATION
 
-    // fancy1 and oddeven: each row is an independent market (per-proposition
-    // marketName). Scope lookups by marketName so different propositions in
-    // the same match don't collide and merge into one bet record.
+    // Scope lookups by marketName for proposition / multi-market / bookmaker
+    // markets so e.g. Bookmaker vs Bookmaker 2 or MATCH_ODDS vs Game Winner
+    // stay isolated and never collide into the same bet record.
     const marketScopedQuery = {
       userId: id,
       gameId,
@@ -1036,15 +1062,23 @@ const placeBet = async (req, res) => {
     if (
       gameType === 'fancy1' ||
       gameType === 'oddeven' ||
+      isBhavBookmaker ||
       PER_TEAM_MARKET_TYPES.includes(gameType)
     ) {
       marketScopedQuery.marketName = marketName;
     }
 
     const existingBetQuery =
-      gameType === 'oddeven' || PER_TEAM_MARKET_TYPES.includes(gameType)
+      gameType === 'oddeven' ||
+      isBhavBookmaker ||
+      PER_TEAM_MARKET_TYPES.includes(gameType)
         ? { ...marketScopedQuery, teamName }
         : marketScopedQuery;
+    const liveRunnerCount =
+      Array.isArray(marketMeta.runners) && marketMeta.runners.length > 0
+        ? marketMeta.runners.length
+        : undefined;
+
     const [existingBet, marketBets, pendingBets] = await Promise.all([
       betModel.findOne(existingBetQuery),
       betModel.find(marketScopedQuery),
@@ -1058,7 +1092,8 @@ const placeBet = async (req, res) => {
       otype,
       originalStake,
       p, // liability (calculated p)
-      betAmount // potential profit if bet wins
+      betAmount, // potential profit if bet wins
+      liveRunnerCount
     );
 
     // STEP 3: Balance check with effective available balance (includes new bet profit potential)
@@ -1078,7 +1113,7 @@ const placeBet = async (req, res) => {
       });
     }
 
-    // STEP 4: Check exposure limit using scenario-based simulation
+    // STEP 4: Check exposure & balance limits using scenario-based simulation BEFORE saving
     const simulatedNewBet = {
       gameType,
       gameId,
@@ -1087,12 +1122,16 @@ const placeBet = async (req, res) => {
       otype,
       betAmount,
       price: p,
+      ...(liveRunnerCount ? { runnerCount: liveRunnerCount } : {}),
     };
     const projectedExposure = calculateAllExposure([
       ...pendingBets,
       simulatedNewBet,
     ]);
 
+    if (projectedExposure > user.balance) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
     if (projectedExposure > user.exposureLimit) {
       return res.status(400).json({ message: 'Exposure limit exceeded' });
     }
@@ -1100,8 +1139,12 @@ const placeBet = async (req, res) => {
     let newBet = null;
     let placementType = 'new';
     let parentBetSnapshot = null;
+    const rollbackExisting = existingBet ? existingBet.toObject() : null;
 
     if (existingBet) {
+      if (!existingBet.runnerCount && liveRunnerCount) {
+        existingBet.runnerCount = liveRunnerCount;
+      }
       const originalPrice = existingBet.price;
       const originalBetAmount = existingBet.betAmount;
 
@@ -1189,6 +1232,7 @@ const placeBet = async (req, res) => {
           gameName,
           teamName,
           fancyId: null,
+          runnerCount: liveRunnerCount,
           placementType: 'new',
           mergeCount: 1,
         });
@@ -1263,6 +1307,7 @@ const placeBet = async (req, res) => {
           gameType === 'fancy1' || gameType === 'oddeven'
             ? String(marketMeta.fancyId || '') || null
             : null,
+        runnerCount: liveRunnerCount,
         placementType: 'new',
         mergeCount: 1,
       });
@@ -1293,12 +1338,12 @@ const placeBet = async (req, res) => {
       userId: id,
       status: 0,
     });
-    user.exposure = calculateAllExposure(updatedPendingBets);
+    user.exposure = await calcUserTotalExposure(id, updatedPendingBets);
 
     // Recalculate avbalance from the formula (fixes incremental update errors)
     user.avbalance = user.balance - user.exposure;
 
-    // CRITICAL SAFETY CHECK: PTI must never be negative
+    // CRITICAL SAFETY CHECK: PTI must never be negative; roll back DB mutations if triggered
     if (user.avbalance < 0) {
       console.error(`[CRITICAL PTI ERROR] avbalance went negative!`);
       console.error(`  balance: ${user.balance}`);
@@ -1307,9 +1352,16 @@ const placeBet = async (req, res) => {
       console.error(
         `  bet details: gameId=${gameId}, teamName=${teamName}, price=${p}`
       );
-
-      // Rollback by not saving - this is a critical error
-      throw new Error('Critical: PTI calculation error - bet rejected');
+      if (newBet?._id) {
+        await betModel.deleteOne({ _id: newBet._id }).catch(() => {});
+      }
+      if (rollbackExisting?._id) {
+        const { _id, ...restoreFields } = rollbackExisting;
+        await betModel
+          .updateOne({ _id }, { $set: restoreFields })
+          .catch(() => {});
+      }
+      return res.status(400).json({ message: 'Insufficient balance' });
     }
 
     // Record bet history regardless of new/existing
@@ -1391,7 +1443,8 @@ export const placeFancyBet = async (req, res) => {
         otype,
         sid,
         fancyScore,
-        oname
+        oname,
+        gameType
       ),
       SubAdmin.findById(id),
       betModel.findOne(uniqueKey),
@@ -1547,17 +1600,22 @@ export const placeFancyBet = async (req, res) => {
       simulatedNewBet,
     ]);
 
+    if (projectedExposure > user.balance) {
+      return res.status(400).json({ message: 'Insufficient balance' });
+    }
     if (projectedExposure > user.exposureLimit) {
       return res.status(400).json({ message: 'Exposure limit exceeded' });
     }
 
     let activeBetId = null;
+    let createdFancyBet = null;
+    let rollbackMergeBet = null;
     let placementType = 'new';
     let parentBetSnapshot = null;
 
     if (mergeBet) {
-      // CASE 1: SAME TYPE + SAME FANCYSCORE - MERGE
-      // Snapshot BEFORE merge for debugging
+      // SAME otype + SAME fancyScore: merge into one leg (linear P/L in zone)
+      rollbackMergeBet = mergeBet.toObject();
       parentBetSnapshot = {
         price: mergeBet.price,
         betAmount: mergeBet.betAmount,
@@ -1567,140 +1625,26 @@ export const placeFancyBet = async (req, res) => {
       };
       placementType = 'merge';
 
-      mergeBet.price += p;
-      mergeBet.xValue = (mergeBet.xValue + x) / 2;
+      const prevPrice = Number(mergeBet.price || 0);
+      mergeBet.price = prevPrice + p;
+      mergeBet.xValue =
+        prevPrice + p > 0
+          ? Number(
+              (
+                (Number(mergeBet.xValue || x) * prevPrice + x * p) /
+                (prevPrice + p)
+              ).toFixed(2)
+            )
+          : x;
       mergeBet.betAmount += betAmount;
       mergeBet.placementType = 'merged';
       mergeBet.mergeCount = (mergeBet.mergeCount || 1) + 1;
       await mergeBet.save();
-      activeBetId = mergeBet._id; // Track the bet ID
-      console.log(
-        `[MERGE] Same type + same score bet merged - ${otype} + ${otype} at fancyScore=${fancyScore}`
-      );
-    } else if (existingBet) {
-      // CASE 2: DIFFERENT TYPE - CHECK OFFSET CONDITIONS
-
-      // Priority 1: Score Offset (Highest Priority)
-      const scoreOffset =
-        (existingBet.otype === 'back' &&
-          otype === 'lay' &&
-          parseFloat(fancyScore) > parseFloat(existingBet.fancyScore)) ||
-        (existingBet.otype === 'lay' &&
-          otype === 'back' &&
-          parseFloat(existingBet.fancyScore) > parseFloat(fancyScore));
-
-      // Priority 2: Odds Offset (Secondary Priority)
-      const oddsOffset =
-        (existingBet.otype === 'back' &&
-          otype === 'lay' &&
-          x > existingBet.xValue) ||
-        (existingBet.otype === 'lay' &&
-          otype === 'back' &&
-          existingBet.xValue > x);
-
-      if (scoreOffset) {
-        // PRIORITY 1: Score Offset (Highest Priority)
-        placementType = 'score_offset';
-        parentBetSnapshot = {
-          price: existingBet.price,
-          betAmount: existingBet.betAmount,
-          xValue: existingBet.xValue,
-          otype: existingBet.otype,
-          fancyScore: existingBet.fancyScore,
-        };
-        console.log(
-          ` Score offset applied - lay score (${fancyScore}) > back score (${existingBet.fancyScore})`
-        );
-
-        const originalPrice = existingBet.price;
-        const originalBetAmount = existingBet.betAmount;
-
-        if (otype === 'back') {
-          if (originalBetAmount >= p) {
-            // Full offset
-            existingBet.price = originalPrice - betAmount;
-            existingBet.betAmount = originalBetAmount - p;
-            user.avbalance += betAmount;
-            console.log('Full score offset - back bet');
-          } else {
-            // Partial offset with type change
-            existingBet.price = p - originalBetAmount;
-            existingBet.betAmount = betAmount - originalPrice;
-            existingBet.otype = otype;
-            user.avbalance += originalPrice - (p - originalBetAmount);
-            console.log('Partial score offset - back bet with type change');
-          }
-        } else if (otype === 'lay') {
-          if (originalPrice > betAmount) {
-            // Full offset
-            existingBet.price = originalPrice - betAmount;
-            existingBet.betAmount = originalBetAmount - p;
-            user.avbalance += betAmount;
-            console.log(' Full score offset - lay bet');
-          } else {
-            // Partial offset with type change
-            existingBet.price = p - originalBetAmount;
-            existingBet.betAmount = betAmount - originalPrice;
-            existingBet.otype = otype;
-            user.avbalance -= p - originalBetAmount - originalPrice;
-            console.log(' Partial score offset - lay bet with type change');
-          }
-        }
-        existingBet.xValue = x;
-        existingBet.fancyScore = fancyScore;
-        existingBet.placementType = 'score_offset';
-        await existingBet.save();
-        activeBetId = existingBet._id; // Track the bet ID
-        await user.save();
-      } else if (oddsOffset) {
-        // PRIORITY 2: Odds Offset (Secondary Priority)
-        placementType = 'odds_offset';
-        parentBetSnapshot = {
-          price: existingBet.price,
-          betAmount: existingBet.betAmount,
-          xValue: existingBet.xValue,
-          otype: existingBet.otype,
-          fancyScore: existingBet.fancyScore,
-        };
-
-        const originalPrice = existingBet.price;
-        const originalBetAmount = existingBet.betAmount;
-
-        if (otype === 'back') {
-          if (originalBetAmount >= p) {
-            // Full offset
-            existingBet.price = originalPrice - betAmount;
-            existingBet.betAmount = originalBetAmount - p;
-            user.avbalance += betAmount;
-          } else {
-            // Partial offset with type change
-            existingBet.price = p - originalBetAmount;
-            existingBet.betAmount = betAmount - originalPrice;
-            existingBet.otype = otype;
-            user.avbalance += originalPrice - (p - originalBetAmount);
-          }
-        } else if (otype === 'lay') {
-          if (originalPrice > betAmount) {
-            // Full offset
-            existingBet.price = originalPrice - betAmount;
-            existingBet.betAmount = originalBetAmount - p;
-            user.avbalance += betAmount;
-          } else {
-            // Partial offset with type change
-            existingBet.price = p - originalBetAmount;
-            existingBet.betAmount = betAmount - originalPrice;
-            existingBet.otype = otype;
-            user.avbalance -= p - originalBetAmount - originalPrice;
-          }
-        }
-        existingBet.xValue = x;
-        existingBet.fancyScore = fancyScore;
-        existingBet.placementType = 'odds_offset';
-        await existingBet.save();
-        activeBetId = existingBet._id; // Track the bet ID
-        await user.save();
-      } else {
-        // PRIORITY 3: No Offset - Create Separate Bet
+      activeBetId = mergeBet._id;
+    } else {
+      // Opposite otype or different fancyScore: keep each leg intact so
+      // zone-based exposure (calculateFancyExposure) and Master Book stay exact.
+      if (existingBet) {
         placementType = 'no_offset_separate';
         parentBetSnapshot = {
           price: existingBet.price,
@@ -1709,37 +1653,13 @@ export const placeFancyBet = async (req, res) => {
           otype: existingBet.otype,
           fancyScore: existingBet.fancyScore,
         };
-
-        user.avbalance -= p;
-        const newBet = new betModel({
-          userId: id,
-          userName: user.userName,
-          gameId,
-          sid,
-          price: p,
-          betAmount,
-          otype,
-          xValue: x,
-          fancyScore,
-          gameType,
-          market_id,
-          eventName,
-          marketName,
-          gameName,
-          teamName,
-          fancyId: fancyMeta.fancyId ? String(fancyMeta.fancyId) : null,
-          placementType: 'no_offset_separate',
-        });
-        await newBet.save();
-        activeBetId = newBet._id; // Track the bet ID
-        await user.save();
       }
-    } else {
-      // CASE 3: No Existing Bet - Create New Bet
 
-      const newBet = new betModel({
+      createdFancyBet = new betModel({
         userId: id,
         userName: user.userName,
+        userRole: user.role,
+        invite: user.invite,
         gameId,
         sid,
         price: p,
@@ -1754,11 +1674,11 @@ export const placeFancyBet = async (req, res) => {
         gameName,
         teamName,
         fancyId: fancyMeta.fancyId ? String(fancyMeta.fancyId) : null,
-        placementType: 'new',
+        placementType,
         mergeCount: 1,
       });
-      await newBet.save();
-      activeBetId = newBet._id; // Track the bet ID
+      await createdFancyBet.save();
+      activeBetId = createdFancyBet._id;
     }
 
     // Record in bet history with tracking fields
@@ -1786,19 +1706,25 @@ export const placeFancyBet = async (req, res) => {
     });
 
     // Recalculate exposure from updated bets (fancy + non-fancy)
-    const [, updatedPendingBets] = await Promise.all([
-      betHistory.save(),
-      betModel.find({ userId: id, status: 0 }),
-    ]);
-    user.exposure = calculateAllExposure(updatedPendingBets);
+    const updatedPendingBets = await betModel.find({ userId: id, status: 0 });
+    user.exposure = await calcUserTotalExposure(id, updatedPendingBets);
     user.avbalance = user.balance - user.exposure;
 
-    // CRITICAL SAFETY CHECK: PTI must never be negative
+    // CRITICAL SAFETY CHECK: PTI must never be negative; roll back DB mutations if triggered
     if (user.avbalance < 0) {
-      throw new Error('Critical: PTI calculation error - fancy bet rejected');
+      if (createdFancyBet?._id) {
+        await betModel.deleteOne({ _id: createdFancyBet._id }).catch(() => {});
+      }
+      if (rollbackMergeBet?._id) {
+        const { _id, ...restoreFields } = rollbackMergeBet;
+        await betModel
+          .updateOne({ _id }, { $set: restoreFields })
+          .catch(() => {});
+      }
+      return res.status(400).json({ message: 'Insufficient balance' });
     }
 
-    await user.save();
+    await Promise.all([betHistory.save(), user.save()]);
 
     console.log(
       `[FANCY EXPOSURE] User ${user.userName}: exposure=${user.exposure}`
@@ -1824,12 +1750,14 @@ export const updateResultOfBets = async (req, res) => {
     'Toss',
     '1st 6 over',
     'Match Odds',
+    'Winner',
     'Tied Match',
     'Bookmaker',
     'Bookmaker IPL CUP',
     'OVER_UNDER_05',
     'OVER_UNDER_15',
     'OVER_UNDER_25',
+    'OVER_UNDER_35',
   ];
 
   let totalBetsProcessed = 0;
@@ -2250,8 +2178,21 @@ export const updateResultOfBets = async (req, res) => {
           status: 0,
         });
 
-        const newExposure =
+        const sportsExp =
           sportsSettlementService.calculateExposure(updatedPendingBets);
+        const pendingCasino = await CasinoBet.find({
+          userId,
+          status: 'pending',
+        })
+          .select('slug roundId side selection odds stake exposure')
+          .lean();
+        const newExposure =
+          Math.round(
+            (sportsExp +
+              calcTotalCasinoExposure(pendingCasino) +
+              Number.EPSILON) *
+              100
+          ) / 100;
 
         // Atomic: set exposure and recalculate avbalance from fresh balance
         const freshUser = await SubAdmin.findByIdAndUpdate(
@@ -2881,8 +2822,11 @@ export const updateResultOfCasinoBets = async (req, res) => {
             status: 0,
           });
 
-          // Market-based exposure calculation (handles offsetting correctly)
-          const newExposure = calculateAllExposure(updatedPendingBets);
+          // Market-based exposure calculation (handles offsetting + pending CasinoBet exposure)
+          const newExposure = await calcUserTotalExposure(
+            userId,
+            updatedPendingBets
+          );
 
           // Atomic exposure + avbalance update (prevents stale overwrites from concurrent cron jobs)
           const freshUser = await SubAdmin.findByIdAndUpdate(
@@ -3411,8 +3355,21 @@ export const updateFancyBetResult = async (req, res) => {
             status: 0,
           });
 
-          const newExposure =
+          const sportsExp =
             fancyBetSettlementService.calculateExposure(updatedPendingBets);
+          const pendingCasino = await CasinoBet.find({
+            userId,
+            status: 'pending',
+          })
+            .select('slug roundId side selection odds stake exposure')
+            .lean();
+          const newExposure =
+            Math.round(
+              (sportsExp +
+                calcTotalCasinoExposure(pendingCasino) +
+                Number.EPSILON) *
+                100
+            ) / 100;
 
           // Atomic: set exposure and recalculate avbalance from fresh balance
           const freshUser = await SubAdmin.findByIdAndUpdate(
@@ -3926,7 +3883,17 @@ export const reconcileOrphanedBetHistory = async () => {
           }
 
           let isWin;
-          if (isFancy) {
+          if (bet.gameType === 'fancy1') {
+            isWin = fancyBetSettlementService.isFancy1HistoryWin(
+              historyRecord,
+              betResult
+            );
+          } else if (bet.gameType === 'oddeven') {
+            isWin = fancyBetSettlementService.isOddEvenHistoryWin(
+              historyRecord,
+              betResult
+            );
+          } else if (isFancy) {
             const actualScore = parseFloat(betResult || '0');
             const fancyScore = parseFloat(historyRecord.fancyScore || '0');
             isWin =
@@ -4218,6 +4185,11 @@ export const getPendingBetsAmounts = async (req, res) => {
       { gameType: 'oddeven', marketName: 'oddeven', category: 'sports' },
       { gameType: 'Tied Match', marketName: 'Tied Match', category: 'sports' },
       { gameType: 'Bookmaker', marketName: 'Bookmaker', category: 'sports' },
+      {
+        gameType: 'Bookmaker IPL CUP',
+        marketName: 'Bookmaker IPL CUP',
+        category: 'sports',
+      },
       { gameType: 'Normal', marketName: 'Toss', category: 'sports' },
       { gameType: 'meter', marketName: 'Match Odds', category: 'sports' },
       { gameType: 'line', marketName: 'Tied Match', category: 'sports' },
@@ -4242,6 +4214,11 @@ export const getPendingBetsAmounts = async (req, res) => {
       {
         gameType: 'OVER_UNDER_25',
         marketName: 'OVER_UNDER_25',
+        category: 'sports',
+      },
+      {
+        gameType: 'OVER_UNDER_35',
+        marketName: 'OVER_UNDER_35',
         category: 'sports',
       },
 
@@ -4291,13 +4268,16 @@ export const getPendingBetsAmounts = async (req, res) => {
       (b) => !PER_TEAM_MARKET_TYPES.includes(b.gameType)
     );
 
+    const isScopedMarket = (gt) =>
+      gt === 'oddeven' ||
+      gt === 'Bookmaker' ||
+      gt === 'Bookmaker IPL CUP' ||
+      PER_TEAM_MARKET_TYPES.includes(gt);
+
     const addToGrouped = (bet, betAmount, price) => {
-      const key =
-        bet.gameType === 'oddeven'
-          ? `${bet.gameType}|${bet.marketName}|${bet.teamName}|${bet.otype}`
-          : PER_TEAM_MARKET_TYPES.includes(bet.gameType)
-            ? `${bet.gameType}|${bet.teamName}|${bet.otype}`
-            : `${bet.gameType}|${bet.teamName}`;
+      const key = isScopedMarket(bet.gameType)
+        ? `${bet.gameType}|${bet.marketName || ''}|${bet.teamName}|${bet.otype}`
+        : `${bet.gameType}|${bet.teamName}`;
       if (!grouped[key]) {
         grouped[key] = {
           gameType: bet.gameType,
