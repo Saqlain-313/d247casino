@@ -1,9 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { FaAngleDown, FaHorse } from 'react-icons/fa';
 import {
   isMarketSuspended,
   isRunnerSuspended as runnerSuspendedByGscode,
+  marketSuspensionText,
+  runnerSuspensionText,
 } from '../../utils/suspension';
+import SuspendedOverlay from './components/SuspendedOverlay';
 import { computeNetOutcome } from './utils/marketNetOutcome';
 
 const formatNumber = (value) => {
@@ -53,11 +56,8 @@ export default function HorseRacingMarkets({
   onBetSelect,
   pendingBetAmounts,
 }) {
-  const [changedOdds, setChangedOdds] = useState(() => new Set());
   const [noDataDismissed, setNoDataDismissed] = useState(false);
   const [expandedRunnerKey, setExpandedRunnerKey] = useState(null);
-  const previousOddsRef = useRef(null);
-  const clearChangedTimerRef = useRef(null);
   const markets = useMemo(
     () =>
       Array.isArray(bettingData)
@@ -77,49 +77,16 @@ export default function HorseRacingMarkets({
 
   const showNoData = loaded && !error && !hasData && !noDataDismissed;
 
-  useEffect(() => {
-    const currentOdds = new Map();
-    markets.forEach((market) => {
-      market.section.forEach((runner) => {
-        ['back', 'lay'].forEach((otype) => {
-          (Array.isArray(runner.odds) ? runner.odds : [])
-            .filter((odd) => odd.otype === otype)
-            .forEach((odd, index) => {
-              const key = `${market.mid}-${runner.sid}-${otype}-${index}`;
-              currentOdds.set(key, `${odd.odds ?? ''}-${odd.size ?? ''}`);
-            });
-        });
-      });
-    });
-
-    if (previousOddsRef.current) {
-      const changed = new Set();
-      currentOdds.forEach((value, key) => {
-        if (
-          previousOddsRef.current.has(key) &&
-          previousOddsRef.current.get(key) !== value
-        ) {
-          changed.add(key);
-        }
-      });
-
-      if (changed.size > 0) {
-        setChangedOdds(changed);
-        window.clearTimeout(clearChangedTimerRef.current);
-        clearChangedTimerRef.current = window.setTimeout(() => {
-          setChangedOdds(new Set());
-        }, 900);
-      }
-    }
-
-    previousOddsRef.current = currentOdds;
-  }, [bettingData, markets]);
-
-  useEffect(() => () => window.clearTimeout(clearChangedTimerRef.current), []);
-
   const handleOddsSelect = (market, runner, odd) => {
     const odds = Number(odd?.odds);
-    if (!Number.isFinite(odds) || odds <= 0) return;
+    if (
+      !Number.isFinite(odds) ||
+      odds <= 0 ||
+      isMarketSuspended(market) ||
+      runnerSuspendedByGscode(market, runner)
+    ) {
+      return;
+    }
 
     const marketName = market.mname || 'MATCH_ODDS';
     onBetSelect({
@@ -132,6 +99,8 @@ export default function HorseRacingMarkets({
       sid: runner.sid,
       type: odd.otype,
       oname: odd.oname || '',
+      tno: odd.tno,
+      gType: market.gtype || 'match',
       marketName,
       gameType: marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName,
       maxAmount: market.max || market.maxb || 0,
@@ -231,13 +200,26 @@ export default function HorseRacingMarkets({
                   isMarketSuspended(market) ||
                   runnerSuspendedByGscode(market, runner);
                 const raceMarketBets = Array.isArray(pendingBetAmounts)
-                  ? pendingBetAmounts.filter(
-                      (b) =>
-                        String(b.marketName || '')
-                          .trim()
-                          .toLowerCase() === marketName.trim().toLowerCase() ||
-                        b.gameType === 'Match Odds'
-                    )
+                  ? pendingBetAmounts.filter((b) => {
+                      const bMarket = String(b.marketName || '')
+                        .trim()
+                        .toLowerCase();
+                      const mNorm = marketName.trim().toLowerCase();
+                      if (bMarket) {
+                        return (
+                          bMarket === mNorm ||
+                          (bMarket === 'match odds' &&
+                            mNorm === 'match_odds') ||
+                          (bMarket === 'match_odds' && mNorm === 'match odds')
+                        );
+                      }
+                      return (
+                        b.gameType ===
+                        (marketName === 'MATCH_ODDS'
+                          ? 'Match Odds'
+                          : marketName)
+                      );
+                    })
                   : [];
                 const runnerNetPL = raceMarketBets.length
                   ? computeNetOutcome(runnerName, raceMarketBets, 0)
@@ -333,25 +315,68 @@ export default function HorseRacingMarkets({
                         <div className='col-span-1 bg-[#594f52] md:col-span-3' />
                       </>
                     ) : runnerSuspended ? (
-                      <div className='relative col-span-2 flex items-center justify-center bg-[#e5e7eb] text-xs font-bold text-red-600 md:col-span-6'>
-                        SUSPENDED
+                      <div className='relative col-span-2 md:col-span-6'>
+                        <div className='grid grid-cols-2 opacity-40 md:grid-cols-6'>
+                          {[0, 1, 2].map((index) => {
+                            const odd = backOdds[index];
+                            return (
+                              <div
+                                key={`s-back-${index}`}
+                                className={`${index < 2 ? 'hidden md:flex' : 'flex'} min-h-[52px] flex-col items-center justify-center border-l border-white px-1 text-[#333] md:min-h-[58px] ${
+                                  index === 0
+                                    ? 'bg-[#b8d9ed]'
+                                    : index === 1
+                                      ? 'bg-[#91c9eb]'
+                                      : 'bg-[#72bbef]'
+                                }`}
+                              >
+                                <span className='text-sm leading-5 font-bold sm:text-lg'>
+                                  {formatNumber(odd?.odds)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                          {[0, 1, 2].map((index) => {
+                            const odd = layOdds[index];
+                            return (
+                              <div
+                                key={`s-lay-${index}`}
+                                className={`${index > 0 ? 'hidden md:flex' : 'flex'} min-h-[52px] flex-col items-center justify-center border-l border-white px-1 text-[#333] md:min-h-[58px] ${
+                                  index === 0
+                                    ? 'bg-[#faa9ba]'
+                                    : index === 1
+                                      ? 'bg-[#f4c0cb]'
+                                      : 'bg-[#f5d0d7]'
+                                }`}
+                              >
+                                <span className='text-sm leading-5 font-bold sm:text-lg'>
+                                  {formatNumber(odd?.odds)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <SuspendedOverlay
+                          label={
+                            isMarketSuspended(market)
+                              ? marketSuspensionText(market)
+                              : runnerSuspensionText(runner)
+                          }
+                        />
                       </div>
                     ) : (
                       <>
                         {[0, 1, 2].map((index) => {
                           const odd = backOdds[index];
-                          const key = `${market.mid}-${runner.sid}-back-${odds
-                            .filter((entry) => entry.otype === 'back')
-                            .indexOf(odd)}`;
                           return (
                             <button
-                              key={`back-${index}`}
+                              key={`back-${index}-${odd?.odds ?? 'x'}`}
                               type='button'
                               disabled={!odd || Number(odd.odds) <= 0}
                               onClick={() =>
                                 odd && handleOddsSelect(market, runner, odd)
                               }
-                              className={`${
+                              className={`odds-flash ${
                                 index < 2 ? 'hidden md:flex' : 'flex'
                               } min-h-[52px] flex-col items-center justify-center border-l border-white px-1 text-[#333] md:min-h-[58px] ${
                                 index === 0
@@ -359,7 +384,7 @@ export default function HorseRacingMarkets({
                                   : index === 1
                                     ? 'bg-[#91c9eb]'
                                     : 'bg-[#72bbef]'
-                              } ${odd && Number(odd.odds) > 0 ? 'cursor-pointer hover:brightness-95' : 'cursor-default'} ${changedOdds.has(key) ? 'horse-odds-changed' : ''}`}
+                              } ${odd && Number(odd.odds) > 0 ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
                             >
                               <span className='text-sm leading-5 font-bold sm:text-lg'>
                                 {formatNumber(odd?.odds)}
@@ -374,18 +399,15 @@ export default function HorseRacingMarkets({
                         })}
                         {[0, 1, 2].map((index) => {
                           const odd = layOdds[index];
-                          const key = `${market.mid}-${runner.sid}-lay-${odds
-                            .filter((entry) => entry.otype === 'lay')
-                            .indexOf(odd)}`;
                           return (
                             <button
-                              key={`lay-${index}`}
+                              key={`lay-${index}-${odd?.odds ?? 'x'}`}
                               type='button'
                               disabled={!odd || Number(odd.odds) <= 0}
                               onClick={() =>
                                 odd && handleOddsSelect(market, runner, odd)
                               }
-                              className={`${
+                              className={`odds-flash ${
                                 index > 0 ? 'hidden md:flex' : 'flex'
                               } min-h-[52px] flex-col items-center justify-center border-l border-white px-1 text-[#333] md:min-h-[58px] ${
                                 index === 0
@@ -393,7 +415,7 @@ export default function HorseRacingMarkets({
                                   : index === 1
                                     ? 'bg-[#f4c0cb]'
                                     : 'bg-[#f5d0d7]'
-                              } ${odd && Number(odd.odds) > 0 ? 'cursor-pointer hover:brightness-95' : 'cursor-default'} ${changedOdds.has(key) ? 'horse-odds-changed' : ''}`}
+                              } ${odd && Number(odd.odds) > 0 ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
                             >
                               <span className='text-sm leading-5 font-bold sm:text-lg'>
                                 {formatNumber(odd?.odds)}

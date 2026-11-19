@@ -22,27 +22,42 @@ export function calculateFancyExposure(fancyBets) {
 
   let exposure = 0;
   for (const bets of Object.values(marketMap)) {
-    // Collect unique fancyScore thresholds, sorted ascending
-    const thresholds = [
-      ...new Set(
-        bets.map((b) => {
-          const s = parseFloat(b.fancyScore);
-          return isNaN(s) ? 0 : s;
-        })
-      ),
-    ].sort((a, b) => a - b);
+    // Collect unique integer boundary points across all bets in this market:
+    // - Standard fancy (Normal/meter/line/ball): hits on [s, +Infinity) -> boundary at s
+    // - D247 Khado with khadoLayOdds > 0: hits on [s, s + range - 1] -> boundaries at s and s + range
+    const boundarySet = new Set();
+    for (const b of bets) {
+      const s = parseFloat(b.fancyScore);
+      const start = isNaN(s) ? 0 : s;
+      boundarySet.add(start);
+      const range =
+        b.gameType === 'khado' ? parseFloat(b.khadoLayOdds) : Number.NaN;
+      if (Number.isFinite(range) && range > 0) {
+        boundarySet.add(start + range);
+      }
+    }
+    const boundaries = [...boundarySet].sort((a, b) => a - b);
 
-    const idxMap = new Map(thresholds.map((t, i) => [t, i]));
+    // Build one representative test score per zone:
+    // zone 0: boundaries[0] - 1 (below all starts)
+    // zone i (1..n-1): boundaries[i-1] (in [boundaries[i-1], boundaries[i]))
+    // zone n: boundaries[n-1] (at/above highest boundary)
+    const testScores = [boundaries[0] - 1, ...boundaries];
 
     let worstNet = Infinity;
 
-    for (let k = 0; k <= thresholds.length; k++) {
+    for (const testScore of testScores) {
       let zoneNet = 0;
 
       for (const bet of bets) {
         const s = parseFloat(bet.fancyScore);
-        const j = idxMap.get(isNaN(s) ? 0 : s);
-        const hits = k > j;
+        const start = isNaN(s) ? 0 : s;
+        const range =
+          bet.gameType === 'khado' ? parseFloat(bet.khadoLayOdds) : Number.NaN;
+        const hits =
+          Number.isFinite(range) && range > 0
+            ? testScore >= start && testScore <= start + range - 1
+            : testScore >= start;
 
         if (bet.otype === 'back') {
           zoneNet += hits ? bet.betAmount : -bet.price;

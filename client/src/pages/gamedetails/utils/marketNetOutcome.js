@@ -38,10 +38,21 @@ export function createMarketNetOutcomeHelpers({
   pendingBetAmounts,
   cashoutPL,
   cashoutPLKey,
+  marketName = null,
   isBhav = false,
 }) {
   const matchesGameType = (value) =>
     gameTypes.some((t) => t.toLowerCase() === (value || '').toLowerCase());
+
+  const matchesMarketName = (value) => {
+    if (!marketName || !value) return true;
+    const norm = (s) =>
+      String(s || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    return norm(value) === norm(marketName);
+  };
 
   const getHistoryMarketBets = () => {
     if (!Array.isArray(pendingBetHistory) || !gameId) return [];
@@ -49,10 +60,11 @@ export function createMarketNetOutcomeHelpers({
     return pendingBetHistory
       .filter((b) => {
         if (String(b.gameId) !== String(gameId)) return false;
-        return matchesGameType(b.gameType);
+        return matchesGameType(b.gameType) && matchesMarketName(b.marketName);
       })
       .map((b) => ({
         gameType: b.gameType,
+        marketName: b.marketName,
         teamName: b.teamName,
         otype: b.otype,
         totalBetAmount: b.betAmount,
@@ -63,7 +75,10 @@ export function createMarketNetOutcomeHelpers({
   const getMarketBets = () => {
     const historyBets = getHistoryMarketBets();
     const amountBets =
-      pendingBetAmounts?.filter((item) => matchesGameType(item.gameType)) || [];
+      pendingBetAmounts?.filter(
+        (item) =>
+          matchesGameType(item.gameType) && matchesMarketName(item.marketName)
+      ) || [];
     return historyBets.length > 0 ? historyBets : amountBets;
   };
 

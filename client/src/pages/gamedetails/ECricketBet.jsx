@@ -2,21 +2,24 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { host } from '../../redux/api';
+import { useSportEventSocket } from '../../hooks/useSportEventSocket';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
   getPendingBet,
   getPendingBetAmo,
   messageClear,
 } from '../../redux/reducer/betReducer';
-import { fetchCricketBatingData } from '../../redux/reducer/cricketSlice';
+import {
+  fetchCricketBatingData,
+  fetchCricketData,
+} from '../../redux/reducer/cricketSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
-import { getGameRulesContent } from '../../utils/gameRules';
 import CricketMarket from './CricketMarket';
 import MatchedBet from './MatchedBet';
 import PlaceBet from './PlaceBet';
 import RulesModal from './RulesModal';
 import ScorecardBB from './ScorecardBB';
+import { getMarketWidthClass } from './utils/marketHelpers';
 
 // E-cricket (iscc 4) casino-page layout — reference DOM jaisa:
 // casino-header > tabs(Odds/Matched Bet, mobile-only, NO TV) > scorecard-bb >
@@ -45,16 +48,22 @@ function ECricketBet() {
   const [showRules, setShowRules] = useState(false);
   const [marketFetchFailed, setMarketFetchFailed] = useState(false);
   const [bettingLoaded, setBettingLoaded] = useState(false);
-  const { pendingBetAmounts, successMessage, errorMessage } = useSelector(
-    (state) => state.bet
-  );
+  const { pendingBet, pendingBetAmounts, successMessage, errorMessage } =
+    useSelector((state) => state.bet);
   const { userInfo } = useSelector((state) => state.auth);
   const { battingData } = useSelector((state) => state.cricket);
+
+  useEffect(() => {
+    if (!storeMatch && !listLoaded) {
+      dispatch(fetchCricketData());
+    }
+  }, [dispatch, storeMatch, listLoaded]);
 
   useEffect(() => {
     if (!eventName) return;
     setMarketFetchFailed(false);
     setBettingLoaded(false);
+    setScoreData(null);
     dispatch(fetchCricketBatingData(eventName)).then((res) => {
       setBettingLoaded(true);
       if (fetchCricketBatingData.rejected.match(res))
@@ -87,37 +96,28 @@ function ECricketBet() {
     navigate,
   ]);
 
-  // Betting + score over WebSocket (sports poller 1s inplay / 10s idle).
-  useEffect(() => {
-    if (!eventName) return undefined;
-    const socket = new WebSocket(host);
-    socket.onopen = () => {
-      socket.send(
-        JSON.stringify({
+  // Betting + score over WebSocket (shared hook with clean unsubscribe).
+  useSportEventSocket({
+    enabled: Boolean(eventName),
+    subscribePayload: eventName
+      ? {
           type: 'subscribe',
           gameid: eventName,
           apitype: 'cricket',
           userId: userInfo?._id,
           scoreEventId: String(streamGmid),
-        })
-      );
-    };
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.type === 'scoreData') {
-          if (message.scoreEventId === String(streamGmid)) {
-            setScoreData(message.data);
-          }
-          return;
         }
-        if (message.gameid === eventName) setBettingData(message.data);
-      } catch (err) {
-        console.error('E-cricket WS parse error:', err);
+      : null,
+    onMessage: (message) => {
+      if (message.type === 'scoreData') {
+        if (message.scoreEventId === String(streamGmid)) {
+          setScoreData(message.data);
+        }
+        return;
       }
-    };
-    return () => socket.close();
-  }, [eventName, streamGmid, userInfo?._id]);
+      if (message.gameid === eventName) setBettingData(message.data);
+    },
+  });
 
   useEffect(() => {
     setBettingData(battingData);
@@ -154,7 +154,6 @@ function ECricketBet() {
   const markets = (Array.isArray(bettingData) ? bettingData : []).filter(
     (m) => Array.isArray(m?.section) && m.section.length > 0
   );
-  const eRules = getGameRulesContent('ecricket', match);
   const eTeams = String(match || '').split(/\s+(?:v|vs|-)\s+/i);
 
   const renderPlaceBet = (isMobile = false) => (
@@ -206,7 +205,7 @@ function ECricketBet() {
             className={`flex w-full cursor-pointer items-center justify-center p-2 ${!showOdds ? 'border-t-2 border-t-[#cccccc]' : ''}`}
             onClick={() => setShowOdds(false)}
           >
-            Matched Bet
+            Matched Bet ({Array.isArray(pendingBet) ? pendingBet.length : 0})
           </li>
         </ul>
 
@@ -216,7 +215,7 @@ function ECricketBet() {
             <ScorecardBB data={scoreData} />
 
             {/* casino video (e-cricket virtual stream) */}
-            {inplay && liveTvUrl && (
+            {inplay !== false && liveTvUrl && (
               <div className='casino-video mt-1'>
                 <div className='video-box-container v-other'>
                   <div className='casino-video-box'>
@@ -231,12 +230,12 @@ function ECricketBet() {
               </div>
             )}
 
-            {/* back-only markets (market-9/17) */}
+            {/* E-Cricket markets — responsive width per dtype/depth */}
             <div className='mt-1 flex flex-wrap gap-1'>
               {markets.map((market) => (
                 <div
                   key={`${market.mid || market.mname}`}
-                  className='w-full min-w-0 md:w-[calc(50%-4px)]'
+                  className={getMarketWidthClass(market)}
                 >
                   <CricketMarket
                     market={market}
@@ -284,8 +283,8 @@ function ECricketBet() {
       <RulesModal
         open={showRules}
         onClose={() => setShowRules(false)}
-        title={eRules.title}
-        html={eRules.html}
+        gameKey='ecricket'
+        fallbackTitle={match}
       />
     </div>
   );

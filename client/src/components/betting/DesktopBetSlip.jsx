@@ -8,17 +8,10 @@ import {
   getMyCasinoBets,
   placeCasinoBet,
 } from '../../redux/reducer/casinoBetSlice';
-
-// Fallback jab user ne Set Button Value me casino buttons save na kiye hon
-const CASINO_DEFAULTS = [
-  { label: '100', value: 100 },
-  { label: '200', value: 200 },
-  { label: '500', value: 500 },
-  { label: '5k', value: 5000 },
-  { label: '10k', value: 10000 },
-  { label: '25k', value: 25000 },
-  { label: '100k', value: 100000 },
-];
+import {
+  DEFAULT_DESKTOP_CASINO_STAKES,
+  useCasinoQuickStakes,
+} from './useCasinoQuickStakes';
 
 export default function DesktopBetSlip() {
   const dispatch = useDispatch();
@@ -28,20 +21,10 @@ export default function DesktopBetSlip() {
   const { placeBetLoading, placeBetError, balance } = useSelector(
     (state) => state.casinoBet
   );
-  const { userInfo } = useSelector((state) => state.auth);
+  const quickStakes = useCasinoQuickStakes(DEFAULT_DESKTOP_CASINO_STAKES);
   const [showEditButtons, setShowEditButtons] = useState(false);
 
   if (!betSlip.isOpen) return null;
-
-  // Casino games hamesha user ke configured casinoQuickStakes use karte hain
-  // (Set Button Value → Casino Buttons tab), warna defaults.
-  const quickStakes = (
-    userInfo?.casinoQuickStakes?.length
-      ? userInfo.casinoQuickStakes
-      : CASINO_DEFAULTS
-  )
-    .map((s) => ({ label: s.label || String(s.value), val: Number(s.value) }))
-    .filter((s) => Number.isFinite(s.val) && s.val > 0);
 
   // -----------------------------------------
   // SUBMIT CASINO BET
@@ -199,7 +182,7 @@ export default function DesktopBetSlip() {
             key={stk.label}
             type='button'
             className='btn btn-place-bet'
-            onClick={() => updateStake(stk.val)}
+            onClick={() => updateStake(stk.value)}
             disabled={placeBetLoading}
           >
             {stk.label}

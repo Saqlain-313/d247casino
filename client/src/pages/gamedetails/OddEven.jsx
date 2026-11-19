@@ -1,62 +1,45 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { FaArrowRight } from 'react-icons/fa';
+import FancyTwoColumnTable from './components/FancyTwoColumnTable';
 
-function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
-  console.log('oddEvenData from oddEven', oddEvenData);
+const formatMax = (max) => {
+  if (typeof max === 'string') return max;
+  if (max >= 100000) return `${(max / 100000).toFixed(0)}L`;
+  if (max >= 1000) return `${(max / 1000).toFixed(0)}k`;
+  return max;
+};
 
-  // Helper function to format max value (handle numbers and strings like "1L")
-  const formatMax = (max) => {
-    if (typeof max === 'string') return max;
-    if (max >= 100000) return `${(max / 100000).toFixed(0)}L`;
-    if (max >= 1000) return `${(max / 1000).toFixed(0)}k`;
-    return max;
-  };
-
-  // Transform API data to component format
-  const transformedData = useMemo(() => {
-    if (!oddEvenData || oddEvenData.length === 0) {
-      return [];
-    }
-
+function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts }) {
+  const items = useMemo(() => {
+    if (!Array.isArray(oddEvenData) || oddEvenData.length === 0) return [];
     return oddEvenData.map((item, index) => {
-      // Get back and lay odds
       const backOdd = item.odds?.find((odd) => odd.otype === 'back');
       const layOdd = item.odds?.find((odd) => odd.otype === 'lay');
-
-      // Reference market-8 (vd): OddEven shows a SINGLE colour (back/blue)
-      // for both buttons — back1 -> Odd, lay1 -> Even, no No/Yes or Back/Lay
-      // header. Settlement mapping stays back -> Odd, lay -> Even.
+      // Reference market-8: single blue colour for both buttons (back -> Odd, lay -> Even)
       return {
         id: index + 1,
         label: item.team || `Item ${index + 1}`,
-        no:
+        left:
           backOdd && backOdd.odds > 0
-            ? {
-                rate: backOdd.odds,
-                size: backOdd.size || 0,
-              }
-            : { rate: null, size: null },
-        yes:
+            ? { rate: backOdd.odds, subText: backOdd.size || 0 }
+            : { rate: null, subText: null },
+        right:
           layOdd && layOdd.odds > 0
-            ? {
-                rate: layOdd.odds,
-                size: layOdd.size || 0,
-              }
-            : { rate: null, size: null },
-        min: item.min || 0,
-        max: formatMax(item.max || 0),
+            ? { rate: layOdd.odds, subText: layOdd.size || 0 }
+            : { rate: null, subText: null },
+        minDisplay: item.min || 0,
+        maxDisplay: formatMax(item.max || 0),
         minRaw: Number(item.min) || 0,
         maxRaw: Number(item.max) || 0,
         sid: item.sid,
-        status: item.status, // Status from API
+        status: item.status,
+        gstatus: item.gstatus,
+        gscode: item.gscode,
+        marketStatus: item.marketStatus,
+        marketGscode: item.marketGscode,
       };
     });
   }, [oddEvenData]);
-
-  // Split data into left and right columns
-  const mid = Math.ceil(transformedData.length / 2);
-  const leftData = transformedData.slice(0, mid);
-  const rightData = transformedData.slice(mid);
 
   const getBetDetails = (team) => {
     const marketBets =
@@ -82,7 +65,6 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
         oddOutcome += isOddSelection ? betAmt : -stake;
         evenOutcome += isOddSelection ? -stake : betAmt;
       } else {
-        // Keep this branch for safety in case lay bets are introduced later.
         oddOutcome += isOddSelection ? -stake : betAmt;
         evenOutcome += isOddSelection ? betAmt : -stake;
       }
@@ -106,266 +88,44 @@ function OddEven({ onBetSelect, oddEvenData, pendingBetAmounts, selectedBet }) {
     };
   };
 
-  const handleOddsClick = (team, rate, type, sid, min, max) => {
-    if (onBetSelect && rate) {
-      // The provider exposes a single section per odd/even proposition with
-      // back/lay odds. The user's mental model treats the back column as
-      // "back Odd" and the lay column as "back Even" — two independent
-      // outcomes. Store each click as a back bet on a synthetic runner
-      // ("Odd" / "Even") scoped by the proposition as marketName, mirroring
-      // how fancy1 stores one row = one market. Exposure offsets like Match
-      // Odds within the same proposition; settlement matches proposition by
-      // fancyId and compares teamName to the parsed result parity.
-      const side = type === 'back' ? 'Odd' : 'Even';
-      onBetSelect({
-        team: side,
-        odds: rate.toString(),
-        type: 'back',
-        stake: '',
-        teams: ['Odd', 'Even'],
-        marketName: team,
-        gameType: 'oddeven',
-        maxAmount: max || 0,
-        minAmount: min || 0,
-      });
-    }
+  const selectSide = (item, rawType, cell) => {
+    if (!onBetSelect || !cell.rate) return;
+    const side = rawType === 'back' ? 'Odd' : 'Even';
+    onBetSelect({
+      team: side,
+      odds: cell.rate.toString(),
+      type: 'back',
+      stake: '',
+      teams: ['Odd', 'Even'],
+      marketName: item.label,
+      gameType: 'oddeven',
+      maxAmount: item.maxRaw || 0,
+      minAmount: item.minRaw || 0,
+    });
   };
+
   return (
-    <div>
-      <div className='text-secondary mt-1 flex items-center justify-between bg-[#2C3E50D9] p-1'>
-        <span className='text-[15px] font-bold'>OddEven</span>
-      </div>
-      <div className='grid grid-cols-1 gap-0 lg:grid-cols-2 lg:gap-2'>
-        <div className=''>
-          {leftData.length > 0 ? (
-            leftData.map((item) => {
-              const hasStatus = item.status && item.status.trim() !== '';
-
-              return (
-                <div
-                  key={item.id}
-                  className='grid grid-cols-[1fr_60px_60px] border-b border-b-[#c7c8ca] hover:bg-[#f7f7f7] lg:grid-cols-[1fr_60px_60px_60px]'
-                >
-                  <div className='ml-2 text-[13px] font-[400] text-[#333]'>
-                    <div>{item.label}</div>
-                    {(() => {
-                      const { hasBet, displayValue, color } = getBetDetails(
-                        item.label
-                      );
-
-                      if (hasBet && displayValue !== null) {
-                        return (
-                          <div className='flex gap-1 text-[11px]'>
-                            {displayValue > 0 && (
-                              <span
-                                className='flex items-center gap-0.5'
-                                style={{ color }}
-                              >
-                                <FaArrowRight />
-                                {displayValue}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-
-                  {hasStatus ? (
-                    <div className='col-span-2 flex min-h-[30px] items-center justify-center bg-[#4b4b4b] lg:col-span-3'>
-                      <span className='text-[14px] font-bold tracking-wide text-red-600 lg:text-[16px]'>
-                        {item.status}
-                      </span>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.no.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
-                        onClick={() =>
-                          item.no.rate &&
-                          handleOddsClick(
-                            item.label,
-                            item.no.rate,
-                            'back',
-                            item.sid,
-                            item.minRaw,
-                            item.maxRaw
-                          )
-                        }
-                      >
-                        {item.no.rate ? (
-                          <>
-                            <span className='text-[16px] font-bold'>
-                              {item.no.rate}
-                            </span>
-                            <span className='text-[12px]'>{item.no.size}</span>
-                          </>
-                        ) : (
-                          <span className='text-[16px] font-bold'>-</span>
-                        )}
-                      </div>
-
-                      <div
-                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
-                        onClick={() =>
-                          item.yes.rate &&
-                          handleOddsClick(
-                            item.label,
-                            item.yes.rate,
-                            'lay',
-                            item.sid,
-                            item.minRaw,
-                            item.maxRaw
-                          )
-                        }
-                      >
-                        {item.yes.rate ? (
-                          <>
-                            <span className='text-[16px] font-bold'>
-                              {item.yes.rate}
-                            </span>
-                            <span className='text-[12px]'>{item.yes.size}</span>
-                          </>
-                        ) : (
-                          <span className='text-[16px] font-bold'>-</span>
-                        )}
-                      </div>
-
-                      <div className='hidden flex-col items-center justify-center lg:flex'>
-                        <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
-                          Min:{item.min}
-                        </span>
-                        <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
-                          Max:{item.max}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div className='py-4 text-center text-gray-500'>
-              No data available
-            </div>
-          )}
-        </div>
-        <div className=''>
-          {rightData.length > 0 ? (
-            rightData.map((item) => {
-              const hasStatus = item.status && item.status.trim() !== '';
-
-              return (
-                <div
-                  key={item.id}
-                  className='grid grid-cols-[1fr_60px_60px] border-b border-b-[#c7c8ca] hover:bg-[#f7f7f7] lg:grid-cols-[1fr_60px_60px_60px]'
-                >
-                  <div className='ml-2 text-[13px] font-[400] text-[#333]'>
-                    <div>{item.label}</div>
-                    {(() => {
-                      const { hasBet, displayValue, color } = getBetDetails(
-                        item.label
-                      );
-
-                      if (hasBet && displayValue !== null) {
-                        return (
-                          <div className='flex gap-1 text-[11px]'>
-                            {displayValue > 0 && (
-                              <span
-                                className='flex items-center gap-0.5'
-                                style={{ color }}
-                              >
-                                <FaArrowRight />
-                                {displayValue}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </div>
-
-                  {hasStatus ? (
-                    <div className='col-span-2 flex min-h-[30px] items-center justify-center bg-[#4b4b4b] lg:col-span-3'>
-                      <span className='text-[14px] font-bold tracking-wide text-red-600 lg:text-[16px]'>
-                        {item.status}
-                      </span>
-                    </div>
-                  ) : (
-                    <>
-                      <div
-                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.no.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
-                        onClick={() =>
-                          item.no.rate &&
-                          handleOddsClick(
-                            item.label,
-                            item.no.rate,
-                            'back',
-                            item.sid,
-                            item.minRaw,
-                            item.maxRaw
-                          )
-                        }
-                      >
-                        {item.no.rate ? (
-                          <>
-                            <span className='text-[16px] font-bold'>
-                              {item.no.rate}
-                            </span>
-                            <span className='text-[12px]'>{item.no.size}</span>
-                          </>
-                        ) : (
-                          <span className='text-[16px] font-bold'>-</span>
-                        )}
-                      </div>
-
-                      <div
-                        className={`flex min-h-[30px] flex-col items-center justify-center bg-[#72bbef] ${item.yes.rate ? 'cursor-pointer transition-opacity hover:opacity-80' : ''}`}
-                        onClick={() =>
-                          item.yes.rate &&
-                          handleOddsClick(
-                            item.label,
-                            item.yes.rate,
-                            'lay',
-                            item.sid,
-                            item.minRaw,
-                            item.maxRaw
-                          )
-                        }
-                      >
-                        {item.yes.rate ? (
-                          <>
-                            <span className='text-[16px] font-bold'>
-                              {item.yes.rate}
-                            </span>
-                            <span className='text-[12px]'>{item.yes.size}</span>
-                          </>
-                        ) : (
-                          <span className='text-[16px] font-bold'>-</span>
-                        )}
-                      </div>
-
-                      <div className='hidden flex-col items-center justify-center lg:flex'>
-                        <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
-                          Min:{item.min}
-                        </span>
-                        <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
-                          Max:{item.max}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })
-          ) : (
-            <div></div>
-          )}
-        </div>
-      </div>
-    </div>
+    <FancyTwoColumnTable
+      title='OddEven'
+      items={items}
+      showColumnHeaders={false}
+      leftCellBg='bg-[#72bbef]'
+      rightCellBg='bg-[#72bbef]'
+      renderBadge={(item) => {
+        const { hasBet, displayValue, color } = getBetDetails(item.label);
+        if (!hasBet || displayValue === null || displayValue <= 0) return null;
+        return (
+          <div className='flex gap-1 text-[11px]'>
+            <span className='flex items-center gap-0.5' style={{ color }}>
+              <FaArrowRight />
+              {displayValue}
+            </span>
+          </div>
+        );
+      }}
+      onLeftClick={(item) => selectSide(item, 'back', item.left)}
+      onRightClick={(item) => selectSide(item, 'lay', item.right)}
+    />
   );
 }
 

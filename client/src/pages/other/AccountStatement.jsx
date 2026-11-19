@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
+  EntriesSearchBar,
+  TablePagination,
+} from '../../components/common/ReportTableControls';
+import {
   getTransactionHistory,
   getBetHistory,
 } from '../../redux/reducer/betReducer';
@@ -55,7 +59,7 @@ const getSettlementGroupKey = (row, index) => {
 
 function AccountStatement() {
   const dispatch = useDispatch();
-  const { transHistory, betHistory, loading, pagination } = useSelector(
+  const { transHistory, betHistory, loading } = useSelector(
     (state) => state.bet
   );
 
@@ -71,7 +75,6 @@ function AccountStatement() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
-  const [goToPage, setGoToPage] = useState(1);
   const [paginationInfo, setPaginationInfo] = useState({ pages: 1, total: 0 });
   const [resultPopupRow, setResultPopupRow] = useState(null);
   const showSettlementBalanceColumns = reportType === 'sports';
@@ -168,11 +171,6 @@ function AccountStatement() {
     }
   }, [fetchTransactions, fetchSportsReport, fetchCasinoReport, reportType]);
 
-  // Update goToPage when page changes
-  useEffect(() => {
-    setGoToPage(page);
-  }, [page]);
-
   // Filter transactions by search term (deposits)
   const filteredTransactions =
     transHistory?.filter((transaction) => {
@@ -214,12 +212,15 @@ function AccountStatement() {
         ? paginationInfo.pages || 1
         : 1;
 
-  const paginatedData =
-    reportType === 'deposits'
-      ? filteredTransactions.slice((page - 1) * limit, page * limit)
-      : reportType === 'sports' || reportType === 'casino'
-        ? filteredSports
-        : [];
+  const paginatedData = useMemo(
+    () =>
+      reportType === 'deposits'
+        ? filteredTransactions.slice((page - 1) * limit, page * limit)
+        : reportType === 'sports' || reportType === 'casino'
+          ? filteredSports
+          : [],
+    [reportType, filteredTransactions, filteredSports, page, limit]
+  );
 
   const groupedSportsData = useMemo(() => {
     if (reportType !== 'sports' && reportType !== 'casino') return [];
@@ -247,19 +248,8 @@ function AccountStatement() {
     return Array.from(groups.values());
   }, [paginatedData, reportType]);
 
-  // Update pagination info
-  useEffect(() => {
-    if (reportType === 'deposits') {
-      setPaginationInfo({
-        pages: totalPages,
-        total: filteredTransactions.length,
-      });
-    }
-  }, [reportType, totalPages, filteredTransactions.length]);
-
   const handleSubmit = () => {
     setPage(1);
-    setGoToPage(1);
     if (reportType === 'deposits') {
       fetchTransactions();
     } else if (reportType === 'sports') {
@@ -303,7 +293,6 @@ function AccountStatement() {
               onChange={(e) => {
                 setReportType(e.target.value);
                 setPage(1);
-                setGoToPage(1);
               }}
             >
               <option value='deposits'>Deposite/Withdraw Reports</option>
@@ -317,39 +306,15 @@ function AccountStatement() {
               Submit
             </button>
           </div>
-          <div className='mt-4 flex items-center justify-between gap-2'>
-            <div className='flex items-center gap-2'>
-              <span className='text-[16px] font-[400]'>Show</span>
-              <select
-                name='entries'
-                id='entries'
-                className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
-                value={limit}
-                onChange={(e) => {
-                  setLimit(Number(e.target.value));
-                  setPage(1);
-                  setGoToPage(1);
-                }}
-              >
-                <option value='10'>10</option>
-                <option value='20'>20</option>
-                <option value='30'>30</option>
-                <option value='40'>40</option>
-                <option value='50'>50</option>
-              </select>
-              <span className='text-[16px] font-[400]'>Entries</span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <span className='text-[16px] font-[400]'>Search:</span>
-              <input
-                type='text'
-                placeholder='Search'
-                className='h-[38px] w-[90px] border border-[#dbdbdb] p-1 outline-none lg:w-auto'
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
+          <EntriesSearchBar
+            limit={limit}
+            onLimitChange={(val) => {
+              setLimit(val);
+              setPage(1);
+            }}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
           <div className='scrollbar-hide mt-4 overflow-x-auto'>
             <table className='w-full min-w-[700px] border border-gray-300'>
               <thead>
@@ -503,88 +468,12 @@ function AccountStatement() {
               reportType === 'casino') &&
             (reportType === 'deposits'
               ? paginatedData.length > 0
-              : groupedSportsData.length > 0) &&
-            paginationInfo.pages > 1 && (
-              <div className='mt-4 flex flex-col items-center gap-3'>
-                <div className='flex items-center gap-2'>
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => {
-                      setPage(1);
-                      setGoToPage(1);
-                    }}
-                    className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                  >
-                    First
-                  </button>
-                  <button
-                    disabled={page <= 1}
-                    onClick={() => {
-                      setPage((p) => p - 1);
-                      setGoToPage((p) => p - 1);
-                    }}
-                    className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                  >
-                    Previous
-                  </button>
-                  <button
-                    disabled={page >= paginationInfo.pages}
-                    onClick={() => {
-                      setPage((p) => p + 1);
-                      setGoToPage((p) => p + 1);
-                    }}
-                    className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                  >
-                    Next
-                  </button>
-                  <button
-                    disabled={page >= paginationInfo.pages}
-                    onClick={() => {
-                      const lastPage = paginationInfo.pages;
-                      setPage(lastPage);
-                      setGoToPage(lastPage);
-                    }}
-                    className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                  >
-                    Last
-                  </button>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <span className='text-sm'>Page</span>
-                  <span className='text-sm font-semibold'>{page}</span>
-                  <span className='text-sm'>of</span>
-                  <span className='text-sm font-semibold'>
-                    {paginationInfo.pages || 0}
-                  </span>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <span className='text-sm'>Go to Page</span>
-                  <input
-                    type='number'
-                    min='1'
-                    max={paginationInfo.pages || 1}
-                    value={goToPage}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value);
-                      if (value >= 1 && value <= (paginationInfo.pages || 1)) {
-                        setGoToPage(value);
-                      }
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        const value = parseInt(goToPage);
-                        if (
-                          value >= 1 &&
-                          value <= (paginationInfo.pages || 1)
-                        ) {
-                          setPage(value);
-                        }
-                      }
-                    }}
-                    className='w-16 border border-gray-300 px-2 py-1 text-center text-sm'
-                  />
-                </div>
-              </div>
+              : groupedSportsData.length > 0) && (
+              <TablePagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
             )}
         </div>
       </div>

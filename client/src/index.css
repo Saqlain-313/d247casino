@@ -110,52 +110,6 @@ body {
 @media (min-width: 768px) {
   .md-desktop-bg {
     background-color: #2c3e50 !important;
-    /* Cricket-casino game screen layout — reference style.css @4474-4595.
-   Video right-aligned (16:9), cards overlay top-left (translucent panel),
-   clock bottom-right. */
-    .casino-video {
-      position: relative;
-      background-color: #000;
-      color: #fff;
-    }
-    .video-box-container {
-      max-width: calc(100% - 220px);
-      margin-left: auto;
-    }
-    .casino-video-box {
-      position: relative;
-      padding-bottom: 56.25%;
-    }
-    .casino-video-box iframe {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
-    .casino-video-cards {
-      position: absolute;
-      top: 0;
-      left: 0;
-      background: rgba(0, 0, 0, 0.4);
-      height: auto;
-      padding: 5px;
-    }
-    .clock {
-      position: absolute !important;
-      right: 10px;
-      bottom: 10px;
-      text-align: right !important;
-      top: unset;
-    }
-    @media (max-width: 767px) {
-      .video-box-container {
-        max-width: 100%;
-        margin-left: 0;
-      }
-    }
-
     color: #ffffff !important;
   }
 }
@@ -181,7 +135,6 @@ body {
   width: 100%;
   height: 100%;
   text-align: center;
-  transition: transform 0.6s;
   transform-style: preserve-3d;
 }
 .flip-card-inner.flip {
@@ -208,63 +161,6 @@ body {
 .casino-video-cards img {
   height: 100%;
   width: 100%;
-}
-
-/* Cricket-casino FlipClock countdown (reference flip-clock-wrapper) */
-.flip-clock-digit {
-  perspective: 200px;
-}
-.flip-clock-card {
-  position: relative;
-  width: 26px;
-  height: 34px;
-  border-radius: 4px;
-  background: #2c3e50;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 34px;
-  text-align: center;
-  overflow: hidden;
-  box-shadow: 0 1px 3px #0008;
-  transform-style: preserve-3d;
-}
-.flip-clock-card.flip {
-  animation: flip-clock-flip 0.45s ease-in-out;
-}
-.flip-clock-top,
-.flip-clock-bottom {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flip-clock-top {
-  clip-path: inset(0 0 50% 0);
-  background: #34495e;
-}
-.flip-clock-bottom {
-  clip-path: inset(50% 0 0 0);
-}
-.flip-clock-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 1px;
-  background: #000a;
-}
-@keyframes flip-clock-flip {
-  0% {
-    transform: rotateX(0deg);
-  }
-  50% {
-    transform: rotateX(-90deg);
-  }
-  100% {
-    transform: rotateX(0deg);
-  }
 }
 
 /* Pre-match banner animated text (reference .five-video-baner .animate-text) */

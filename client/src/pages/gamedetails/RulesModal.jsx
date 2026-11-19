@@ -1,12 +1,42 @@
-import React from 'react';
+import { useEffect, useState } from 'react';
+import { loadGameRulesContent } from '../../utils/gameRules';
 
 // Reusable rules modal — reference modal theme (style.css @1728-1764):
-// .modal-header = var(--bg-primary) blue + white text + inverted close;
-// .modal-content/.modal-body = white bg, black text, scrollable.
-// Supports EITHER an image (cricketv/superover rules jpg) OR html (casino
-// per-game rules from data/rulesData).
-function RulesModal({ open, onClose, title, image, html }) {
+// Supports either pre-resolved props (title/image/html) OR lazy-loading via
+// gameKey + fallbackTitle only when `open` becomes true.
+function RulesModal({
+  open,
+  onClose,
+  title: propTitle,
+  image: propImage,
+  html: propHtml,
+  gameKey,
+  fallbackTitle,
+}) {
+  const [loaded, setLoaded] = useState(null);
+
+  const shouldLazyLoad = open && Boolean(gameKey) && !propHtml && !propImage;
+  const cacheKey = `${gameKey || ''}::${fallbackTitle || ''}`;
+  const isCurrentLoaded = loaded?.cacheKey === cacheKey;
+
+  useEffect(() => {
+    if (!shouldLazyLoad || isCurrentLoaded) return undefined;
+    let cancelled = false;
+    loadGameRulesContent(gameKey, fallbackTitle).then((res) => {
+      if (!cancelled) setLoaded({ cacheKey, ...res });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldLazyLoad, isCurrentLoaded, cacheKey, gameKey, fallbackTitle]);
+
   if (!open) return null;
+
+  const loading = shouldLazyLoad && !isCurrentLoaded;
+  const activeLoaded = isCurrentLoaded ? loaded : null;
+  const title = propTitle || activeLoaded?.title || fallbackTitle || 'Rules';
+  const image = propImage ?? activeLoaded?.image ?? null;
+  const html = propHtml ?? activeLoaded?.html ?? null;
 
   return (
     <div
@@ -31,7 +61,9 @@ function RulesModal({ open, onClose, title, image, html }) {
           </button>
         </div>
         <div className='rules-section max-h-[calc(85vh-50px)] overflow-y-auto bg-white p-[10px] text-black'>
-          {image ? (
+          {loading ? (
+            <p className='text-center text-sm'>Loading rules...</p>
+          ) : image ? (
             <img src={image} alt={title} className='img-fluid w-full' />
           ) : html ? (
             <div

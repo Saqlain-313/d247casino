@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
@@ -36,7 +43,8 @@ import RecentResults from './components/RecentResults';
 import Spinner2 from './components/Spinner2';
 import VideoStream from './components/VideoStream';
 import RulesPopup from './components/RulesPopup';
-import MatkaTable from '../../components/tables/MatkaTable';
+
+const MatkaTable = lazy(() => import('../../components/tables/MatkaTable'));
 
 import DesktopBetSlip from '../../components/betting/DesktopBetSlip';
 import NewMobileBetDrawer from '../../components/betting/MobileBetDrawer';
@@ -711,11 +719,13 @@ export default function CasinoBet() {
 
                   <div className='casino-detail'>
                     {isWorliGame ? (
-                      <MatkaTable
-                        isMobile={!isDesktop}
-                        isSuspended={betting.isSuspended}
-                        activeMid={activeWorliMid}
-                      />
+                      <Suspense fallback={null}>
+                        <MatkaTable
+                          isMobile={!isDesktop}
+                          isSuspended={betting.isSuspended}
+                          activeMid={activeWorliMid}
+                        />
+                      </Suspense>
                     ) : (mockBettingData.sub || []).length > 0 ? (
                       <GameMarketTable />
                     ) : (

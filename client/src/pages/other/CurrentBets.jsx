@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { TablePagination } from '../../components/common/ReportTableControls';
 import { getBetHistory } from '../../redux/reducer/betReducer';
 
 function CurrentBets() {
@@ -19,7 +20,6 @@ function CurrentBets() {
   const [limit, setLimit] = useState(10);
   const [selectedGame, setSelectedGame] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [goToPage, setGoToPage] = useState(1);
   const [selectedVoid, setSelectedVoid] = useState('unsettel');
 
   // Fetch bets function
@@ -41,11 +41,6 @@ function CurrentBets() {
   useEffect(() => {
     fetchBets();
   }, [fetchBets]);
-
-  // Update goToPage when page changes
-  useEffect(() => {
-    setGoToPage(page);
-  }, [page]);
 
   // Filter bets by type (all/back/lay) and search term
   const filteredBets =
@@ -294,84 +289,12 @@ function CurrentBets() {
           </div>
 
           {/* Pagination Controls */}
-          {!loading && filteredBets.length > 0 && pagination?.pages > 0 && (
-            <div className='mt-4 flex flex-col items-center gap-3'>
-              <div className='flex items-center gap-2'>
-                <button
-                  disabled={page <= 1}
-                  onClick={() => {
-                    setPage(1);
-                    setGoToPage(1);
-                  }}
-                  className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                >
-                  First
-                </button>
-                <button
-                  disabled={page <= 1}
-                  onClick={() => {
-                    setPage((p) => p - 1);
-                    setGoToPage((p) => p - 1);
-                  }}
-                  className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                >
-                  Previous
-                </button>
-                <button
-                  disabled={page >= (pagination?.pages || 1)}
-                  onClick={() => {
-                    setPage((p) => p + 1);
-                    setGoToPage((p) => p + 1);
-                  }}
-                  className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                >
-                  Next
-                </button>
-                <button
-                  disabled={page >= (pagination?.pages || 1)}
-                  onClick={() => {
-                    const lastPage = pagination?.pages || 1;
-                    setPage(lastPage);
-                    setGoToPage(lastPage);
-                  }}
-                  className='border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white'
-                >
-                  Last
-                </button>
-              </div>
-              <div className='flex items-center gap-2'>
-                <span className='text-sm'>Page</span>
-                <span className='text-sm font-semibold'>{page}</span>
-                <span className='text-sm'>of</span>
-                <span className='text-sm font-semibold'>
-                  {pagination?.pages || 0}
-                </span>
-              </div>
-              <div className='flex items-center gap-2'>
-                <span className='text-sm'>Go to Page</span>
-                <input
-                  type='number'
-                  min='1'
-                  max={pagination?.pages || 1}
-                  value={goToPage}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    if (value >= 1 && value <= (pagination?.pages || 1)) {
-                      setGoToPage(value);
-                    }
-                  }}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      const value = parseInt(goToPage);
-                      if (value >= 1 && value <= (pagination?.pages || 1)) {
-                        setPage(value);
-                      }
-                    }
-                  }}
-                  className='w-16 border border-gray-300 px-2 py-1 text-center text-sm'
-                />
-              </div>
-            </div>
+          {!loading && filteredBets.length > 0 && (
+            <TablePagination
+              page={page}
+              totalPages={pagination?.pages || 0}
+              onPageChange={setPage}
+            />
           )}
         </div>
       </div>

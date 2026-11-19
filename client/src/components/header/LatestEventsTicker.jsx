@@ -6,19 +6,23 @@ import {
 } from 'react-icons/md';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
+import { cricketMatchPath, cricketMatchState } from '../../utils/cricketRoute';
 
 const SPORT_META = {
   cricket: {
     icon: MdSportsCricket,
-    betPath: (id) => `/cricket-bet/${id}`,
+    betPath: (m) => cricketMatchPath(m.iscc, m.id, m.game),
+    navState: (m) => cricketMatchState(m),
   },
   soccer: {
     icon: MdSportsSoccer,
-    betPath: (id) => `/football-bet/${id}`,
+    betPath: (m) => `/football-bet/${m.id}`,
+    navState: (m) => ({ name: m.game, time: m.time, beventId: m.beventId }),
   },
   tennis: {
     icon: MdSportsTennis,
-    betPath: (id) => `/tennis-bet/${id}`,
+    betPath: (m) => `/tennis-bet/${m.id}`,
+    navState: (m) => ({ name: m.game, time: m.time, beventId: m.beventId }),
   },
 };
 
@@ -63,8 +67,8 @@ function LatestEventsTicker() {
           <div
             key={`${m.sport}-${m.id}`}
             onClick={() =>
-              navigate(meta.betPath(m.id), {
-                state: { name: m.game, time: m.time, beventId: m.beventId },
+              navigate(meta.betPath(m), {
+                state: meta.navState(m),
               })
             }
             className='bg-secondary text-secondary mr-1 flex min-w-[50%] cursor-pointer items-center p-1 text-[14px] font-semibold sm:min-w-fit lg:min-w-[20%]'

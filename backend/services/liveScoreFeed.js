@@ -1,122 +1,59 @@
-import dotenv from 'dotenv';
-import WebSocket from 'ws';
+import { fetchScore } from './matchApi/index.js';
 
-dotenv.config();
-
-// One shared connection to the live-score provider for ALL viewers. Each active
-// match is re-requested every REFRESH_MS, so provider/server load depends on the
-// number of live matches, never on the number of users watching.
-const SCORE_WS_URL =
-  process.env.LIVE_SCORE_WS_URL ||
-  'wss://dimclscore.external247services.com/socket.io/?EIO=3&transport=websocket';
-const PROVIDER_ID = process.env.LIVE_SCORE_PROVIDER_ID || '1';
-const REFRESH_MS = 5000;
-const RECONNECT_MS = 3000;
+// Shared live score feed for non-real Cricket events (iscc 1, 2, 3, 4).
+// Polls provider /diamond/score/4_<gmid> once per active eventId every REFRESH_MS
+// so provider load scales with active matches, never with viewer count.
+const REFRESH_MS = 3000;
+const FAILURE_BACKOFF_MS = 10000;
 const EVENT_ID_PATTERN = /^[A-Za-z0-9_-]{1,40}$/;
 
 export const isValidScoreEventId = (id) =>
   typeof id === 'string' && EVENT_ID_PATTERN.test(id);
 
-let socket = null;
-let pingTimer = null;
-let reconnectTimer = null;
 let refreshTimer = null;
+let pollInProgress = false;
 let onScore = () => {};
 let getActiveEventIds = () => [];
 
-const latestScores = new Map();
+const latestScores = new Map(); // eventId -> { json, data }
+const inflight = new Map(); // eventId -> Promise
+const failureBackoff = new Map(); // eventId -> timestamp
 
 export const getLatestScore = (eventId) => latestScores.get(eventId) || null;
 
-const subscribeEvent = (eventId) => {
-  if (socket?.readyState !== WebSocket.OPEN) return;
-  socket.send(
-    `420["subscribe_event",{"eventId":"${eventId}","providerId":"${PROVIDER_ID}"}]`
-  );
-};
+const pollSingleEvent = async (eventId) => {
+  if (!isValidScoreEventId(eventId)) return;
+  const failedAt = failureBackoff.get(eventId);
+  if (failedAt && Date.now() - failedAt < FAILURE_BACKOFF_MS) return;
+  if (inflight.has(eventId)) return inflight.get(eventId);
 
-// Used when a viewer joins so they don't wait for the next 5s refresh tick.
-export const requestScore = subscribeEvent;
-
-const handleScore = (payload) => {
-  const eventId = String(payload?.eventId ?? payload?.summary?.eventid ?? '');
-  const data = payload?.summary?.data || payload?.data;
-  if (!eventId || !data || typeof data !== 'object') return;
-
-  const next = JSON.stringify(data);
-  if (latestScores.get(eventId)?.json === next) return;
-
-  latestScores.set(eventId, { json: next, data });
-  onScore(eventId, data);
-};
-
-const clearTimers = () => {
-  if (pingTimer) clearInterval(pingTimer);
-  pingTimer = null;
-};
-
-const scheduleReconnect = () => {
-  if (reconnectTimer) return;
-  reconnectTimer = setTimeout(() => {
-    reconnectTimer = null;
-    connect();
-  }, RECONNECT_MS);
-};
-
-const connect = () => {
-  if (socket) return;
-
-  const ws = new WebSocket(SCORE_WS_URL);
-  socket = ws;
-
-  ws.on('message', (raw) => {
-    const msg = String(raw);
-
-    if (msg.startsWith('0')) {
-      let interval = 25000;
-      try {
-        interval = JSON.parse(msg.slice(1)).pingInterval || interval;
-      } catch {
-        // keep default ping interval
+  const task = fetchScore(eventId, 4)
+    .then((res) => {
+      if (!res?.success || !res?.data || typeof res.data !== 'object') {
+        failureBackoff.set(eventId, Date.now());
+        return;
       }
-      clearTimers();
-      pingTimer = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send('2');
-      }, interval);
-      return;
-    }
+      failureBackoff.delete(eventId);
+      const next = JSON.stringify(res.data);
+      if (latestScores.get(eventId)?.json === next) return;
+      latestScores.set(eventId, { json: next, data: res.data });
+      onScore(eventId, res.data);
+    })
+    .catch(() => {
+      failureBackoff.set(eventId, Date.now());
+    })
+    .finally(() => {
+      inflight.delete(eventId);
+    });
 
-    if (msg === '2') {
-      ws.send('3');
-      return;
-    }
+  inflight.set(eventId, task);
+  return task;
+};
 
-    if (msg === '40') {
-      getActiveEventIds().forEach(subscribeEvent);
-      return;
-    }
-
-    if (!msg.startsWith('42')) return;
-
-    try {
-      const [type, payload] = JSON.parse(msg.slice(2));
-      if (type === 'summary_snapshot' || type === 'update') {
-        handleScore(payload);
-      }
-    } catch (err) {
-      console.error('[LIVE SCORE] Parse error:', err.message);
-    }
-  });
-
-  ws.on('error', (err) => {
-    console.error('[LIVE SCORE] Socket error:', err.message);
-  });
-
-  ws.on('close', () => {
-    clearTimers();
-    if (socket === ws) socket = null;
-    scheduleReconnect();
-  });
+// Trigger an immediate fetch when a viewer subscribes so they don't wait 3s.
+export const requestScore = (eventId) => {
+  if (!isValidScoreEventId(eventId)) return;
+  pollSingleEvent(eventId);
 };
 
 export const startLiveScoreFeed = ({ activeEventIds, onUpdate }) => {
@@ -124,17 +61,25 @@ export const startLiveScoreFeed = ({ activeEventIds, onUpdate }) => {
 
   getActiveEventIds = activeEventIds;
   onScore = onUpdate;
-  connect();
 
-  refreshTimer = setInterval(() => {
-    const active = new Set(getActiveEventIds());
+  refreshTimer = setInterval(async () => {
+    if (pollInProgress) return;
+    pollInProgress = true;
+    try {
+      const active = new Set(getActiveEventIds());
 
-    for (const eventId of latestScores.keys()) {
-      if (!active.has(eventId)) latestScores.delete(eventId);
+      for (const eventId of latestScores.keys()) {
+        if (!active.has(eventId)) {
+          latestScores.delete(eventId);
+          failureBackoff.delete(eventId);
+        }
+      }
+
+      if (active.size > 0) {
+        await Promise.allSettled([...active].map((id) => pollSingleEvent(id)));
+      }
+    } finally {
+      pollInProgress = false;
     }
-
-    // Re-subscribing makes the provider send a fresh snapshot, so the score
-    // stays current even if a push update is ever missed.
-    active.forEach(subscribeEvent);
   }, REFRESH_MS);
 };

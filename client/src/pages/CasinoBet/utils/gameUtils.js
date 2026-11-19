@@ -1,8 +1,4 @@
-const CASINO_TV_BASE_URL = (
-  import.meta.env.VITE_CASINO_TV_BASE_URL || 'https://scoreapi.nautical7.com'
-).replace(/\/+$/, '');
-
-const CASINO_TV_KEY = import.meta.env.VITE_CASINO_TV_KEY || '';
+import env from '../../../config/env';
 
 const TV_SLUG_MAP = {
   pbaccarat: 'baccarat',
@@ -29,16 +25,16 @@ export const getVideoStreamUrl = (eventName) => {
     return '';
   }
 
-  if (!CASINO_TV_KEY) {
+  if (!env.casinoTvKey) {
     console.error('Casino TV API key is missing');
     return '';
   }
 
   const params = new URLSearchParams({
-    key: CASINO_TV_KEY,
+    key: env.casinoTvKey,
   });
 
-  return `${CASINO_TV_BASE_URL}/diamond/casino/${encodeURIComponent(
+  return `${env.casinoTvBaseUrl}/diamond/casino/${encodeURIComponent(
     safeEventName
   )}?${params.toString()}`;
 };

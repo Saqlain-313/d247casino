@@ -178,13 +178,14 @@ export async function validateSportsMarket(
     };
   }
 
-  // Reference D247 suspension (refrence.js / utils/suspension.js):
-  // gscode === 1 indicates open even when status string says SUSPENDED on
-  // match1 / Bookmaker-style markets; fall back to status when gscode absent.
+  // Reference D247 suspension: gscode === 1 is authoritative on both market and runner.
+  // (status string may say SUSPENDED on open match1 markets where gscode === 1;
+  //  when gscode is absent in unit mocks, fall back to status string).
   const hasMarketGscode = market.gscode !== undefined && market.gscode !== null;
   const isMarketOpen = hasMarketGscode
     ? Number(market.gscode) === 1
-    : market.status !== 'SUSPENDED' && market.gstatus !== 'SUSPENDED';
+    : String(market.status || '').toUpperCase() !== 'SUSPENDED' &&
+      String(market.gstatus || '').toUpperCase() !== 'SUSPENDED';
 
   if (!isMarketOpen) {
     return { valid: false, reason: 'Market is suspended. Bet not accepted.' };
@@ -358,6 +359,21 @@ export async function validateFancyMarket(
       //     reason: 'Market is suspended. Bet not accepted.',
       //   };
       // }
+      // Reference D247 suspension (dtype=6/10): BOTH market.gscode === 1 AND
+      // section.gscode === 1 are required for every fancy market (incl. Normal).
+      const hasMktGscode =
+        market.gscode !== undefined && market.gscode !== null;
+      const mktOpen = hasMktGscode
+        ? Number(market.gscode) === 1
+        : String(market.status || '').toUpperCase() !== 'SUSPENDED' &&
+          String(market.gstatus || '').toUpperCase() !== 'SUSPENDED';
+      if (!mktOpen) {
+        return {
+          valid: false,
+          reason: 'Market is suspended. Bet not accepted.',
+        };
+      }
+
       const secRawStatus = String(section.gstatus || '')
         .trim()
         .toUpperCase();
@@ -366,46 +382,18 @@ export async function validateFancyMarket(
         .toUpperCase();
       const hasSecGscode =
         section.gscode !== undefined && section.gscode !== null;
-      const isNormal = (gameType || '').toLowerCase() === 'normal';
+      const isSectionBlocked =
+        (hasSecGscode && Number(section.gscode) !== 1) ||
+        secRawStatus === 'SUSPENDED' ||
+        secRawStatus === 'BALL RUNNING' ||
+        secRawStatus === 'REMOVED' ||
+        (!hasSecGscode && secOtherStatus === 'SUSPENDED');
 
-      if (isNormal) {
-        if (
-          (hasSecGscode && Number(section.gscode) !== 1) ||
-          secRawStatus === 'SUSPENDED' ||
-          secRawStatus === 'BALL RUNNING' ||
-          secRawStatus === 'REMOVED'
-        ) {
-          return {
-            valid: false,
-            reason: 'Market is suspended. Bet not accepted.',
-          };
-        }
-      } else {
-        if (
-          (hasSecGscode && Number(section.gscode) !== 1) ||
-          secRawStatus === 'SUSPENDED' ||
-          secRawStatus === 'BALL RUNNING' ||
-          secRawStatus === 'REMOVED' ||
-          secOtherStatus === 'SUSPENDED'
-        ) {
-          return {
-            valid: false,
-            reason: 'Market is suspended. Bet not accepted.',
-          };
-        }
-
-        const hasMktGscode =
-          market.gscode !== undefined && market.gscode !== null;
-        const mktOpen = hasMktGscode
-          ? Number(market.gscode) === 1
-          : String(market.status || '').toUpperCase() !== 'SUSPENDED' &&
-            String(market.gstatus || '').toUpperCase() !== 'SUSPENDED';
-        if (!mktOpen) {
-          return {
-            valid: false,
-            reason: 'Market is suspended. Bet not accepted.',
-          };
-        }
+      if (isSectionBlocked) {
+        return {
+          valid: false,
+          reason: 'Market is suspended. Bet not accepted.',
+        };
       }
 
       // ── Odds array must exist ──
@@ -441,7 +429,19 @@ export async function validateFancyMarket(
         };
       }
 
-      if (Math.abs(userFancyScore - liveFancyScore) > 0.01) {
+      const isKhadoMarket =
+        String(market.gtype || gameType || '').toLowerCase() === 'khado';
+      if (isKhadoMarket) {
+        // D247 Khado allows user to step start score by ±1 within ±100 of live score (min 1)
+        const minKhado = Math.max(1, liveFancyScore - 100);
+        const maxKhado = liveFancyScore + 100;
+        if (userFancyScore < minKhado || userFancyScore > maxKhado) {
+          return {
+            valid: false,
+            reason: `Khado score must be between ${minKhado} and ${maxKhado}.`,
+          };
+        }
+      } else if (Math.abs(userFancyScore - liveFancyScore) > 0.01) {
         return {
           valid: false,
           reason: `Fancy score changed. Current: ${liveFancyScore}. Please re-select.`,
@@ -477,12 +477,19 @@ export async function validateFancyMarket(
         };
       }
 
+      const khadoLayObj =
+        String(market.gtype || gameType || '').toLowerCase() === 'khado'
+          ? section.odds.find((o) => o.otype === 'lay' && Number(o.odds) > 0)
+          : null;
+
       return {
         valid: true,
         marketMeta: {
           mid: market.mid || null,
           gmid: market.gmid || null,
+          gtype: market.gtype || null,
           fancyId: section.sid || null,
+          khadoLayOdds: khadoLayObj ? Number(khadoLayObj.odds) : null,
         },
       };
     }

@@ -1,4 +1,3 @@
-import axios from 'axios';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -9,6 +8,7 @@ import passwordHistory from '../models/passwordHistory.js';
 import SubAdmin from '../models/subAdminModel.js';
 import { calcTotalCasinoExposure } from '../services/casinoEngine.js';
 import { calculateAllExposure } from '../utils/exposureUtils.js';
+import { saveLoginHistory } from '../utils/loginHistory.js';
 
 export const registerUser = async (req, res) => {
   try {
@@ -25,47 +25,6 @@ export const registerUser = async (req, res) => {
       .json({ message: 'SubAdmin registered successfully', data: subAdmin });
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-};
-
-const saveLoginHistory = async (userName, id, status, req) => {
-  try {
-    const ip =
-      req.headers['x-forwarded-for']?.split(',')[0] ||
-      req.connection?.remoteAddress ||
-      req.socket?.remoteAddress ||
-      req.connection?.socket?.remoteAddress ||
-      'IP not found';
-
-    const response = await axios.get(`https://ipapi.co/${ip}/json/`);
-    const { city, region, country_name: country, org: isp } = response.data;
-
-    const now = new Date();
-    const formattedDateTime = now
-      .toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      })
-      .replace(',', '');
-
-    await LoginHistory.create({
-      userName,
-      userId: id,
-      status: status === 'Success' ? 'Login Successful' : 'Login Failed',
-      dateTime: formattedDateTime,
-      ip,
-      isp,
-      city,
-      region,
-      country,
-    });
-  } catch (error) {
-    console.error(' Login history error:', error.message);
   }
 };
 

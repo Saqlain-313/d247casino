@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { cricketMatchPath, cricketMatchState } from '../../utils/cricketRoute';
 import { FaRegMinusSquare, FaRegPlusSquare } from 'react-icons/fa';
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 import { RiCloseCircleLine } from 'react-icons/ri';
@@ -241,13 +242,16 @@ function Sidebar({ isOpen, onClose }) {
                             e.preventDefault();
                             // Navigate based on sport type
                             if (sportName === 'Cricket') {
-                              navigate(`/cricket-bet/${match.id}`, {
-                                state: {
-                                  name: match.game,
-                                  time: match.time,
-                                  beventId: match.beventId,
-                                },
-                              });
+                              navigate(
+                                cricketMatchPath(
+                                  match.iscc,
+                                  match.id,
+                                  match.game
+                                ),
+                                {
+                                  state: cricketMatchState(match),
+                                }
+                              );
                             } else if (sportName === 'Football') {
                               navigate(`/football-bet/${match.id}`, {
                                 state: {

@@ -1,11 +1,9 @@
 import axios from 'axios';
 
-// const isLocal = import.meta.env.VITE_IS_LOCAL === 'true';
-
-const isLocal = 'true';
+import env from '../config/env';
 
 const api = axios.create({
-  baseURL: isLocal ? import.meta.env.VITE_LOCAL_API_URL : '/api',
+  baseURL: env.apiBaseUrl,
 });
 
 api.interceptors.request.use((config) => {
@@ -18,4 +16,4 @@ api.interceptors.request.use((config) => {
 
 export default api;
 
-export const host = isLocal ? import.meta.env.VITE_LOCAL_WS_URL : '/';
+export const host = env.wsBaseUrl;

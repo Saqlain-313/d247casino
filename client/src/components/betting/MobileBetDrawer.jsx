@@ -1,41 +1,18 @@
-import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useState } from 'react';
 import { useCasino } from '../../context/CasinoContext';
 import ButtonValues from '../header/ButtonValues';
-
-// Fallback jab user ne Set Button Value me casino buttons save na kiye hon
-const CASINO_DEFAULTS = [
-  { label: '100', value: 100 },
-  { label: '500', value: 500 },
-  { label: '1k', value: 1000 },
-  { label: '5k', value: 5000 },
-  { label: '10k', value: 10000 },
-  { label: '25k', value: 25000 },
-];
-
-const formatStakeLabel = (value) =>
-  value >= 1000 ? `${value / 1000}k` : String(value);
+import {
+  DEFAULT_MOBILE_CASINO_STAKES,
+  useCasinoQuickStakes,
+} from './useCasinoQuickStakes';
 
 export default function MobileBetDrawer() {
   const { betSlip, closeBetSlip, updateStake, submitBet } = useCasino();
-  const { userInfo } = useSelector((state) => state.auth);
+  const quickStakes = useCasinoQuickStakes(DEFAULT_MOBILE_CASINO_STAKES);
   const [showEditButtons, setShowEditButtons] = useState(false);
 
   if (!betSlip.isOpen || betSlip.mode !== 'mobile') return null;
   const stakeStep = Math.max(10, Number(betSlip.min || 100));
-
-  // Casino drawer hamesha user ke configured casinoQuickStakes use karta hai
-  // (Set Button Value → Casino Buttons tab), warna defaults.
-  const quickStakes = (
-    userInfo?.casinoQuickStakes?.length
-      ? userInfo.casinoQuickStakes
-      : CASINO_DEFAULTS
-  )
-    .map((s) => ({
-      label: s.label || formatStakeLabel(Number(s.value)),
-      value: Number(s.value),
-    }))
-    .filter((s) => Number.isFinite(s.value) && s.value > 0);
 
   return (
     <div

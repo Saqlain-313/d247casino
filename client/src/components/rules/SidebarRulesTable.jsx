@@ -1,11 +1,23 @@
-import React from 'react';
-import { getCasinoRulesSidebarTable } from '../../data/rulesData';
+import { useEffect, useState } from 'react';
+import { loadSidebarRulesTable } from '../../utils/gameRules';
 
-// Reference sidebar "Rules" box (sidebar-box my-bet-container + sidebar-title
-// Rules + bordered payout tables) — sirf un games me jinka side-rules table
-// hy (teen20 family, teenmuf family, dolidana); baaki slugs ke liye null.
+// Reference sidebar "Rules" box — lazy-loads rulesData only for games that
+// have a sidebar payout table (teen20 family, teenmuf family, dolidana).
 export default function SidebarRulesTable({ slug }) {
-  const tableHtml = getCasinoRulesSidebarTable(slug);
+  const [state, setState] = useState({ slug: null, html: null });
+
+  useEffect(() => {
+    if (!slug) return undefined;
+    let cancelled = false;
+    loadSidebarRulesTable(slug).then((html) => {
+      if (!cancelled) setState({ slug, html });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  const tableHtml = slug && state.slug === slug ? state.html : null;
   if (!tableHtml) return null;
 
   return (

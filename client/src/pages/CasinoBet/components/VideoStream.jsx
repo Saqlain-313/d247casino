@@ -74,11 +74,18 @@ const VideoStream = memo(function VideoStream({
         </div>
       )}
 
-      {/* Authentic D247 FlipClock */}
+      {/* Authentic D247 FlipClock — single `.clock.flip-clock-wrapper` */}
       {showClock && (
-        <div className='clock'>
-          <FlipClock seconds={bettingData?.lt || 0} />
-        </div>
+        <FlipClock
+          seconds={bettingData?.lt || 0}
+          className={slug === 'lucky15' ? 'clock lucky15' : 'clock'}
+          hideAtZero={[
+            'superover',
+            'superover2',
+            'superover3',
+            'lucky15',
+          ].includes(slug)}
+        />
       )}
     </div>
   );

@@ -6,7 +6,10 @@ import api from '../../redux/api';
 import {
   isMarketSuspended as marketSuspendedByGscode,
   isRunnerSuspended as runnerSuspendedByGscode,
+  marketSuspensionText,
+  runnerSuspensionText,
 } from '../../utils/suspension';
+import SuspendedOverlay from './components/SuspendedOverlay';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
   clearCashoutValues,
@@ -41,7 +44,6 @@ function MatchOdds({
 
   useEffect(() => {
     if (selectedBet) {
-      setShowCashoutOptions(false);
       dispatch(clearCashoutValues());
     }
   }, [selectedBet, dispatch]);
@@ -62,7 +64,13 @@ function MatchOdds({
       }))
     : [];
 
-  const CASHOUT_GAME_TYPES = ['Match Odds', 'MATCH_ODDS'];
+  // Reference D247 cashout rule (776178602-new.devtools): only 2-runner match / match1 markets
+  const primaryGtype = String(
+    matchOddsList?.[0]?.gtype || 'match'
+  ).toLowerCase();
+  const isCashoutMarketEligible =
+    oddsData.length === 2 &&
+    (primaryGtype === 'match' || primaryGtype === 'match1');
 
   const MATCH_ODDS_GAME_TYPES = [
     'Match Odds',
@@ -71,9 +79,17 @@ function MatchOdds({
     'TOURNAMENT_WINNER',
   ];
 
-  const getHistoryMarketBets = (marketName) => {
-    const mname = marketName === 'MATCH_ODDS' ? 'Match Odds' : marketName;
+  const currentMarketMname = matchOddsList?.[0]?.mname || 'MATCH_ODDS';
+  const matchesPrimaryMarketName = (value) => {
+    if (!value) return true;
+    const norm = String(value).replace(/\s+/g, ' ').trim().toLowerCase();
+    if (currentMarketMname === 'TOURNAMENT_WINNER') {
+      return norm === 'tournament_winner' || norm === 'winner';
+    }
+    return norm === 'match_odds' || norm === 'match odds';
+  };
 
+  const getHistoryMarketBets = () => {
     if (!Array.isArray(eventName) || !gameid) return [];
 
     return eventName
@@ -82,7 +98,10 @@ function MatchOdds({
 
         const gt = (b.gameType || '').toLowerCase();
 
-        return MATCH_ODDS_GAME_TYPES.some((t) => t.toLowerCase() === gt);
+        return (
+          MATCH_ODDS_GAME_TYPES.some((t) => t.toLowerCase() === gt) &&
+          matchesPrimaryMarketName(b.marketName)
+        );
       })
       .map((b) => ({
         gameType: b.gameType === 'MATCH_ODDS' ? 'Match Odds' : b.gameType,
@@ -94,13 +113,16 @@ function MatchOdds({
       }));
   };
 
-  // Cashout calculations
+  // Cashout calculations (strictly D247 schema-driven: 2-runner match/match1)
   const marketBetsForCashout =
-    Array.isArray(eventName) && oddsData?.[0]?.mname && gameid
+    isCashoutMarketEligible &&
+    Array.isArray(eventName) &&
+    oddsData?.[0]?.mname &&
+    gameid
       ? eventName.filter(
           (b) =>
             String(b.gameId) === String(gameid) &&
-            CASHOUT_GAME_TYPES.includes(b.gameType) &&
+            matchesPrimaryMarketName(b.marketName) &&
             !b.isCashoutHedge &&
             !b.isCashedOut &&
             !cashedOutBetIds.has(String(b.betId || b._id))
@@ -115,7 +137,8 @@ function MatchOdds({
       )
   );
 
-  const hasCashoutAvailable = uniqueMarketBetsForCashout.length > 0;
+  const hasCashoutAvailable =
+    isCashoutMarketEligible && uniqueMarketBetsForCashout.length > 0;
 
   const marketCashoutPL = cashoutPL?.[oddsData?.[0]?.mname] || 0;
 
@@ -223,7 +246,9 @@ function MatchOdds({
 
     const amountBets =
       pendingBetAmounts?.filter(
-        (item) => item.gameType === 'Match Odds' || item.gameType === marketName
+        (item) =>
+          (item.gameType === 'Match Odds' || item.gameType === marketName) &&
+          matchesPrimaryMarketName(item.marketName)
       ) || [];
 
     return historyBets.length > 0 ? historyBets : amountBets;
@@ -418,7 +443,9 @@ function MatchOdds({
           {(oddsData?.[0]?.mname || 'Match Odds').replaceAll('_', ' ')}
         </span>
 
-        {hasCashoutAvailable && showCashoutOptions ? (
+        {!isCashoutMarketEligible ? null : hasCashoutAvailable &&
+          showCashoutOptions &&
+          !selectedBet ? (
           <button
             type='button'
             disabled={!hasMergedValue || cashoutLoading}
@@ -485,7 +512,7 @@ function MatchOdds({
       {/* TEAM ROWS */}
       {oddsData.length > 0 ? (
         <div className='relative'>
-          {oddsData.map(({ team, odds, sid, gscode }, teamIndex) => {
+          {oddsData.map(({ team, odds, sid, gstatus, gscode }, teamIndex) => {
             // Provider order: back3→back1 (worst→best), then lay1→lay3 (best→worst)
             const backOdds = (odds || [])
               .filter((odd) => odd.otype === 'back')
@@ -759,11 +786,13 @@ function MatchOdds({
                         );
                       })}
                     </div>
-                    <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-                      <span className='text-[13px] font-bold tracking-wide text-red-600'>
-                        SUSPENDED
-                      </span>
-                    </div>
+                    <SuspendedOverlay
+                      label={
+                        isMarketSuspended
+                          ? marketSuspensionText(matchOddsList?.[0])
+                          : runnerSuspensionText({ gstatus })
+                      }
+                    />
                   </div>
                 ) : (
                   <>

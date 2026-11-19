@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FaHorse, FaTv } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useSportEventSocket } from '../../hooks/useSportEventSocket';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
   getPendingBet,
@@ -11,29 +12,38 @@ import {
 } from '../../redux/reducer/betReducer';
 import {
   fetchHorseRacingBettingData,
+  fetchHorseRacingData,
   setHorseRacingBettingData,
 } from '../../redux/reducer/horseRacingSlice';
 import { getLiveTvUrl } from '../../utils/liveTvUrl';
-import { host } from '../../redux/api';
+import { getHorseRacingScorecardUrl } from '../../utils/scorecardUrl';
 import HorseRacingMarkets from './HorseRacingMarkets';
 import MatchedBet from './MatchedBet';
 import PlaceBet from './PlaceBet';
+
+function formatRaceTime(stime) {
+  if (!stime) return undefined;
+  const date = new Date(stime);
+  if (Number.isNaN(date.getTime())) return stime;
+  return date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+}
 
 function HourseRacingBet() {
   const { id: gameid } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const time = location.state?.time;
+  const dispatch = useDispatch();
   const [showLive, setShowLive] = useState(false);
   const [showlivetv, setshowlivetv] = useState(false);
-  const venue = location.state?.name || 'Horse Racing';
-  const liveTvUrl = getLiveTvUrl(10, gameid);
-  // Horse races me tv flag nahi hota; live (iplay) races pe stream gate karo.
-  const hasLiveTv = Boolean(location.state?.iplay && liveTvUrl);
-  const dispatch = useDispatch();
   const [showOdds, setShowOdds] = useState(true);
   const [selectedBet, setSelectedBet] = useState(null);
   const {
+    venues,
+    loading: venuesLoading,
     bettingData: storedBettingData,
     bettingLoading,
     bettingLoaded,
@@ -44,8 +54,43 @@ function HourseRacingBet() {
     (state) => state.bet
   );
   const { userInfo } = useSelector((state) => state.auth);
+
+  // Hydrate venue/race metadata on direct URL or page refresh
+  useEffect(() => {
+    if (!venues.length && !venuesLoading) {
+      dispatch(fetchHorseRacingData());
+    }
+  }, [dispatch, venues.length, venuesLoading]);
+
+  const storeRaceMeta = useMemo(() => {
+    for (const v of venues) {
+      const race = (v.races || []).find(
+        (r) => String(r.gmid) === String(gameid)
+      );
+      if (race) {
+        return {
+          name: v.ename,
+          time: formatRaceTime(race.stime),
+          iplay: Boolean(race.iplay),
+        };
+      }
+    }
+    return null;
+  }, [venues, gameid]);
+
+  const time = location.state?.time || storeRaceMeta?.time;
+  const venue = location.state?.name || storeRaceMeta?.name || 'Horse Racing';
+  const liveTvUrl = getLiveTvUrl(10, gameid);
+  const scorecardUrl = getHorseRacingScorecardUrl(gameid);
   const horseRacingDataMatchesRoute = String(bettingGameId) === String(gameid);
   const bettingData = horseRacingDataMatchesRoute ? storedBettingData : [];
+  const marketInPlay =
+    Array.isArray(bettingData) &&
+    bettingData.some((m) => m?.iplay === true || m?.iplay === 1);
+  // Horse races me tv flag nahi hota; live (iplay) races pe stream gate karo.
+  const hasLiveTv = Boolean(
+    (location.state?.iplay || storeRaceMeta?.iplay || marketInPlay) && liveTvUrl
+  );
   const isBettingLoaded = horseRacingDataMatchesRoute && bettingLoaded;
   const isBettingLoading = !horseRacingDataMatchesRoute || bettingLoading;
   const bettingDataError = horseRacingDataMatchesRoute ? bettingError : null;
@@ -63,37 +108,26 @@ function HourseRacingBet() {
     dispatch(fetchHorseRacingBettingData(gameid));
   }, [dispatch, gameid]);
 
-  // Live betting data WebSocket pe (sports jaisa, apitype 'horse-racing').
-  // Per-user 1s REST polling hata di — backend shared poller 1s inplay / 10s
-  // non-inplay broadcast karta hy, provider load per race rahta hy.
-  useEffect(() => {
-    if (!gameid) return undefined;
-    const socket = new WebSocket(host);
-    socket.onopen = () => {
-      socket.send(
-        JSON.stringify({
+  // Live betting data WebSocket pe (shared hook, clean unsubscribe on unmount).
+  useSportEventSocket({
+    enabled: Boolean(gameid),
+    subscribePayload: gameid
+      ? {
           type: 'subscribe',
           gameid,
           apitype: 'horse-racing',
           userId: userInfo?._id,
-        })
-      );
-    };
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        if (
-          message.type === 'bettingData' &&
-          String(message.gameid) === String(gameid)
-        ) {
-          dispatch(setHorseRacingBettingData({ gameid, data: message.data }));
         }
-      } catch (err) {
-        console.error('Horse racing WS parse error:', err);
+      : null,
+    onMessage: (message) => {
+      if (
+        message.type === 'bettingData' &&
+        String(message.gameid) === String(gameid)
+      ) {
+        dispatch(setHorseRacingBettingData({ gameid, data: message.data }));
       }
-    };
-    return () => socket.close();
-  }, [dispatch, gameid, userInfo?._id]);
+    },
+  });
 
   useEffect(() => {
     // Dead event: betting data fetch fail (race provider pe nahi) ya markets khali
@@ -209,27 +243,39 @@ function HourseRacingBet() {
         </div>
 
         {showLive && hasLiveTv ? (
-          <iframe
-            src={liveTvUrl}
-            title='Horse Racing Live'
-            className='w-full'
-            style={{ height: '50vh' }}
-            allow='autoplay; encrypted-media; picture-in-picture'
-            allowFullScreen
-            loading='lazy'
-          />
+          <div className='live-tv bg-black'>
+            <iframe
+              src={liveTvUrl}
+              title='Horse Racing Live'
+              allow='autoplay; encrypted-media; picture-in-picture'
+              allowFullScreen
+              loading='lazy'
+            />
+          </div>
         ) : showOdds ? (
-          <HorseRacingMarkets
-            key={gameid}
-            bettingData={bettingData}
-            loading={isBettingLoading}
-            loaded={isBettingLoaded}
-            error={bettingDataError}
-            venue={venue}
-            time={time}
-            onBetSelect={setSelectedBet}
-            pendingBetAmounts={pendingBetAmounts}
-          />
+          <>
+            {scorecardUrl && (
+              <iframe
+                src={scorecardUrl}
+                allowFullScreen
+                className='w-full border-0 bg-black'
+                style={{ height: '165px' }}
+                title='Horse Racing Score'
+                allow='autoplay; encrypted-media; fullscreen; picture-in-picture; accelerometer; gyroscope'
+              />
+            )}
+            <HorseRacingMarkets
+              key={gameid}
+              bettingData={bettingData}
+              loading={isBettingLoading}
+              loaded={isBettingLoaded}
+              error={bettingDataError}
+              venue={venue}
+              time={time}
+              onBetSelect={setSelectedBet}
+              pendingBetAmounts={pendingBetAmounts}
+            />
+          </>
         ) : (
           <MatchedBet eventName={gameid} />
         )}
@@ -246,15 +292,15 @@ function HourseRacingBet() {
                 <span className='font-bold'>Live Match</span>
               </div>
               {showlivetv && (
-                <iframe
-                  src={liveTvUrl}
-                  title='Horse Racing Live'
-                  className='w-full'
-                  style={{ height: '50vh' }}
-                  allow='autoplay; encrypted-media; picture-in-picture'
-                  allowFullScreen
-                  loading='lazy'
-                />
+                <div className='live-tv bg-black'>
+                  <iframe
+                    src={liveTvUrl}
+                    title='Horse Racing Live'
+                    allow='autoplay; encrypted-media; picture-in-picture'
+                    allowFullScreen
+                    loading='lazy'
+                  />
+                </div>
               )}
             </div>
           )}

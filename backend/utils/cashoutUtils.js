@@ -1,26 +1,36 @@
-export const CASHOUT_GAME_TYPES = [
-  'Match Odds',
-  'MATCH_ODDS',
-  'Tied Match',
-  'Bookmaker',
-  'Bookmaker IPL CUP',
-  'Toss',
-  '1st 6 over',
-  'Winner',
-  'OVER_UNDER_05',
-  'OVER_UNDER_15',
-  'OVER_UNDER_25',
-];
+// Pure D247 reference cashout rule (776178602-new.devtools @2145098):
+//   section.length === 2 && (gtype === 'match' || gtype === 'match1')
+// Driven strictly by live market / persisted D247 schema — no hardcoded market-name lists.
+export const CASHOUT_GTYPES = new Set(['match', 'match1']);
 
-//bet is eligible for cashout or not
-export function isCashoutEligible(bet) {
-  return (
-    bet.status === 0 &&
-    CASHOUT_GAME_TYPES.includes(bet.gameType) &&
-    bet.betType !== 'casino' &&
-    !bet.isCashoutHedge &&
-    !bet.isCashedOut
+/**
+ * Determine whether a bet is eligible for cashout per D247's exact schema rule:
+ *   1. Open sports bet, not already cashed out or a cashout hedge
+ *   2. Market gtype is 'match' or 'match1'
+ *   3. Binary 2-runner market (runnerCount === 2)
+ */
+export function isCashoutEligible(bet, liveMarket = null) {
+  if (
+    !bet ||
+    bet.status !== 0 ||
+    bet.betType === 'casino' ||
+    bet.isCashoutHedge ||
+    bet.isCashedOut
+  ) {
+    return false;
+  }
+
+  const effectiveGtype = String(liveMarket?.gtype || bet.gType || '')
+    .trim()
+    .toLowerCase();
+  const effectiveRunners = Number(
+    liveMarket?.runnerCount ??
+      liveMarket?.section?.length ??
+      bet.runnerCount ??
+      0
   );
+
+  return CASHOUT_GTYPES.has(effectiveGtype) && effectiveRunners === 2;
 }
 
 export function calculateCashoutValue(bets, currentBestLay, currentBestBack) {
@@ -67,7 +77,7 @@ export function calculateSingleBackCashout(
 }
 
 export default {
-  CASHOUT_GAME_TYPES,
+  CASHOUT_GTYPES,
   isCashoutEligible,
   calculateCashoutValue,
   calculateSingleBackCashout,

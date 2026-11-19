@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import FlipClock from '../../gamedetails/FlipClock';
 import CricketCard from '../../gamedetails/CricketCard';
+import env from '../../../config/env';
 
 // Virtual casino games (reference .vcasino, style.css @8580-8660): iframe
 // stream NAHI hota — dealer background image + green felt (table-bg) +
@@ -27,7 +28,7 @@ const byFile = (map) => {
   return out;
 };
 const VIMG = byFile(virtualImgs);
-const CDN = 'https://cdn.926assets.com/g3ver/v107/static/front/img';
+const CDN = env.assetCdnUrl;
 
 // Har virtual game ka cards layout: bettingData.card (comma codes) se columns.
 function getColumns(slug, cards) {
@@ -155,7 +156,6 @@ const aaaWinnerFromCard = (code) => {
 const VirtualGameScreen = memo(function VirtualGameScreen({
   slug,
   bettingData,
-  showWinner,
   winnerLabel,
 }) {
   const cards = String(bettingData?.card || '')
@@ -286,9 +286,7 @@ const VirtualGameScreen = memo(function VirtualGameScreen({
         </div>
       )}
 
-      <div className='clock flip-clock-wrapper'>
-        <FlipClock seconds={bettingData?.lt} />
-      </div>
+      <FlipClock seconds={bettingData?.lt} className='clock' />
     </div>
   );
 });

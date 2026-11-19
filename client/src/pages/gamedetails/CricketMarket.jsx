@@ -3,7 +3,11 @@ import React from 'react';
 import {
   isMarketSuspended,
   isRunnerSuspended as runnerSuspendedByGscode,
+  marketSuspensionText,
+  runnerSuspensionText,
 } from '../../utils/suspension';
+import SuspendedOverlay from './components/SuspendedOverlay';
+import { formatOddsSize } from './utils/marketHelpers';
 import { computeNetOutcome } from './utils/marketNetOutcome';
 
 const formatValue = (value) => {
@@ -77,6 +81,10 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
   // Reference: suspension is gscode-only (status string is just overlay text).
   const marketUnavailable = isMarketSuspended(market);
   const isRunnerSuspended = (runner) => runnerSuspendedByGscode(market, runner);
+  const getSuspensionLabel = (runner) =>
+    marketUnavailable
+      ? marketSuspensionText(market)
+      : runnerSuspensionText(runner);
 
   const hasLay = runners.some((r) =>
     (r.odds || []).some((o) => o.otype === 'lay' && Number(o.odds) > 0)
@@ -117,8 +125,38 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
     )
   );
 
-  // Compact odds columns (max 56px, Bookmaker jaisa); naam ka column flexible
-  const gridTemplate = `minmax(0,1fr) repeat(${depth}, minmax(0,56px)) repeat(${depth}, minmax(0,56px))`;
+  // D247 responsive grid: mobile (<md) shows 1 Back + 1 Lay so runner names never
+  // squash vertically; desktop (md+) shows full depth (1+1, 2+2, or 3+3).
+  const gridClass =
+    depth >= 3
+      ? 'grid-cols-[minmax(0,1fr)_64px_64px] md:grid-cols-[minmax(140px,1fr)_repeat(6,60px)]'
+      : depth === 2
+        ? 'grid-cols-[minmax(0,1fr)_64px_64px] md:grid-cols-[minmax(140px,1fr)_repeat(4,60px)]'
+        : 'grid-cols-[minmax(0,1fr)_64px_64px] md:grid-cols-[minmax(120px,1fr)_64px_64px]';
+
+  // Right-align Back odds (tno desc: back3, back2, back1) and left-align Lay odds
+  // (tno asc: lay1, lay2, lay3) so best Back & best Lay always sit adjacent.
+  const alignBackLaySlots = (odds = []) => {
+    const rawBacks = (odds || [])
+      .filter((o) => o.otype === 'back')
+      .sort((a, b) => Number(b.tno ?? 0) - Number(a.tno ?? 0))
+      .slice(-depth);
+    const backSlots = Array(depth).fill(null);
+    rawBacks.forEach((o, i) => {
+      backSlots[depth - rawBacks.length + i] = o;
+    });
+
+    const rawLays = (odds || [])
+      .filter((o) => o.otype === 'lay')
+      .sort((a, b) => Number(a.tno ?? 0) - Number(b.tno ?? 0))
+      .slice(0, depth);
+    const laySlots = Array.from(
+      { length: depth },
+      (_, i) => rawLays[i] || null
+    );
+
+    return { backSlots, laySlots };
+  };
 
   const selectOdds = (runner, odd) => {
     if (
@@ -247,11 +285,7 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
             {sideBox(over, 'Over')}
           </div>
           {suspended && (
-            <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-              <span className='text-[13px] font-bold tracking-wide text-red-600'>
-                SUSPENDED
-              </span>
-            </div>
+            <SuspendedOverlay label={getSuspensionLabel(under)} compact />
           )}
         </div>
       </section>
@@ -321,11 +355,10 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
                   )}
                 </button>
                 {suspended && (
-                  <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-                    <span className='text-[10px] font-bold tracking-wide text-red-600'>
-                      SUSPENDED
-                    </span>
-                  </div>
+                  <SuspendedOverlay
+                    label={getSuspensionLabel(runner)}
+                    compact
+                  />
                 )}
               </div>
             </div>
@@ -362,7 +395,14 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
     };
 
     const selectSession = (runner, odd) => {
-      if (!odd || Number(odd.odds) <= 0 || marketUnavailable) return;
+      if (
+        !odd ||
+        Number(odd.odds) <= 0 ||
+        marketUnavailable ||
+        isRunnerSuspended(runner)
+      ) {
+        return;
+      }
       const name = runner.nat || runner.tname || `Selection ${runner.sid}`;
       const sessionGameType =
         resolvedGameType === 'fancy1'
@@ -386,39 +426,27 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
       });
     };
 
-    const sessionBox = (runner, odd, color) => {
-      const suspended = marketUnavailable || isRunnerSuspended(runner);
-      return (
-        <div className='relative'>
-          <button
-            key={`${runner.sid}-${color}-${odd?.odds ?? 'x'}`}
-            type='button'
-            disabled={!odd || suspended}
-            onClick={() => selectSession(runner, odd)}
-            style={{ backgroundColor: color }}
-            className={`odds-flash flex min-h-[34px] w-full flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
-              odd && !suspended
-                ? 'cursor-pointer hover:brightness-95'
-                : 'cursor-default'
-            } ${suspended ? 'opacity-40' : ''}`}
-          >
-            <span className='text-[15px] leading-tight font-bold'>
-              {formatValue(odd?.odds)}
-            </span>
-            {odd && Number(odd.size) > 0 && (
-              <span className='text-[10px]'>{formatValue(odd.size)}</span>
-            )}
-          </button>
-          {suspended && (
-            <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-              <span className='text-[10px] font-bold tracking-wide text-red-600'>
-                SUSPENDED
-              </span>
-            </div>
-          )}
-        </div>
-      );
-    };
+    const sessionBox = (runner, odd, color, suspended) => (
+      <button
+        key={`${runner.sid}-${color}-${odd?.odds ?? 'x'}`}
+        type='button'
+        disabled={!odd || suspended}
+        onClick={() => selectSession(runner, odd)}
+        style={{ backgroundColor: color }}
+        className={`odds-flash flex min-h-[34px] w-full flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
+          odd && !suspended
+            ? 'cursor-pointer hover:brightness-95'
+            : 'cursor-default'
+        }`}
+      >
+        <span className='text-[15px] leading-tight font-bold'>
+          {formatValue(odd?.odds)}
+        </span>
+        {odd && Number(odd.size) > 0 && (
+          <span className='text-[10px]'>{formatValue(odd.size)}</span>
+        )}
+      </button>
+    );
 
     const sessionGrid =
       'grid grid-cols-[minmax(0,1fr)_60px_60px] border-b border-gray-300 lg:grid-cols-[minmax(0,1fr)_60px_60px_70px]';
@@ -470,16 +498,37 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
                   </span>
                 )}
               </div>
-              {sessionBox(runner, leftOdd, leftColor)}
-              {sessionBox(runner, rightOdd, rightColor)}
-              <div className='hidden flex-col items-center justify-center lg:flex'>
-                <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
-                  Min:{formatMarketMax(runner.min)}
-                </span>
-                <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
-                  Max:{formatMarketMax(runner.max)}
-                </span>
-              </div>
+              {marketUnavailable || isRunnerSuspended(runner) ? (
+                <div className='relative col-span-2 grid grid-cols-2 lg:col-span-3 lg:grid-cols-3'>
+                  {sessionBox(runner, leftOdd, leftColor, true)}
+                  {sessionBox(runner, rightOdd, rightColor, true)}
+                  <div className='hidden flex-col items-center justify-center lg:flex'>
+                    <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
+                      Min:{formatMarketMax(runner.min)}
+                    </span>
+                    <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
+                      Max:{formatMarketMax(runner.max)}
+                    </span>
+                  </div>
+                  <SuspendedOverlay
+                    label={getSuspensionLabel(runner)}
+                    compact
+                  />
+                </div>
+              ) : (
+                <>
+                  {sessionBox(runner, leftOdd, leftColor, false)}
+                  {sessionBox(runner, rightOdd, rightColor, false)}
+                  <div className='hidden flex-col items-center justify-center lg:flex'>
+                    <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
+                      Min:{formatMarketMax(runner.min)}
+                    </span>
+                    <span className='text-[10px] leading-4 font-bold text-[#097c93]'>
+                      Max:{formatMarketMax(runner.max)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           );
         })}
@@ -487,9 +536,10 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
     );
   }
 
-  // ---------------- Back + Lay depth grid (reference market-1) ----------------
+  // ---------------- Back + Lay depth grid (reference market-1/2/4) ----------------
   const renderOddButton = (runner, odd, type, slot) => {
     const colors = type === 'back' ? BACK_COLORS : LAY_COLORS;
+    const isPrimarySlot = type === 'back' ? slot === depth - 1 : slot === 0;
     return (
       <button
         key={`${type}-${runner.sid}-${slot}-${odd?.odds ?? 'x'}`}
@@ -500,38 +550,43 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
           backgroundColor:
             colors[depthLevel(odd, slot, depth, type === 'back')],
         }}
-        className={`odds-flash flex min-h-[38px] flex-col items-center justify-center border-l border-white px-1 text-[#333] ${
+        className={`odds-flash ${isPrimarySlot ? 'flex' : 'hidden md:flex'} min-h-[42px] min-w-0 flex-col items-center justify-center overflow-hidden border-l border-white px-0.5 text-[#333] ${
           odd && Number(odd.odds) > 0 && !marketUnavailable
             ? 'cursor-pointer hover:brightness-95'
             : 'cursor-default'
         }`}
       >
-        <span className='text-[15px] leading-tight font-bold'>
+        <span className='truncate text-[14px] leading-tight font-bold lg:text-[15px]'>
           {formatValue(odd?.odds)}
         </span>
         {odd && Number(odd.size) > 0 && (
-          <span className='text-[10px]'>{formatValue(odd.size)}</span>
+          <span className='truncate text-[10px] leading-tight'>
+            {formatOddsSize(odd.size)}
+          </span>
         )}
       </button>
     );
   };
 
   return (
-    <section className='mt-1 min-w-0' aria-label={marketName}>
+    <section
+      className='mt-1 min-w-0 overflow-hidden bg-white'
+      aria-label={marketName}
+    >
       {titleBar}
       <div
-        className='grid border-b border-gray-300 text-center text-xs font-bold text-[#333]'
-        style={{ gridTemplateColumns: gridTemplate }}
+        className={`grid ${gridClass} border-b border-gray-300 text-center text-xs font-bold text-[#333]`}
       >
-        <div />
-        {/* Bookmaker jaisa: Back/Lay single column best odds ke upar */}
+        <div className='flex items-center px-2 text-left text-[11px] font-bold text-[#097c93]'>
+          {marketMax > 0 ? `Max: ${formatMarketMax(marketMax)}` : ''}
+        </div>
         {Array.from({ length: depth - 1 }, (_, i) => (
-          <div key={`hb-${i}`} />
+          <div key={`hb-${i}`} className='hidden md:block' />
         ))}
         <div className='bg-[#72bbef] p-1'>Back</div>
         <div className='bg-[#faa9ba] p-1'>Lay</div>
         {Array.from({ length: depth - 1 }, (_, i) => (
-          <div key={`hl-${i}`} />
+          <div key={`hl-${i}`} className='hidden md:block' />
         ))}
       </div>
 
@@ -539,22 +594,17 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
         const runnerName =
           runner.nat || runner.tname || `Selection ${runner.sid || index + 1}`;
         const suspended = marketUnavailable || isRunnerSuspended(runner);
-        const odds = Array.isArray(runner.odds) ? runner.odds : [];
-        const backOdds = odds
-          .filter((odd) => odd.otype === 'back')
-          .slice(0, depth);
-        const layOdds = odds
-          .filter((odd) => odd.otype === 'lay')
-          .slice(0, depth);
+        const { backSlots, laySlots } = alignBackLaySlots(runner.odds);
 
         return (
           <div
             key={runner.sid || `${runnerName}-${index}`}
-            className='grid border-b border-gray-300'
-            style={{ gridTemplateColumns: gridTemplate }}
+            className={`grid ${gridClass} border-b border-gray-300 hover:bg-[#f7f7f7]`}
           >
-            <div className='flex min-w-0 flex-col justify-center px-2 py-2 text-xs font-semibold text-[#333] sm:text-sm'>
-              <span className='break-words'>{runnerName}</span>
+            <div className='flex min-w-0 flex-col justify-center overflow-hidden px-2 py-2 text-xs font-semibold text-[#333] sm:text-sm'>
+              <span className='truncate' title={runnerName}>
+                {runnerName}
+              </span>
               {runnerNetPL(runnerName) !== null && (
                 <span
                   className={`text-[11px] font-bold ${
@@ -570,21 +620,31 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
               )}
             </div>
             {suspended ? (
-              // Reference style: dimmed odds with a red SUSPENDED overlay
               <div
-                className='relative'
-                style={{ gridColumn: `2 / span ${depth * 2}` }}
+                className={`relative col-span-2 ${
+                  depth >= 3
+                    ? 'md:col-span-6'
+                    : depth === 2
+                      ? 'md:col-span-4'
+                      : 'md:col-span-2'
+                }`}
               >
                 <div
-                  className='grid opacity-40'
-                  style={{
-                    gridTemplateColumns: `repeat(${depth * 2}, minmax(0,1fr))`,
-                  }}
+                  className={`grid grid-cols-2 opacity-40 ${
+                    depth >= 3
+                      ? 'md:grid-cols-6'
+                      : depth === 2
+                        ? 'md:grid-cols-4'
+                        : 'md:grid-cols-2'
+                  }`}
                 >
                   {Array.from({ length: depth * 2 }, (_, i) => {
                     const isBack = i < depth;
                     const slot = isBack ? i : i - depth;
-                    const odd = isBack ? backOdds[slot] : layOdds[slot];
+                    const isPrimarySlot = isBack
+                      ? slot === depth - 1
+                      : slot === 0;
+                    const odd = isBack ? backSlots[slot] : laySlots[slot];
                     const colors = isBack ? BACK_COLORS : LAY_COLORS;
                     return (
                       <div
@@ -593,33 +653,29 @@ function CricketMarket({ market, onBetSelect, pendingBetAmounts }) {
                           backgroundColor:
                             colors[depthLevel(odd, slot, depth, isBack)],
                         }}
-                        className='flex min-h-[38px] flex-col items-center justify-center border-l border-white px-1 text-[#333]'
+                        className={`${isPrimarySlot ? 'flex' : 'hidden md:flex'} min-h-[42px] flex-col items-center justify-center overflow-hidden border-l border-white px-0.5 text-[#333]`}
                       >
-                        <span className='text-[15px] leading-tight font-bold'>
+                        <span className='text-[14px] leading-tight font-bold'>
                           {formatValue(odd?.odds)}
                         </span>
                         {odd && Number(odd.size) > 0 && (
-                          <span className='text-[10px]'>
-                            {formatValue(odd.size)}
+                          <span className='text-[10px] leading-tight'>
+                            {formatOddsSize(odd.size)}
                           </span>
                         )}
                       </div>
                     );
                   })}
                 </div>
-                <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-                  <span className='text-[13px] font-bold tracking-wide text-red-600'>
-                    SUSPENDED
-                  </span>
-                </div>
+                <SuspendedOverlay label={getSuspensionLabel(runner)} />
               </div>
             ) : (
               <>
                 {Array.from({ length: depth }, (_, slot) =>
-                  renderOddButton(runner, backOdds[slot], 'back', slot)
+                  renderOddButton(runner, backSlots[slot], 'back', slot)
                 )}
                 {Array.from({ length: depth }, (_, slot) =>
-                  renderOddButton(runner, layOdds[slot], 'lay', slot)
+                  renderOddButton(runner, laySlots[slot], 'lay', slot)
                 )}
               </>
             )}

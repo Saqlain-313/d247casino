@@ -3,16 +3,17 @@ import { host } from '../../redux/api';
 import CricketCard from './CricketCard';
 import FlipClock from './FlipClock';
 
-// Cricket-casino (cricketv) live game screen — reference /casino/cricketv3 jaisa.
-// Video box (inplay -> live iframe, warna "Match will be start soon" banner) +
-// cards overlay (.casino-video-cards) + FlipClock countdown (.clock).
-// Cards/countdown WebSocket se (apitype 'cricket-casino', 1s inplay / 10s idle).
+// Exact D247 cricketvDetails (iscc 1, reference @9239496 + @9254477):
+// Wrapped in `.five-cricket` so D247 card sizing (34x44 desktop / 18x24 mobile)
+// and left-aligned `.flip-card-container` apply identically to D247.
+// Cards update only when `t1.card` is non-empty; FlipClock mirrors server `lt`.
 function CricketCasinoLive({ gmid, tvUrl, inplay, hasTv }) {
-  const [feed, setFeed] = useState(null);
+  const [cards, setCards] = useState([]);
+  const [leftTime, setLeftTime] = useState(null);
   const wsRef = useRef(null);
 
   useEffect(() => {
-    if (!gmid) return;
+    if (!gmid) return undefined;
 
     const ws = new WebSocket(host);
     wsRef.current = ws;
@@ -35,7 +36,17 @@ function CricketCasinoLive({ gmid, tvUrl, inplay, hasTv }) {
           String(msg.gameid) === String(gmid)
         ) {
           const t1 = msg.data?.t1;
-          setFeed(t1 && t1.card ? t1 : null);
+          if (!t1) return;
+          if (t1.card !== undefined && String(t1.card).trim() !== '') {
+            const parsed = String(t1.card)
+              .split('|')
+              .map((seg) => seg.split(',').filter((s) => s !== ''))
+              .filter((row) => row.length > 0);
+            setCards(parsed);
+          }
+          if (t1.lt !== undefined && t1.lt !== null) {
+            setLeftTime(Number(t1.lt) || 0);
+          }
         }
       } catch {
         /* ignore malformed frame */
@@ -58,73 +69,68 @@ function CricketCasinoLive({ gmid, tvUrl, inplay, hasTv }) {
       ws.onclose = null;
       ws.close();
       wsRef.current = null;
+      setCards([]);
+      setLeftTime(null);
     };
   }, [gmid]);
 
-  const rows = feed?.card
-    ? String(feed.card)
-        .split('|')
-        .map((seg) => seg.split(',').filter((s) => s !== ''))
-        .filter((row) => row.length > 0)
-    : [];
-  const hasCards = rows.length > 0;
-  // Live TV sirf jab event me tv flag ho (iscc 1 cricketv me tv=0 hota hy —
-  // reference wahan casino launchother stream use karta hy jo hamare pass nahi).
-  const showVideo = Boolean(inplay && hasTv && tvUrl);
+  const hasCards = cards.length > 0;
+  const isPreMatch = inplay === false;
+  const showVideo = Boolean(!isPreMatch && hasTv && tvUrl);
 
   return (
-    <div className='casino-video mt-1 overflow-hidden'>
-      {/* Video box (right-aligned 16:9) — live iframe ya pre-match banner */}
-      <div className='video-box-container'>
-        <div className='casino-video-box'>
-          {showVideo ? (
-            <iframe
-              src={tvUrl}
-              title='Cricket Casino Live'
-              allow='autoplay; encrypted-media; picture-in-picture'
-              allowFullScreen
-            />
-          ) : (
-            <div className='five-video-baner absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_30%,#1c1c1c,#000_75%)]'>
-              {!inplay && (
-                <div className='animate-text text-[16px] font-bold tracking-wide text-white'>
-                  {'Match will be start soon'.split('').map((ch, i) => (
-                    <span
-                      key={i}
-                      style={{ animationDelay: `${i * 0.06}s` }}
-                      className='inline-block animate-bounce'
-                    >
-                      {ch === ' ' ? ' ' : ch}
-                    </span>
+    <div className='five-cricket mt-1'>
+      <div className='casino-video overflow-hidden'>
+        {/* Video box (right-aligned 16:9) — live iframe ya pre-match banner */}
+        <div className='video-box-container'>
+          <div className='casino-video-box'>
+            {showVideo ? (
+              <iframe
+                src={tvUrl}
+                title='Cricket Casino Live'
+                allow='autoplay; encrypted-media; picture-in-picture'
+                allowFullScreen
+              />
+            ) : (
+              <div className='five-video-baner absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_30%,#1c1c1c,#000_75%)]'>
+                {isPreMatch && (
+                  <div className='animate-text text-[16px] font-bold tracking-wide text-white'>
+                    {'Match will be start soon'.split('').map((ch, i) => (
+                      <span
+                        key={i}
+                        style={{ animationDelay: `${i * 0.06}s` }}
+                        className='inline-block animate-bounce'
+                      >
+                        {ch === ' ' ? ' ' : ch}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Cards overlay — top-left vertical ball rows (reference @9254477) */}
+        {hasCards && (
+          <div className='casino-video-cards pointer-events-none'>
+            {cards.map((row, i) => (
+              <div className='mt-1' key={i}>
+                <div className='flip-card-container'>
+                  {row.map((card, j) => (
+                    <CricketCard card={card} key={j} />
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Cards overlay — video ke upar top-left translucent panel (reference) */}
-      {hasCards && (
-        <div className='casino-video-cards pointer-events-none'>
-          {rows.map((row, i) => (
-            <div className='mt-1' key={i}>
-              <div className='flip-card-container'>
-                {row.map((card, j) => (
-                  <CricketCard card={card} key={`${card}-${j}`} />
-                ))}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* FlipClock countdown — bottom-right (reference .clock) */}
-      {feed && (
-        <div className='clock flip-clock-wrapper right-2 max-w-full'>
-          <FlipClock seconds={feed.lt} />
-        </div>
-      )}
+        {/* FlipClock countdown — exact D247 single `.clock.flip-clock-wrapper` */}
+        {leftTime !== null && (
+          <FlipClock seconds={leftTime} className='clock' />
+        )}
+      </div>
     </div>
   );
 }

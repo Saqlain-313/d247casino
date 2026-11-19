@@ -34,51 +34,27 @@ async function settleFancyBet(bet, user, actualScore) {
       };
     }
 
-    // Determine win: back wins if score >= fancyScore, lay wins if score < fancyScore
-    const isWin =
-      bet.otype === 'back' ? score >= fancyScore : score < fancyScore;
+    // Determine win:
+    // - D247 Khado with khadoLayOdds > 0: range bet [fancyScore, fancyScore + khadoLayOdds - 1]
+    // - Standard fancy (Normal/meter/line/ball): back wins if score >= fancyScore, lay wins if score < fancyScore
+    const khadoRange =
+      bet.gameType === 'khado' ? parseFloat(bet.khadoLayOdds) : Number.NaN;
+    const scoreHits =
+      Number.isFinite(khadoRange) && khadoRange > 0
+        ? score >= fancyScore && score <= fancyScore + khadoRange - 1
+        : score >= fancyScore;
+    const isWin = bet.otype === 'back' ? scoreHits : !scoreHits;
 
-    let balanceChange = 0;
-    let avBalanceChange = 0;
-    let profitLossChange = 0;
-    let resultAmount = 0;
-    let status = 0;
-
-    // Same offset/normal logic as sports bets
-    if (isWin) {
-      if (bet.betAmount < 0) {
-        // Offset bet wins (loss scenario)
-        balanceChange = bet.betAmount;
-        avBalanceChange = 0;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 2; // LOSS
-      } else {
-        // Normal bet wins
-        const winAmount = bet.betAmount + bet.price;
-        balanceChange = bet.betAmount;
-        avBalanceChange = winAmount;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 1; // WIN
-      }
-    } else {
-      if (bet.betAmount < 0) {
-        // Offset bet loses (break even)
-        balanceChange = 0;
-        avBalanceChange = -bet.betAmount;
-        profitLossChange = 0;
-        resultAmount = 0;
-        status = 1; // WIN (break even)
-      } else {
-        // Normal bet loses
-        balanceChange = -bet.price;
-        avBalanceChange = -bet.price;
-        profitLossChange = -bet.price;
-        resultAmount = Math.abs(bet.price);
-        status = 2; // LOSS
-      }
-    }
+    // Unified P&L handles normal, hedged/green-book (price < 0), and red-book (betAmount < 0):
+    // win -> +betAmount; lose -> -price.
+    const rawPnl = isWin ? Number(bet.betAmount || 0) : -Number(bet.price || 0);
+    const pnl = rawPnl === 0 ? 0 : rawPnl;
+    const status = pnl >= 0 ? 1 : 2;
+    const balanceChange = pnl;
+    const profitLossChange = pnl;
+    const resultAmount = Math.abs(pnl);
+    const avBalanceChange =
+      pnl >= 0 ? Math.max(0, pnl) + Math.max(0, Number(bet.price || 0)) : pnl;
 
     // NOTE: User updates are applied via atomic $inc in the controller, not here
     // This prevents lost updates from concurrent cron jobs
@@ -130,42 +106,14 @@ async function settleFancy1Bet(bet, user, rawResult) {
     const yesHappened = normalized === '1';
     const isWin = bet.otype === 'back' ? yesHappened : !yesHappened;
 
-    let balanceChange = 0;
-    let avBalanceChange = 0;
-    let profitLossChange = 0;
-    let resultAmount = 0;
-    let status = 0;
-
-    if (isWin) {
-      if (bet.betAmount < 0) {
-        balanceChange = bet.betAmount;
-        avBalanceChange = 0;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 2;
-      } else {
-        const winAmount = bet.betAmount + bet.price;
-        balanceChange = bet.betAmount;
-        avBalanceChange = winAmount;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 1;
-      }
-    } else {
-      if (bet.betAmount < 0) {
-        balanceChange = 0;
-        avBalanceChange = -bet.betAmount;
-        profitLossChange = 0;
-        resultAmount = 0;
-        status = 1;
-      } else {
-        balanceChange = -bet.price;
-        avBalanceChange = -bet.price;
-        profitLossChange = -bet.price;
-        resultAmount = Math.abs(bet.price);
-        status = 2;
-      }
-    }
+    const rawPnl = isWin ? Number(bet.betAmount || 0) : -Number(bet.price || 0);
+    const pnl = rawPnl === 0 ? 0 : rawPnl;
+    const status = pnl >= 0 ? 1 : 2;
+    const balanceChange = pnl;
+    const profitLossChange = pnl;
+    const resultAmount = Math.abs(pnl);
+    const avBalanceChange =
+      pnl >= 0 ? Math.max(0, pnl) + Math.max(0, Number(bet.price || 0)) : pnl;
 
     return {
       success: true,
@@ -232,42 +180,14 @@ async function settleOddEvenBet(bet, user, rawResult) {
     const betSide = (bet.teamName || '').trim().toLowerCase();
     const isWin = betSide === winningSide;
 
-    let balanceChange = 0;
-    let avBalanceChange = 0;
-    let profitLossChange = 0;
-    let resultAmount = 0;
-    let status = 0;
-
-    if (isWin) {
-      if (bet.betAmount < 0) {
-        balanceChange = bet.betAmount;
-        avBalanceChange = 0;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 2;
-      } else {
-        const winAmount = bet.betAmount + bet.price;
-        balanceChange = bet.betAmount;
-        avBalanceChange = winAmount;
-        profitLossChange = bet.betAmount;
-        resultAmount = Math.abs(bet.betAmount);
-        status = 1;
-      }
-    } else {
-      if (bet.betAmount < 0) {
-        balanceChange = 0;
-        avBalanceChange = -bet.betAmount;
-        profitLossChange = 0;
-        resultAmount = 0;
-        status = 1;
-      } else {
-        balanceChange = -bet.price;
-        avBalanceChange = -bet.price;
-        profitLossChange = -bet.price;
-        resultAmount = Math.abs(bet.price);
-        status = 2;
-      }
-    }
+    const rawPnl = isWin ? Number(bet.betAmount || 0) : -Number(bet.price || 0);
+    const pnl = rawPnl === 0 ? 0 : rawPnl;
+    const status = pnl >= 0 ? 1 : 2;
+    const balanceChange = pnl;
+    const profitLossChange = pnl;
+    const resultAmount = Math.abs(pnl);
+    const avBalanceChange =
+      pnl >= 0 ? Math.max(0, pnl) + Math.max(0, Number(bet.price || 0)) : pnl;
 
     return {
       success: true,

@@ -22,7 +22,6 @@ import {
 } from '../services/matchApi/index.js';
 import {
   calculateCashoutValue,
-  CASHOUT_GAME_TYPES,
   isCashoutEligible,
 } from '../utils/cashoutUtils.js';
 
@@ -90,11 +89,12 @@ const getUniqueSubscriptions = () => {
  */
 const computeAndPushCashoutValues = async (gameid) => {
   try {
-    // Find all open, cashout-eligible bets for this game
+    // Find all open non-casino sports bets for this game; eligibility is verified
+    // per-market via D247 schema (gtype in {match, match1}, runnerCount === 2, gscode === 1).
     const openBets = await betModel.find({
       gameId: gameid,
       status: 0,
-      gameType: { $in: CASHOUT_GAME_TYPES },
+      betType: { $ne: 'casino' },
       isCashoutHedge: { $ne: true },
       isCashedOut: { $ne: true },
     });
@@ -109,16 +109,24 @@ const computeAndPushCashoutValues = async (gameid) => {
       betsByUser.get(uid).push(bet);
     }
 
-    // For each user, calculate cashout per bet and push
+    // For each user, calculate cashout per eligible open 2-runner match/match1 bet
     for (const [uid, userBets] of betsByUser) {
       const cashoutData = [];
 
       for (const bet of userBets) {
-        const { bestLay, bestBack } = getBestOddsForTeam(
+        const { bestLay, bestBack, liveMarket } = getBestOddsForTeam(
           bet.gameId,
           bet.gameName,
-          bet.teamName
+          bet.teamName,
+          { marketName: bet.marketName, gType: bet.gType }
         );
+        if (
+          !liveMarket ||
+          !liveMarket.isOpen ||
+          !isCashoutEligible(bet, liveMarket)
+        ) {
+          continue;
+        }
         const value = calculateCashoutValue([bet], bestLay, bestBack);
         if (value !== null) {
           cashoutData.push({
@@ -408,7 +416,7 @@ const pollCricketCasinoData = async () => {
           return;
         }
         try {
-          const res = await getCricketCasino(gameid, 900);
+          const res = await getCricketCasino(gameid, 300);
           cricketCasinoLastPoll.set(pollKey, Date.now());
           cricketCasinoInplay.set(pollKey, Boolean(res?.success));
           if (!res?.success || !res.data) return;
@@ -525,7 +533,7 @@ export const setupWebSocket = (server) => {
             refreshCasinoResult(client.gameid);
           }
 
-          // Cricket-casino subscriber ko latest cached feed turant bhejo.
+          // Cricket-casino subscriber ko latest cached feed turant bhejo + immediate refresh.
           if (client.apitype === 'cricket-casino') {
             const latest = cachedData[`cricketcasino_${client.gameid}`];
             if (latest && ws.readyState === 1) {
@@ -538,6 +546,7 @@ export const setupWebSocket = (server) => {
                 })
               );
             }
+            pollCricketCasinoData();
           }
 
           // Live scorecard: viewers share one provider feed per event
@@ -575,8 +584,8 @@ export const setupWebSocket = (server) => {
   setInterval(pollCasinoBettingData, 1000);
   // Casino result har 5s (session-complete pe upar turant trigger hota hy).
   setInterval(pollCasinoResultData, 5000);
-  // Cricket-casino high-frequency feed: 1s tick (inplay 1s / non-inplay 10s).
-  setInterval(pollCricketCasinoData, 1000);
+  // Cricket-casino high-frequency feed: 500ms tick (broadcasts only on diff).
+  setInterval(pollCricketCasinoData, 500);
 
   // Live scorecards: one shared provider feed, refreshed every 5s per active event
   startLiveScoreFeed({

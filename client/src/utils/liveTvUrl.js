@@ -1,9 +1,10 @@
-const LIVE_TV_BASE_URL =
-  import.meta.env.VITE_LIVE_TV_URL ||
-  // 'https://e765432.diamondcricketid.com/dtv.php';
-  'https://tv.nautical7.com/stream';
+import env from '../config/env';
 
 export const getLiveTvUrl = (etid, id) => {
-  if (!id) return '';
-  return `${LIVE_TV_BASE_URL}/${etid}_${id}?key=tvk_Nlz_0My2Hc2SXS3sqZPNqJTOrt-qyiWy`;
+  if (!id || !env.liveTvUrl) return '';
+  if (!env.liveTvKey) {
+    return `${env.liveTvUrl}/${etid}_${id}`;
+  }
+  const params = new URLSearchParams({ key: env.liveTvKey });
+  return `${env.liveTvUrl}/${etid}_${id}?${params.toString()}`;
 };

@@ -5,7 +5,6 @@ import {
   createfancyBet,
   getPendingBetAmo,
   getBetHistory,
-  messageClear,
 } from '../../redux/reducer/betReducer';
 import { getUser } from '../../redux/reducer/authReducer';
 import { toast } from 'react-toastify';
@@ -28,16 +27,10 @@ function PlaceBet({
   minAmount,
   fancyScore,
 }) {
-  console.log('selectedBet', selectedBet);
   const dispatch = useDispatch();
-  const {
-    loading,
-    errorMessage,
-    successMessage,
-    pendingBetAmounts,
-    pendingBet,
-    cashoutPL,
-  } = useSelector((state) => state.bet);
+  const { loading, pendingBetAmounts, pendingBet, cashoutPL } = useSelector(
+    (state) => state.bet
+  );
   const { userInfo } = useSelector((state) => state.auth);
 
   const DEFAULT_GAME_STAKES = [
@@ -71,11 +64,23 @@ function PlaceBet({
   const [betFor, setBetFor] = useState(selectedBet?.team || '');
   const [betType, setBetType] = useState(selectedBet?.type || ''); // 'back' or 'lay'
   const [showEditButtons, setShowEditButtons] = useState(false);
-  const prevBetKeyRef = React.useRef('');
+  const currentBetKey = selectedBet
+    ? `${selectedBet.team}-${selectedBet.odds}-${selectedBet.sid}-${selectedBet.type}`
+    : '';
+  const [syncedBetKey, setSyncedBetKey] = useState(currentBetKey);
   const autoCloseTimerRef = React.useRef(null);
   const onCloseRef = React.useRef(onClose);
   const loadingRef = React.useRef(loading);
   const editModalOpenRef = React.useRef(false);
+
+  // Sync local slip fields when a different bet selection is clicked (React render-phase pattern)
+  if (selectedBet && currentBetKey !== syncedBetKey) {
+    setSyncedBetKey(currentBetKey);
+    setBetFor(selectedBet.team || '');
+    setOdds(selectedBet.odds || '');
+    setBetType(selectedBet.type || '');
+    setStake('');
+  }
 
   useEffect(() => {
     editModalOpenRef.current = showEditButtons;
@@ -90,23 +95,6 @@ function PlaceBet({
   useEffect(() => {
     loadingRef.current = loading;
   }, [loading]);
-
-  useEffect(() => {
-    if (selectedBet) {
-      // Create a unique key for the bet selection (excluding stake)
-      const currentBetKey = `${selectedBet.team}-${selectedBet.odds}-${selectedBet.sid}-${selectedBet.type}`;
-
-      // Only reset stake if the bet selection actually changed (different team/odds/sid)
-      if (currentBetKey !== prevBetKeyRef.current) {
-        setBetFor(selectedBet.team || '');
-        setOdds(selectedBet.odds || '');
-        setBetType(selectedBet.type || '');
-        setStake(''); // Reset stake when bet selection changes
-        prevBetKeyRef.current = currentBetKey;
-      }
-      // Don't update stake from selectedBet when user is typing - let local state handle it
-    }
-  }, [selectedBet]);
 
   // Toast messages are now handled in the parent component (CricketBet/FootballBet/TennisBet)
   // to prevent duplicate toasts from multiple PlaceBet component instances
@@ -460,7 +448,6 @@ function PlaceBet({
         p = stakeNum;
         x = oddsNum;
         b = p * (x / 100);
-        p = p;
       } else if (isBookmaker) {
         // Bookmaker calculation: b = otype === 'lay' ? p : p * (x / 100)
         // p = otype === 'lay' ? p * (x / 100) : p
@@ -681,13 +668,6 @@ function PlaceBet({
         ? [team1, team2]
         : [];
 
-  // Get the other team name (for backward compatibility)
-  const getOtherTeam = () => {
-    if (!team1 || !team2) return '';
-    return betFor === team1 ? team2 : team1;
-  };
-
-  const otherTeam = getOtherTeam();
   const isOddEvenMarket =
     gameType === 'oddeven' || selectedBet?.gameType === 'oddeven';
 
@@ -734,7 +714,9 @@ function PlaceBet({
     setOdds(value);
     resetAutoCloseTimer(); // Reset timer on interaction
     if (selectedBet) {
-      prevBetKeyRef.current = `${selectedBet.team}-${value}-${selectedBet.sid}-${selectedBet.type}`;
+      setSyncedBetKey(
+        `${selectedBet.team}-${value}-${selectedBet.sid}-${selectedBet.type}`
+      );
       if (onBetChange) {
         onBetChange({ ...selectedBet, odds: value, stake });
       }
@@ -755,9 +737,10 @@ function PlaceBet({
   const canStepOdds =
     !isHorseRacingBet &&
     !isBookmakerStyleMarket() &&
-    !isFancySessionMarket &&
-    gameType !== 'oddeven' &&
-    gameType !== 'fancy1';
+    (gameType === 'khado' ||
+      (!isFancySessionMarket &&
+        gameType !== 'oddeven' &&
+        gameType !== 'fancy1'));
 
   // D247 Betfair odds tick ladder (pA in reference chunk)
   const getBetfairTickStep = (rate) => {
@@ -895,6 +878,9 @@ function PlaceBet({
       gameName: gameName,
       teamName: betFor,
       fancyScore: finalFancyScore,
+      ...(selectedBet?.khadoLayOdds != null
+        ? { khadoLayOdds: selectedBet.khadoLayOdds }
+        : {}),
     };
 
     try {

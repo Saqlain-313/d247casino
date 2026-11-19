@@ -496,13 +496,13 @@
   height: 100% !important;
   text-align: center !important;
   transform-style: preserve-3d !important;
-  transition: transform 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
-/* Flipped State */
+/* Flipped State — transition ONLY on .flip so reset to 0deg is invisible (D247 style.css @4544) */
 .flip-card-inner.flip,
 .flip-card.is-flipped .flip-card-inner {
   transform: rotateY(180deg) !important;
+  transition: transform 0.6s !important;
 }
 
 .flip-card-front,
@@ -2186,4 +2186,11 @@ body {
 .five-cricket .casino-video-cards .flip-card {
   width: 34px;
   height: 44px;
+}
+
+@media (max-width: 767px) {
+  .five-cricket .casino-video-cards .flip-card {
+    width: 18px;
+    height: 24px;
+  }
 }

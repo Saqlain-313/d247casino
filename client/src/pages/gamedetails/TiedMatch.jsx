@@ -2,18 +2,15 @@ import { useState } from 'react';
 import {
   isMarketSuspended as marketSuspendedByGscode,
   isRunnerSuspended as runnerSuspendedByGscode,
+  marketSuspensionText,
+  runnerSuspensionText,
 } from '../../utils/suspension';
+import SuspendedOverlay from './components/SuspendedOverlay';
 import TeamOutcomeLabels from './components/TeamOutcomeLabels';
 import { useMarketNetOutcome } from './hooks/useMarketNetOutcome';
 
 const MARKET_GAME_TYPES = ['Tied Match'];
-function TiedMatch({
-  onBetSelect,
-  tiedMatchList,
-  pendingBetAmounts,
-  selectedBet,
-  gameid,
-}) {
+function TiedMatch({ onBetSelect, tiedMatchList, selectedBet, gameid }) {
   const isBhavMarket =
     String(tiedMatchList?.[0]?.gtype || '').toLowerCase() === 'match1';
   const { getBetDetails, getProjectedNetOutcome, isSelectedBetInMarket } =
@@ -25,7 +22,7 @@ function TiedMatch({
     });
   const backBg = ['bg-[#72bbef7f]', 'bg-[#72bbefbf]', 'bg-[#72bbef]'];
   const layBg = ['bg-[#faa9ba]', 'bg-[#faa9babf]', 'bg-[#faa9ba7f]'];
-  const [showCashoutOptions, setShowCashoutOptions] = useState(false);
+  const [showCashoutOptions] = useState(false);
   // Transform API data similar to MatchOdds/Bookmaker
   const tiedMatchData = tiedMatchList?.[0]?.section?.length
     ? tiedMatchList[0].section.map((sec) => ({
@@ -178,11 +175,13 @@ function TiedMatch({
                       </div>
                     ))}
                   </div>
-                  <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-                    <span className='text-[13px] font-bold tracking-wide text-red-600'>
-                      SUSPENDED
-                    </span>
-                  </div>
+                  <SuspendedOverlay
+                    label={
+                      isMarketSuspended
+                        ? marketSuspensionText(tiedMatchList?.[0])
+                        : runnerSuspensionText({ gstatus })
+                    }
+                  />
                 </div>
               ) : (
                 <>

@@ -1,31 +1,42 @@
 import React from 'react';
 
-// Reference e-cricket ball-by-ball scorecard (.scorecard-bb): two team blocks
-// (score + name + recent-ball form dots) with a centre scorebox (inning status +
-// commentary line). Data se banata hy (scoreData = liveScoreFeed).
+// Exact D247 E-Cricket ball-by-ball scorecard (.scorecard-bb, reference
+// 776178602-new.devtools @9309087 + style.css @13076-13207).
+// Supports E-Cricket providerId=7 JSON (`teams.team1/team2`, `inPlay`,
+// `matchStatus`, `commentaryMessage`) as well as flat `spnnation1/2` fallback.
 const dotClass = (ball) => {
-  const b = String(ball).toLowerCase();
+  const b = String(ball ?? '')
+    .trim()
+    .toLowerCase();
   if (b === '4') return 'dot four';
   if (b === '6') return 'dot six';
-  if (b === 'w' || b === 'ww') return 'dot wicket';
+  if (b === 'w' || b === 'ww' || b.startsWith('w')) return 'dot wicket';
   return 'dot';
 };
 
-const TeamBlock = ({ name, score, balls, current }) => (
-  <div className='bb-team'>
-    <div className='bb-score'>
-      {current ? (
-        <span className='bb-current'>{score || '0/0'}</span>
-      ) : (
-        <span>{score || '0/0'}</span>
+const formatBallLabel = (ball) => {
+  const s = String(ball ?? '').trim();
+  return s.toLowerCase() === 'w' ? 'W' : s.toUpperCase();
+};
+
+const TeamBlock = ({ name, score, over, balls, current }) => (
+  <div className='bb-team min-w-0 px-1'>
+    <div className='bb-score flex items-baseline justify-center gap-1'>
+      <span className={current ? 'bb-current' : ''}>{score || '0/0'}</span>
+      {over !== undefined && over !== null && String(over) !== '' && (
+        <span className='text-[11px] font-semibold text-gray-500'>
+          ({over})
+        </span>
       )}
     </div>
-    <div className='bb-team-name'>{name || ''}</div>
-    {balls && balls.length > 0 && (
-      <div className='bb-team-form'>
+    <div className='bb-team-name max-w-full truncate px-1' title={name || ''}>
+      {name || ''}
+    </div>
+    {Array.isArray(balls) && balls.length > 0 && (
+      <div className='bb-team-form flex-wrap justify-center'>
         {balls.slice(-6).map((b, i) => (
           <span className={dotClass(b)} key={i}>
-            {String(b).toUpperCase()}
+            {formatBallLabel(b)}
           </span>
         ))}
       </div>
@@ -34,34 +45,73 @@ const TeamBlock = ({ name, score, balls, current }) => (
 );
 
 function ScorecardBB({ data }) {
-  if (!data) return null;
-  const balls = Array.isArray(data.balls) ? data.balls : [];
-  const status = data.spnballrunningstatus || 'Started';
-  const commentary = data.spnmessage;
+  if (!data || typeof data !== 'object') return null;
+
+  const hasTeamsShape = Boolean(data.teams?.team1 || data.teams?.team2);
+
+  const team1 = hasTeamsShape
+    ? {
+        name: data.teams?.team1?.name || '',
+        score: data.teams?.team1?.score || '0/0',
+        over: data.teams?.team1?.over,
+        balls: Array.isArray(data.teams?.team1?.balls)
+          ? data.teams.team1.balls
+          : [],
+        current: data.inPlay === 'team1',
+      }
+    : {
+        name: data.spnnation1 || '',
+        score: data.score1 || '0/0',
+        over: null,
+        balls:
+          String(data.activenation1) === '1' && Array.isArray(data.balls)
+            ? data.balls
+            : [],
+        current: String(data.activenation1) === '1',
+      };
+
+  const team2 = hasTeamsShape
+    ? {
+        name: data.teams?.team2?.name || '',
+        score: data.teams?.team2?.score || '0/0',
+        over: data.teams?.team2?.over,
+        balls: Array.isArray(data.teams?.team2?.balls)
+          ? data.teams.team2.balls
+          : [],
+        current: data.inPlay === 'team2',
+      }
+    : {
+        name: data.spnnation2 || '',
+        score: data.score2 || '0/0',
+        over: null,
+        balls:
+          String(data.activenation2) === '1' && Array.isArray(data.balls)
+            ? data.balls
+            : [],
+        current: String(data.activenation2) === '1',
+      };
+
+  const status = data.matchStatus || data.spnballrunningstatus || 'Started';
+  const commentary = data.commentaryMessage || data.spnmessage || '';
 
   return (
-    <div className='scorecard-bb mt-1 bg-white'>
+    <div className='scorecard-bb mt-1 rounded-xs border border-gray-300 bg-white py-1.5 shadow-xs'>
       <div className='bb-match'>
-        <TeamBlock name={data.spnnation1} score={data.score1} />
-        <div className='bb-scorebox'>
+        <TeamBlock {...team1} />
+        <div className='bb-scorebox px-1'>
           <div className='bb-inning'>
             <span>{status}</span>
           </div>
           {commentary && (
-            <div className='bb-mini d-none-md'>
+            <div className='bb-mini d-none d-md-flex text-center'>
               <span>{commentary}</span>
             </div>
           )}
         </div>
-        <TeamBlock
-          name={data.spnnation2}
-          score={data.score2}
-          balls={balls}
-          current={String(data.activenation2) === '1'}
-        />
+        <TeamBlock {...team2} />
       </div>
       {commentary && (
-        <div className='bb-mini d-md-none'>
+        <div className='bb-mini d-md-none border-t border-gray-200 px-2 pt-1 text-center'>
           <span>{commentary}</span>
         </div>
       )}

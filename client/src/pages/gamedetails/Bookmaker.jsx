@@ -6,7 +6,10 @@ import api from '../../redux/api';
 import {
   isMarketSuspended as marketSuspendedByGscode,
   isRunnerSuspended as runnerSuspendedByGscode,
+  marketSuspensionText,
+  runnerSuspensionText,
 } from '../../utils/suspension';
+import SuspendedOverlay from './components/SuspendedOverlay';
 import { getUser } from '../../redux/reducer/authReducer';
 import {
   clearCashoutValues,
@@ -42,7 +45,6 @@ function Bookmaker({
 
   useEffect(() => {
     if (selectedBet) {
-      setShowCashoutOptions(false);
       dispatch(clearCashoutValues());
     }
   }, [selectedBet, dispatch]);
@@ -62,14 +64,21 @@ function Bookmaker({
       }))
     : [];
 
-  const CASHOUT_GAME_TYPES = ['Bookmaker', 'Bookmaker IPL CUP'];
+  // Reference D247 cashout rule (776178602-new.devtools): only 2-runner match / match1 markets
+  const primaryGtype = String(
+    BookmakerList?.[0]?.gtype || 'match1'
+  ).toLowerCase();
+  const isCashoutMarketEligible =
+    bookmakerData.length === 2 &&
+    (primaryGtype === 'match' || primaryGtype === 'match1');
+  const primaryMname = BookmakerList?.[0]?.mname || 'Bookmaker';
 
   const marketBetsForCashout =
-    Array.isArray(eventName) && gameid
+    isCashoutMarketEligible && Array.isArray(eventName) && gameid
       ? eventName.filter(
           (b) =>
             String(b.gameId) === String(gameid) &&
-            CASHOUT_GAME_TYPES.includes(b.gameType) &&
+            (!b.marketName || b.marketName === primaryMname) &&
             !b.isCashoutHedge &&
             !b.isCashedOut &&
             !cashedOutBetIds.has(String(b.betId || b._id))
@@ -84,7 +93,8 @@ function Bookmaker({
       )
   );
 
-  const hasCashoutAvailable = uniqueMarketBetsForCashout.length > 0;
+  const hasCashoutAvailable =
+    isCashoutMarketEligible && uniqueMarketBetsForCashout.length > 0;
 
   const marketCashoutPL = cashoutPL?.['Bookmaker'] || 0;
 
@@ -336,7 +346,9 @@ function Bookmaker({
     <div>
       <div className='text-secondary mt-1 flex items-center justify-between bg-[#2C3E50D9] p-1'>
         <span className='text-[13px] font-bold lg:text-[15px]'>Bookmaker</span>
-        {hasCashoutAvailable && showCashoutOptions ? (
+        {!isCashoutMarketEligible ? null : hasCashoutAvailable &&
+          showCashoutOptions &&
+          !selectedBet ? (
           <button
             type='button'
             disabled={!hasMergedValue || cashoutLoading}
@@ -585,11 +597,13 @@ function Bookmaker({
                       </div>
                     ))}
                   </div>
-                  <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-                    <span className='text-[13px] font-bold tracking-wide text-red-600'>
-                      SUSPENDED
-                    </span>
-                  </div>
+                  <SuspendedOverlay
+                    label={
+                      isMarketSuspended
+                        ? marketSuspensionText(BookmakerList?.[0])
+                        : runnerSuspensionText({ gstatus })
+                    }
+                  />
                 </div>
               ) : (
                 <>
@@ -681,177 +695,3 @@ function Bookmaker({
 }
 
 export default Bookmaker;
-
-// import React from "react";
-// import { FaArrowRight } from "react-icons/fa";
-
-// function Bookmaker({ onBetSelect, BookmakerList, pendingBetAmounts, selectedBet }) {
-//   const backBg = ["bg-[#72bbef7f]", "bg-[#72bbefbf]", "bg-[#72bbef]"];
-//   const layBg = ["bg-[#faa9ba]", "bg-[#faa9babf]", "bg-[#faa9ba7f]"];
-
-//   const bookmakerData = BookmakerList?.[0]?.section?.length
-//     ? BookmakerList[0].section.map((sec) => ({
-//         team: sec.nat,
-//         sid: sec.sid,
-//         odds: sec.odds || [],
-//         max: sec.max,
-//         min: sec.min,
-//         gstatus: sec.gstatus,
-//         mname: BookmakerList[0].mname || "Bookmaker",
-//       }))
-//     : [];
-
-//   const formatStake = (size) => {
-//     if (!size || size === 0) return "0";
-//     if (size < 1000) return size.toFixed(0);
-//     return `${(size / 1000).toFixed(1)}k`;
-//   };
-
-//   const formatMax = (max) => {
-//     if (!max || max === 0) return "0";
-//     if (max < 1000) return max.toString();
-//     return `${(max / 1000).toFixed(0)}K`;
-//   };
-
-//   const handleOddsClick = (team, rate, type, sid, gstatus) => {
-//     if (gstatus === "SUSPENDED") return;
-
-//     if (onBetSelect && rate && rate !== 0) {
-//       const allTeams = bookmakerData.map((item) => item.team);
-
-//       onBetSelect({
-//         team,
-//         odds: rate.toString(),
-//         type,
-//         stake: "",
-//         sid,
-//         teams: allTeams,
-//         marketName: "Bookmaker",
-//         gameType: "Bookmaker",
-//         maxAmount: BookmakerList?.[0]?.max || 0,
-//         minAmount: BookmakerList?.[0]?.min || 0,
-//       });
-//     }
-//   };
-
-//   const minValue = BookmakerList?.[0]?.min || 0;
-//   const maxValue = BookmakerList?.[0]?.max || 0;
-
-//   return (
-//     <div>
-//       {/* HEADER */}
-//       <div className="bg-[#2C3E50D9] flex justify-between items-center p-1 mt-1 text-secondary">
-//         <span className="text-[13px] lg:text-[15px] font-bold">Bookmaker</span>
-//         <button className="bg-[#198754] text-white p-1">Cashout</button>
-//       </div>
-
-//       {/* COLUMN HEADER */}
-//       <div className="grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b">
-//         <div className="text-[#097c93] text-[12px] font-bold ml-2">
-//           Min: {minValue} Max: {formatMax(maxValue)}
-//         </div>
-//         <div></div><div></div>
-//         <div className="bg-[#72bbef] text-center font-bold">Back</div>
-//         <div className="bg-[#faa9ba] text-center font-bold">Lay</div>
-//         <div></div><div></div>
-//       </div>
-
-//       {/* DATA ROWS */}
-//       {bookmakerData.length > 0 ? (
-//         bookmakerData.map(({ team, odds, sid, gstatus }, idx) => {
-//           const isSuspended = gstatus === "SUSPENDED";
-
-//           const backOdds = odds.filter(o => o.otype === "back").slice(0, 3);
-//           const layOdds = odds.filter(o => o.otype === "lay").slice(0, 3);
-
-//           return (
-//             <div
-//               key={idx}
-//               className="grid grid-cols-[1fr_12%_12%_12%_12%_12%_12%] border-b hover:bg-[#f7f7f7]"
-//             >
-//               {/* TEAM */}
-//               <div className="ml-2 font-bold text-[13px] truncate">
-//                 {team}
-//               </div>
-
-//               {/* SUSPENDED VIEW */}
-//               {isSuspended ? (
-//                 <div className="col-span-6 flex justify-center items-center bg-[#4b4b4b] min-h-[30px]">
-//                   <span className="text-red-600 font-bold tracking-wide">
-//                     SUSPENDED
-//                   </span>
-//                 </div>
-//               ) : (
-//                 <>
-//                   {/* BACK */}
-//                   {[0, 1, 2].map((i) => {
-//                     const item = backOdds[i];
-//                     const hasOdds = item && item.odds > 0;
-//                     return (
-//                       <div
-//                         key={`back-${i}`}
-//                         className={`${backBg[i]} flex flex-col items-center justify-center min-h-[30px] ${
-//                           hasOdds ? "cursor-pointer hover:opacity-80" : ""
-//                         }`}
-//                         onClick={() =>
-//                           hasOdds &&
-//                           handleOddsClick(team, item.odds, "back", sid, gstatus)
-//                         }
-//                       >
-//                         {hasOdds ? (
-//                           <>
-//                             <span className="font-bold">{item.odds}</span>
-//                             <span className="text-[11px]">
-//                               {formatStake(item.size)}
-//                             </span>
-//                           </>
-//                         ) : (
-//                           <span>-</span>
-//                         )}
-//                       </div>
-//                     );
-//                   })}
-
-//                   {/* LAY */}
-//                   {[0, 1, 2].map((i) => {
-//                     const item = layOdds[i];
-//                     const hasOdds = item && item.odds > 0;
-//                     return (
-//                       <div
-//                         key={`lay-${i}`}
-//                         className={`${layBg[i]} flex flex-col items-center justify-center min-h-[30px] ${
-//                           hasOdds ? "cursor-pointer hover:opacity-80" : ""
-//                         }`}
-//                         onClick={() =>
-//                           hasOdds &&
-//                           handleOddsClick(team, item.odds, "lay", sid, gstatus)
-//                         }
-//                       >
-//                         {hasOdds ? (
-//                           <>
-//                             <span className="font-bold">{item.odds}</span>
-//                             <span className="text-[11px]">
-//                               {formatStake(item.size)}
-//                             </span>
-//                           </>
-//                         ) : (
-//                           <span>-</span>
-//                         )}
-//                       </div>
-//                     );
-//                   })}
-//                 </>
-//               )}
-//             </div>
-//           );
-//         })
-//       ) : (
-//         <div className="text-center py-4 text-gray-500">
-//           No bookmaker data available
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// export default Bookmaker;

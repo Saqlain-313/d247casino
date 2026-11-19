@@ -11,6 +11,7 @@ export function useMarketNetOutcome({
   gameTypes,
   gameId,
   cashoutPLKey,
+  marketName = null,
   isBhav = false,
 }) {
   const dispatch = useDispatch();
@@ -34,6 +35,7 @@ export function useMarketNetOutcome({
         pendingBetAmounts,
         cashoutPL,
         cashoutPLKey,
+        marketName,
         isBhav,
       }),
     [
@@ -43,6 +45,7 @@ export function useMarketNetOutcome({
       pendingBetAmounts,
       cashoutPL,
       cashoutPLKey,
+      marketName,
       isBhav,
     ]
   );

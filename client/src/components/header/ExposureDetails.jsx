@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import api from '../../redux/api';
+import { cricketMatchPath } from '../../utils/cricketRoute';
 
 function ExposureDetails({ onClose, userId }) {
   const navigate = useNavigate();
+  const cricketMatches = useSelector((state) => state.cricket?.matches) || [];
   const [expoDetail, setExpoDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -43,8 +46,23 @@ function ExposureDetails({ onClose, userId }) {
 
     if (!gameId) return;
 
-    if (sportName.includes('cricket')) {
-      navigate(`/cricket-bet/${gameId}`, { state: { name: eventName } });
+    if (sportName.includes('e-cricket')) {
+      navigate(`/e-games/${gameId}`, { state: { name: eventName, iscc: 4 } });
+    } else if (sportName.includes('cricket')) {
+      const matched = cricketMatches.find(
+        (m) => String(m.id) === String(gameId)
+      );
+      const path = matched
+        ? cricketMatchPath(matched.iscc, gameId, matched.game || eventName)
+        : `/cricket-bet/${gameId}`;
+      navigate(path, {
+        state: {
+          name: eventName,
+          iscc: matched?.iscc,
+          beventId: matched?.beventId,
+          time: matched?.time,
+        },
+      });
     } else if (sportName.includes('soccer') || sportName.includes('football')) {
       navigate(`/football-bet/${gameId}`, { state: { name: eventName } });
     } else if (sportName.includes('tennis')) {

@@ -341,8 +341,24 @@ export function createProviderA() {
       return { success: false, message: 'Not supported by Provider A' };
     },
 
-    async fetchScore(gmid, sid) {
-      return { success: false, message: 'Not supported by Provider A' };
+    async fetchScore(gmid, sid = 4) {
+      const id = String(gmid ?? '').trim();
+      const etid = Number(sid) || 4;
+      if (!id) return { success: false, data: null };
+      const response = await axios.get(
+        `${API_URL}/diamond/score/${etid}_${encodeURIComponent(id)}`,
+        {
+          headers: {
+            'X-API-Key': API_KEY,
+          },
+          timeout: 6000,
+        }
+      );
+      const score = response.data?.score ?? response.data?.data ?? null;
+      return {
+        success: Boolean(score && typeof score === 'object'),
+        data: score,
+      };
     },
 
     async fetchAllIframes(gmid) {

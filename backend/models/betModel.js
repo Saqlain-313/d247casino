@@ -78,10 +78,20 @@ const betSchema = new mongoose.Schema(
       type: String,
       default: 0,
     },
+    // D247 Khado range width (from provider lay odd): wins when
+    // fancyScore <= actualScore <= fancyScore + khadoLayOdds - 1
+    khadoLayOdds: {
+      type: Number,
+    },
     gameType: {
       type: String,
       required: true,
       index: 1,
+    },
+    // Authoritative D247 provider market gtype (match, match1, fancy, fancy1,
+    // oddeven, khado, meter, cricketcasino, etc.)
+    gType: {
+      type: String,
     },
     gameName: {
       type: String,

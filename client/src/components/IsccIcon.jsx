@@ -8,22 +8,23 @@ import icVir from '../assets/ic_vir.webp';
 // virtual game (gamepad), 4 -> e-games (grey circle "e").
 // Real sport events (iscc 0) render nothing.
 function IsccIcon({ iscc }) {
-  if (iscc === 1) {
+  const n = Number(iscc);
+  if (n === 1) {
     return <img src={icVir} alt='virtual' className='h-[14px] w-[14px]' />;
   }
-  if (iscc === 2) {
+  if (n === 2) {
     return (
       <img src={gameIcon} alt='virtual game' className='h-[14px] w-[14px]' />
     );
   }
-  if (iscc === 3) {
+  if (n === 3) {
     return (
       <span className='flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#c9c9c9] text-[10px] font-bold text-[#333333]'>
         S
       </span>
     );
   }
-  if (iscc === 4) {
+  if (n === 4) {
     return (
       <span className='flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#c9c9c9] text-[11px] font-bold text-[#333333]'>
         e

@@ -1,6 +1,7 @@
 import betHistoryModel from '../models/betHistoryModel.js';
 import betModel from '../models/betModel.js';
 import SubAdmin from '../models/subAdminModel.js';
+import { fetchMatchData } from '../services/matchApi/index.js';
 import {
   cachedData,
   sendBalanceUpdates,
@@ -14,50 +15,141 @@ import {
 import { calculateAllExposure } from '../utils/exposureUtils.js';
 import { updateAllUplines } from './admin/subAdminController.js';
 
-//Helper function to extract best lay bet
-export function getBestOddsForTeam(gameId, gameName, teamName) {
-  let apitype = 'cricket';
-  const lower = gameName?.toLowerCase() || '';
-  if (lower.includes('tennis')) apitype = 'tennis';
-  else if (lower.includes('soccer')) apitype = 'soccer';
-  else if (lower.includes('horse')) apitype = 'horse-racing';
+const resolveSportContext = (gameName = '', sid = null) => {
+  const lower = String(gameName || '').toLowerCase();
+  if (lower.includes('tennis'))
+    return { apitype: 'tennis', sid: Number(sid) || 2 };
+  if (lower.includes('soccer') || lower.includes('football')) {
+    return { apitype: 'soccer', sid: Number(sid) || 1 };
+  }
+  if (lower.includes('horse')) {
+    return { apitype: 'horse-racing', sid: Number(sid) || 10 };
+  }
+  return { apitype: 'cricket', sid: Number(sid) || 4 };
+};
 
+const normalizeMarketName = (value = '') => {
+  const norm = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+  if (norm === 'match_odds' || norm === 'match odds') return 'match_odds';
+  if (norm === 'tied_match' || norm === 'tied match') return 'tied_match';
+  return norm;
+};
+
+const pickTopOdds = (oddsList = [], otype) => {
+  const filtered = oddsList.filter(
+    (o) => o && o.otype === otype && parseFloat(o.odds) > 0
+  );
+  if (!filtered.length) return null;
+  const top =
+    filtered.find((o) => Number(o.tno) === 0) ||
+    filtered.find((o) => String(o.oname || '').toLowerCase() === `${otype}1`) ||
+    (otype === 'back'
+      ? filtered.reduce((best, o) =>
+          parseFloat(o.odds) > parseFloat(best.odds) ? o : best
+        )
+      : filtered.reduce((best, o) =>
+          parseFloat(o.odds) < parseFloat(best.odds) ? o : best
+        ));
+  const val = parseFloat(top?.odds);
+  return Number.isFinite(val) && val > 0 ? val : null;
+};
+
+// Extract best decimal back/lay odds + D247 liveMarket metadata for the exact
+// bet market & runner. Pure D247 schema: gtype === 'match1' converts bhav ->
+// (1 + bhav / 100); gscode === 1 required on both market and runner.
+export function getBestOddsForTeam(
+  gameId,
+  gameName,
+  teamName,
+  { marketName, gType } = {}
+) {
+  const { apitype } = resolveSportContext(gameName);
   const cacheKey = `${gameId}_${apitype}`;
   const cached = cachedData[cacheKey];
 
   if (!cached || !cached.data) {
-    return { bestLay: null, bestBack: null };
+    return { bestLay: null, bestBack: null, liveMarket: null };
   }
 
   const markets = Array.isArray(cached.data)
     ? cached.data
     : cached.data.data || cached.data;
 
-  if (!Array.isArray(markets)) return { bestLay: null, bestBack: null };
+  if (!Array.isArray(markets)) {
+    return { bestLay: null, bestBack: null, liveMarket: null };
+  }
 
-  const teamLower = teamName.trim().toLowerCase();
+  const teamLower = (teamName || '').trim().toLowerCase();
+  const targetMarketNorm = normalizeMarketName(marketName || '');
 
-  for (const market of markets) {
-    if (!market.section || !Array.isArray(market.section)) continue;
+  // Strictly match the bet's exact market when marketName is provided (never
+  // leak odds from another market).
+  const candidateMarkets = targetMarketNorm
+    ? markets.filter((m) => normalizeMarketName(m?.mname) === targetMarketNorm)
+    : markets;
+
+  for (const market of candidateMarkets) {
+    if (!market?.section || !Array.isArray(market.section)) continue;
 
     for (const runner of market.section) {
       const runnerName = (runner.nat || '').trim().toLowerCase();
       if (runnerName !== teamLower) continue;
 
       const odds = runner.odds;
-      if (!Array.isArray(odds) || odds.length < 4) continue;
-      const bestBack = odds[2]?.odds ? parseFloat(odds[2].odds) : null;
-      const bestLay = odds[3]?.odds ? parseFloat(odds[3].odds) : null;
+      if (!Array.isArray(odds) || odds.length === 0) continue;
 
-      // Only return valid odds (> 0)
+      let bestBack = pickTopOdds(odds, 'back');
+      let bestLay = pickTopOdds(odds, 'lay');
+
+      const liveGtype = String(market.gtype || gType || '')
+        .trim()
+        .toLowerCase();
+      if (liveGtype === 'match1') {
+        if (bestBack !== null) bestBack = 1 + bestBack / 100;
+        if (bestLay !== null) bestLay = 1 + bestLay / 100;
+      }
+
+      // D247 reference: gscode === 1 on both market and runner means open
+      const marketOpen = Number(market.gscode) === 1;
+      const runnerOpen = Number(runner.gscode) === 1;
+
       return {
-        bestLay: bestLay && bestLay > 0 ? bestLay : null,
-        bestBack: bestBack && bestBack > 0 ? bestBack : null,
+        bestLay: bestLay && bestLay >= 1.01 ? bestLay : null,
+        bestBack: bestBack && bestBack >= 1.01 ? bestBack : null,
+        liveMarket: {
+          gtype: liveGtype || null,
+          runnerCount: market.section.length,
+          isOpen: marketOpen && runnerOpen,
+        },
       };
     }
   }
 
-  return { bestLay: null, bestBack: null };
+  return { bestLay: null, bestBack: null, liveMarket: null };
+}
+
+async function getFreshBestOddsForBet(bet) {
+  const { apitype, sid } = resolveSportContext(bet.gameName, bet.sid);
+  const cacheKey = `${bet.gameId}_${apitype}`;
+  try {
+    const fresh = await fetchMatchData(bet.gameId, sid);
+    if (fresh?.success && Array.isArray(fresh.data)) {
+      cachedData[cacheKey] = {
+        data: fresh.data,
+        raw: fresh,
+        lastUpdated: Date.now(),
+      };
+    }
+  } catch {
+    // Fall back to fresh polling cache if available
+  }
+  return getBestOddsForTeam(bet.gameId, bet.gameName, bet.teamName, {
+    marketName: bet.marketName,
+    gType: bet.gType,
+  });
 }
 
 export const getCashoutQuote = async (req, res) => {
@@ -76,20 +168,24 @@ export const getCashoutQuote = async (req, res) => {
         .json({ message: 'Bet not found or already settled' });
     }
 
-    if (!isCashoutEligible(bet)) {
+    const { bestLay, bestBack, liveMarket } = await getFreshBestOddsForBet(bet);
+
+    if (!liveMarket || !isCashoutEligible(bet, liveMarket)) {
       return res.status(400).json({
         cashoutAvailable: false,
-        message: 'Cashout not available for this bet type',
+        message: 'Cashout not available for this market',
       });
     }
 
-    const { bestLay, bestBack } = getBestOddsForTeam(
-      bet.gameId,
-      bet.gameName,
-      bet.teamName
-    );
+    // Reference D247 rule: both market gscode and runner gscode must be 1 (open)
+    if (!liveMarket.isOpen) {
+      return res.json({
+        cashoutAvailable: false,
+        message: 'Market is suspended',
+      });
+    }
 
-    if (!bestLay || bestLay < 1.01) {
+    if ((!bestLay || bestLay < 1.01) && (!bestBack || bestBack < 1.01)) {
       return res.json({
         cashoutAvailable: false,
         message: 'No liquidity available',
@@ -108,7 +204,7 @@ export const getCashoutQuote = async (req, res) => {
       cashoutAvailable: true,
       betId: bet._id.toString(),
       cashoutValue,
-      currentOdds: bestLay,
+      currentOdds: bet.otype === 'lay' ? bestBack : bestLay,
     });
   } catch (error) {
     console.error('Cashout quote error:', error);
@@ -138,18 +234,20 @@ export const executeCashout = async (req, res) => {
         .json({ message: 'Bet already settled/cashed out or not found' });
     }
 
-    if (!isCashoutEligible(bet)) {
+    // 2. Always verify fresh live odds & D247 market metadata before executing cashout
+    const { bestLay, bestBack, liveMarket } = await getFreshBestOddsForBet(bet);
+
+    if (!liveMarket || !isCashoutEligible(bet, liveMarket)) {
       return res
         .status(400)
-        .json({ message: 'Cashout not available for this bet' });
+        .json({ message: 'Cashout not available for this market' });
     }
 
-    // 2. Get current live odds
-    const { bestLay, bestBack } = getBestOddsForTeam(
-      bet.gameId,
-      bet.gameName,
-      bet.teamName
-    );
+    if (!liveMarket.isOpen) {
+      return res
+        .status(400)
+        .json({ message: 'Market is suspended. Cannot cashout.' });
+    }
 
     // 3. Calculate cashout value (net guaranteed P/L)
     const cashoutValue = calculateCashoutValue([bet], bestLay, bestBack);
