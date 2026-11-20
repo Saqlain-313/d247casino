@@ -3,6 +3,7 @@ import express from 'express';
 import {
   changePasswordByFirstLogin,
   changePasswordByUserSelf,
+  demoLoginUser,
   getLoginHistory,
   getPasswordHistoryByUserId,
   getUserById,
@@ -17,6 +18,7 @@ const router = express.Router();
 
 // router.post("/register", registerUser);
 router.post('/user/login', loginUser);
+router.post('/user/demo-login', demoLoginUser);
 
 router.get('/get/user-details', authMiddleware, getUserById);
 router.get('/customer/logout', user_logout);

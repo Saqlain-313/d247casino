@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
 import betModel from '../models/betModel.js';
@@ -98,6 +99,101 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+const DEMO_DEFAULT_BALANCE = 1500;
+const DEMO_USERNAME = 'demouser';
+
+export const demoLoginUser = async (req, res) => {
+  try {
+    let demoUser = await SubAdmin.findOne({ userName: DEMO_USERNAME });
+
+    if (!demoUser) {
+      demoUser = await SubAdmin.create({
+        name: 'Demo User',
+        userName: DEMO_USERNAME,
+        account: 'demo',
+        code: 'DEMOUSER',
+        balance: DEMO_DEFAULT_BALANCE,
+        baseBalance: DEMO_DEFAULT_BALANCE,
+        totalBalance: DEMO_DEFAULT_BALANCE,
+        avbalance: DEMO_DEFAULT_BALANCE,
+        totalAvbalance: DEMO_DEFAULT_BALANCE,
+        exposure: 0,
+        exposureLimit: DEMO_DEFAULT_BALANCE,
+        phone: 0,
+        isPasswordChanged: true,
+        password: `Demo${crypto.randomBytes(8).toString('hex')}1`,
+        role: 'user',
+        status: 'active',
+        isDemo: true,
+      });
+    } else {
+      let dirty = false;
+      if (demoUser.status !== 'active') {
+        demoUser.status = 'active';
+        dirty = true;
+      }
+      if (!demoUser.isPasswordChanged) {
+        demoUser.isPasswordChanged = true;
+        dirty = true;
+      }
+      if (!demoUser.isDemo) {
+        demoUser.isDemo = true;
+        dirty = true;
+      }
+      if (demoUser.invite) {
+        demoUser.invite = undefined;
+        dirty = true;
+      }
+      // Auto-refill play balance when depleted and no open exposure
+      if (
+        Number(demoUser.avbalance || 0) < 100 &&
+        Number(demoUser.exposure || 0) <= 0
+      ) {
+        demoUser.balance = DEMO_DEFAULT_BALANCE;
+        demoUser.baseBalance = DEMO_DEFAULT_BALANCE;
+        demoUser.totalBalance = DEMO_DEFAULT_BALANCE;
+        demoUser.avbalance = DEMO_DEFAULT_BALANCE;
+        demoUser.totalAvbalance = DEMO_DEFAULT_BALANCE;
+        demoUser.exposureLimit = DEMO_DEFAULT_BALANCE;
+        dirty = true;
+      }
+      if (dirty) await demoUser.save();
+    }
+
+    const token = jwt.sign(
+      { id: demoUser._id, role: 'user', isDemo: true },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.cookie('auth', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'None',
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    });
+
+    await saveLoginHistory(DEMO_USERNAME, demoUser._id, 'Success', req);
+
+    const safeUser = demoUser.toObject();
+    delete safeUser.password;
+    delete safeUser.masterPassword;
+
+    return res.status(200).json({
+      success: true,
+      message: 'Demo login successful',
+      token,
+      data: safeUser,
+      isPasswordChanged: true,
+    });
+  } catch (error) {
+    console.error('Demo Login Error:', error);
+    return res
+      .status(500)
+      .json({ message: 'Demo login failed', error: error.message });
+  }
+};
 export const getUserById = async (req, res) => {
   try {
     const { id } = req;
@@ -146,6 +242,11 @@ export const changePasswordByUserSelf = async (req, res) => {
     const subAdmin = await SubAdmin.findById(id);
     if (!subAdmin) {
       return res.status(404).json({ message: 'User not found' });
+    }
+    if (subAdmin.isDemo || subAdmin.account === 'demo') {
+      return res
+        .status(403)
+        .json({ message: 'Password change is not allowed for Demo account' });
     }
 
     const isMatch = await bcrypt.compare(oldPassword, subAdmin.password);
@@ -197,6 +298,11 @@ export const changePasswordByFirstLogin = async (req, res) => {
     const subAdmin = await SubAdmin.findById(id);
     if (!subAdmin) {
       return res.status(404).json({ message: 'User not found' });
+    }
+    if (subAdmin.isDemo || subAdmin.account === 'demo') {
+      return res
+        .status(403)
+        .json({ message: 'Password change is not allowed for Demo account' });
     }
     if (newPassword !== confirmPassword) {
       return res.status(400).json({

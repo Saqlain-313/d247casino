@@ -6,44 +6,58 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import clublogo from '../../assets/81club.png';
-import { loginUser } from '../../redux/reducer/authReducer';
+import { demoLoginUser, loginUser } from '../../redux/reducer/authReducer';
 function Login() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [formData, setFormData] = useState({
     userName: '',
     password: '',
   });
+  const [submitting, setSubmitting] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const handleLogin = async (formData) => {
+  const onAuthSuccess = (payload) => {
+    toast.success(payload.message || 'Login successful');
+    // Login banner popup trigger (sirf success pe)
+    sessionStorage.setItem('showLoginBanner', '1');
+    window.dispatchEvent(new Event('login-success'));
+    navigate('/');
+  };
+
+  const handleLogin = async (payload) => {
+    if (submitting || demoLoading) return;
+    setSubmitting(true);
     try {
-      const response = await dispatch(loginUser(formData));
-      console.log(response);
+      const response = await dispatch(loginUser(payload));
 
       if (response.payload?.success) {
-        toast.success(response.payload.message);
-
-        // Login banner popup trigger (sirf success pe)
-        sessionStorage.setItem('showLoginBanner', '1');
-        window.dispatchEvent(new Event('login-success'));
-
-        navigate('/');
+        onAuthSuccess(response.payload);
       } else {
         toast.error(response.payload?.message || 'Login failed');
       }
-    } catch (error) {
-      console.log(error);
+    } catch {
       toast.error('Something went wrong, please try again');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDemoLogin = async () => {
-    await handleLogin({
-      userName: 'testuser1',
-      password: 'testuser1',
-    });
+    if (submitting || demoLoading) return;
+    setDemoLoading(true);
+    try {
+      const response = await dispatch(demoLoginUser());
+      if (response.payload?.success) {
+        onAuthSuccess(response.payload);
+      } else {
+        toast.error(response.payload?.message || 'Demo login failed');
+      }
+    } catch {
+      toast.error('Demo login failed, please try again');
+    } finally {
+      setDemoLoading(false);
+    }
   };
 
   return (
@@ -63,55 +77,66 @@ function Login() {
               </h4>
             </div>
 
-            {/* Username Input */}
-            <div className='flex w-full overflow-hidden rounded border border-[#ced4da]'>
-              <input
-                type='text'
-                placeholder='Username'
-                value={formData.userName}
-                onChange={(e) =>
-                  setFormData({ ...formData, userName: e.target.value })
-                }
-                className='flex-1 border-0 px-3 py-2 focus:border-[#0088CC] focus:outline-none'
-              />
-              <div className='flex items-center justify-center bg-[#e9ecef] px-3'>
-                <FaUser className='text-black' />
-              </div>
-            </div>
-
-            {/* Password Input */}
-            <div className='flex w-full overflow-hidden rounded border border-gray-300'>
-              <input
-                type='password'
-                placeholder='Password'
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                className='flex-1 border-0 px-3 py-2 focus:border-[#0088CC] focus:outline-none'
-              />
-              <div className='flex items-center justify-center bg-gray-100 px-3'>
-                <FaKey className='text-black' />
-              </div>
-            </div>
-
-            {/* Login Button */}
-            <button
-              onClick={() => handleLogin(formData)}
-              className='flex w-full items-center justify-center gap-2 rounded bg-[#0088CC] py-2 font-semibold text-white transition-colors hover:bg-[#0077b3]'
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleLogin(formData);
+              }}
+              className='flex w-full flex-col gap-3'
             >
-              Login
-              <FaArrowRight className='text-white' />
-            </button>
+              {/* Username Input */}
+              <div className='flex w-full overflow-hidden rounded border border-[#ced4da]'>
+                <input
+                  type='text'
+                  placeholder='Username'
+                  value={formData.userName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userName: e.target.value })
+                  }
+                  className='flex-1 border-0 px-3 py-2 focus:border-[#0088CC] focus:outline-none'
+                />
+                <div className='flex items-center justify-center bg-[#e9ecef] px-3'>
+                  <FaUser className='text-black' />
+                </div>
+              </div>
 
-            {/* Login with Demo ID Button */}
-            <button
-              // onClick={handleDemoLogin}
-              className='flex w-full items-center justify-center gap-2 rounded bg-[#0088CC] py-2 font-semibold text-white transition-colors hover:bg-[#0077b3]'
-            >
-              Login with demo ID
-              <FaArrowRight className='text-white' />
-            </button>
+              {/* Password Input */}
+              <div className='flex w-full overflow-hidden rounded border border-gray-300'>
+                <input
+                  type='password'
+                  placeholder='Password'
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  className='flex-1 border-0 px-3 py-2 focus:border-[#0088CC] focus:outline-none'
+                />
+                <div className='flex items-center justify-center bg-gray-100 px-3'>
+                  <FaKey className='text-black' />
+                </div>
+              </div>
+
+              {/* Login Button */}
+              <button
+                type='submit'
+                disabled={submitting || demoLoading}
+                className='flex w-full cursor-pointer items-center justify-center gap-2 rounded bg-[#0088CC] py-2 font-semibold text-white transition-colors hover:bg-[#0077b3] disabled:opacity-60'
+              >
+                {submitting ? 'Logging in...' : 'Login'}
+                <FaArrowRight className='text-white' />
+              </button>
+
+              {/* Login with Demo ID Button */}
+              <button
+                type='button'
+                onClick={handleDemoLogin}
+                disabled={submitting || demoLoading}
+                className='flex w-full cursor-pointer items-center justify-center gap-2 rounded bg-[#0088CC] py-2 font-semibold text-white transition-colors hover:bg-[#0077b3] disabled:opacity-60'
+              >
+                {demoLoading ? 'Logging in...' : 'Login with demo ID'}
+                <FaArrowRight className='text-white' />
+              </button>
+            </form>
 
             {/* reCAPTCHA Disclaimer */}
             <p className='text-center text-[12px] leading-relaxed font-[400] text-black'>

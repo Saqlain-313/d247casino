@@ -105,6 +105,10 @@ const subAdminSchema = new mongoose.Schema(
       type: String,
       default: 'blueGreen',
     },
+    isDemo: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
