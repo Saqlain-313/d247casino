@@ -12,25 +12,43 @@ export function createProviderA() {
   // markets /data/worli3_<mid>. worli & worli2 use standard /data/<slug> + /sections/<slug>.
   const ROUND_BASED_SLUGS = new Set(['worli3']);
   const MATKA_SLUGS = new Set(['worli', 'worli2', 'worli3']);
-  const MATKA_SPECIAL = { 11: 'Line 1', 12: 'Line 2', 13: 'ODD', 14: 'EVEN' };
+  // Exact D247 Matka section sid map (776178602-new.devtools @2964000 + @9755000)
+  const MATKA_SECTION_NAMES = {
+    1: 'Single',
+    2: 'Pana',
+    3: 'SP',
+    4: 'DP',
+    5: 'Trio',
+    6: 'Cycle',
+    7: 'Motor SP',
+    8: '56 Charts',
+    9: '64 Charts',
+    10: 'ABR',
+    11: 'Common SP',
+    12: 'Common DP',
+    13: 'Color DP',
+    14: 'Jodi',
+  };
   const sectionsCache = new Map(); // slug -> { at, value }
 
-  // sub entries me nat label + back rate (sections board se) merge karo —
-  // bet slip aur placement dono provider market ke nat/b par depend karte hy.
+  // Merge exact live provider section board rates (single/multi/sp/dp/tp) into each section sub entry.
   const augmentMatkaSub = (sub, sections) => {
-    const board = sections?.['1']?.Table?.[0] || null;
     return (Array.isArray(sub) ? sub : []).map((m) => {
       const sid = Number(m.sid);
-      const nat = m.nat ?? MATKA_SPECIAL[sid] ?? String(Number(m.sr) % 10);
-      const rate = sid >= 1 && sid <= 10 ? board?.single : board?.multi;
+      const board = sections?.[String(sid)]?.Table?.[0] || null;
+      const nat = m.nat ?? MATKA_SECTION_NAMES[sid] ?? `Section ${sid}`;
+      const rate =
+        board?.single ?? board?.sp ?? board?.dp ?? board?.tp ?? board?.multi;
       return {
         ...m,
         nat,
         b:
-          m.b ??
-          (Number.isFinite(Number(rate)) && Number(rate) > 1
-            ? Number(rate)
-            : 0),
+          Number(m.b) > 1
+            ? Number(m.b)
+            : Number.isFinite(Number(rate)) && Number(rate) > 1
+              ? Number(rate)
+              : 0,
+        board,
       };
     });
   };
@@ -43,7 +61,15 @@ export function createProviderA() {
         `${API_URL}/diamond/direct-casino/sections/${encodeURIComponent(slug)}?key=${API_KEY}`,
         { timeout: 8000 }
       );
-      const value = r.data?.data ?? {};
+      let value = r.data?.data ?? {};
+      // Gateway /sections/worli3 returns empty {}; inherit live /sections/worli boards + Jodi (95)
+      if (slug === 'worli3' && Object.keys(value).length === 0) {
+        const worliBoards = await fetchSections('worli');
+        value = {
+          ...worliBoards,
+          14: { Table: [{ sp: 95, msg: '' }] },
+        };
+      }
       sectionsCache.set(slug, { at: Date.now(), value });
       return value;
     } catch {
@@ -71,7 +97,7 @@ export function createProviderA() {
       ? tab.data.data.data
       : [];
     const open = rounds.filter((r) => r.mtype === 'OPEN');
-    const active = open.slice(0, 6);
+    const active = open.slice(0, 10);
     if (!active.length) {
       return { success: false, data: null, rounds };
     }

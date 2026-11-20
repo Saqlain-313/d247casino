@@ -153,10 +153,97 @@ const aaaWinnerFromCard = (code) => {
   return '';
 };
 
+// Parse card code e.g. "JHH", "10SS", "ADD" -> { rank: 1..13, suit: 'S'|'H'|'C'|'D' }
+const SUIT_RANK = { S: 4, H: 3, C: 2, D: 1 };
+const parseCard = (code) => {
+  const s = String(code || '')
+    .trim()
+    .toUpperCase();
+  if (!s || s === '1') return null;
+  const m = s.match(/^(10|[2-9AJQK])([SHDC])/);
+  if (!m) return null;
+  const rMap = { A: 1, J: 11, Q: 12, K: 13 };
+  return { rank: rMap[m[1]] || Number(m[1]), suit: m[2] };
+};
+const cmpCard = (a, b) => {
+  if (a.rank !== b.rank) return a.rank > b.rank ? 1 : -1;
+  return (SUIT_RANK[a.suit] || 0) - (SUIT_RANK[b.suit] || 0);
+};
+const rankTeenHand = (hand) => {
+  const rs = hand.map((c) => c.rank).sort((a, b) => a - b);
+  const flush = hand.every((c) => c.suit === hand[0].suit);
+  const trio = rs[0] === rs[2];
+  const pair = rs[0] === rs[1] || rs[1] === rs[2];
+  let straight = false;
+  let high = [...rs].map((r) => (r === 1 ? 14 : r)).sort((a, b) => b - a);
+  if (new Set(rs).size === 3) {
+    if (rs[2] - rs[0] === 2) straight = true;
+    else if (rs[0] === 1 && rs[1] === 12 && rs[2] === 13) straight = true;
+    else if (rs[0] === 1 && rs[1] === 2 && rs[2] === 3) {
+      straight = true;
+      high = [3, 2, 1];
+    }
+  }
+  let cat = 1;
+  if (trio) cat = 6;
+  else if (straight && flush) cat = 5;
+  else if (straight) cat = 4;
+  else if (flush) cat = 3;
+  else if (pair) {
+    cat = 2;
+    const p = rs[0] === rs[1] ? rs[0] : rs[1];
+    const k = rs[0] === rs[1] ? rs[2] : rs[0];
+    high = [p === 1 ? 14 : p, k === 1 ? 14 : k];
+  }
+  return { cat, high };
+};
+const cmpTeen = (a, b) => {
+  if (a.cat !== b.cat) return a.cat > b.cat ? 1 : -1;
+  for (let i = 0; i < Math.max(a.high.length, b.high.length); i++) {
+    const x = a.high[i] || 0;
+    const y = b.high[i] || 0;
+    if (x !== y) return x > y ? 1 : -1;
+  }
+  return 0;
+};
+
+// Derive the CURRENT round's winner strictly from dealt cards (never previous round!)
+const deriveWinnerFromCards = (slug, cards) => {
+  if (slug === 'vaaa') return aaaWinnerFromCard(cards[0]);
+  if (slug === 'vdt6') {
+    const d = parseCard(cards[0]);
+    const t = parseCard(cards[1]);
+    if (!d || !t) return '';
+    return cmpCard(d, t) >= 0 ? 'Dragon' : 'Tiger';
+  }
+  if (slug === 'vdtl20') {
+    const d = parseCard(cards[0]);
+    const t = parseCard(cards[1]);
+    const l = parseCard(cards[2]);
+    if (!d || !t || !l) return '';
+    if (cmpCard(d, t) > 0 && cmpCard(d, l) > 0) return 'Dragon';
+    if (cmpCard(t, d) > 0 && cmpCard(t, l) > 0) return 'Tiger';
+    return 'Lion';
+  }
+  if (['vteen', 'vteen20', 'vteenmuf'].includes(slug)) {
+    const parsed = cards.slice(0, 6).map(parseCard);
+    if (parsed.length < 6 || parsed.some((c) => !c)) return '';
+    const ra = rankTeenHand([parsed[0], parsed[2], parsed[4]]);
+    const rb = rankTeenHand([parsed[1], parsed[3], parsed[5]]);
+    let c = cmpTeen(ra, rb);
+    if (slug === 'vteenmuf') c = -c;
+    if (c === 0) return '';
+    return c > 0 ? 'Player A' : 'Player B';
+  }
+  return '';
+};
+
 const VirtualGameScreen = memo(function VirtualGameScreen({
   slug,
   bettingData,
+  showWinner,
   winnerLabel,
+  latestResultMid,
 }) {
   const cards = String(bettingData?.card || '')
     .split(',')
@@ -166,8 +253,26 @@ const VirtualGameScreen = memo(function VirtualGameScreen({
   const revealed = Boolean(firstCard);
   const columns = getColumns(slug, cards);
   const dealerBg = VIMG[`${slug}.png`];
-  const liveWin = bettingData?.rdesc || winnerLabel || '';
   const btableWinnerCol = slug === 'vbtable' ? vbtableColForCard(cards[0]) : '';
+
+  // Only show winner overlay for the CURRENT round when cards are actually dealt
+  // (never bleed previous round's resultData.res[0] into the next round's betting phase!)
+  const sameRoundResult =
+    Boolean(bettingData?.mid) &&
+    Boolean(latestResultMid) &&
+    String(bettingData.mid) === String(latestResultMid);
+  const cardWinner = deriveWinnerFromCards(slug, cards);
+  const currentRoundWin =
+    bettingData?.rdesc ||
+    cardWinner ||
+    (revealed && showWinner && sameRoundResult ? winnerLabel : '') ||
+    '';
+  const showWinnerBadgeForSlug = ![
+    'vdtl20',
+    'vbtable',
+    'vlucky7',
+    'vtrio',
+  ].includes(slug);
 
   return (
     <div
@@ -193,9 +298,9 @@ const VirtualGameScreen = memo(function VirtualGameScreen({
 
       <div className='casino-video-cards'>
         {columns.map((col) => {
-          const derivedWinner =
-            slug === 'vaaa' ? aaaWinnerFromCard(firstCard) : '';
-          const won = isWinningColumn(slug, col, derivedWinner || liveWin);
+          const won = Boolean(
+            currentRoundWin && isWinningColumn(slug, col, currentRoundWin)
+          );
           const colCards =
             slug === 'vaaa'
               ? revealed && won
@@ -206,7 +311,10 @@ const VirtualGameScreen = memo(function VirtualGameScreen({
                   ? [cards[0]]
                   : []
                 : col.cards;
-          const cardClass = slug === 'vbtable' ? '' : `vcasinocards-${col.cls}`;
+          const cardClass =
+            slug === 'vbtable' || slug === 'vlucky7' || slug === 'vtrio'
+              ? ''
+              : `vcasinocards-${col.cls}`;
           return (
             <div key={col.key} className={cardClass}>
               {col.label && (
@@ -224,7 +332,7 @@ const VirtualGameScreen = memo(function VirtualGameScreen({
                   <CricketCard key={`${col.key}-${i}`} card={c} />
                 ))}
               </div>
-              {won && slug !== 'vdtl20' && slug !== 'vbtable' && (
+              {won && showWinnerBadgeForSlug && (
                 <img
                   src={VIMG['winner.png']}
                   onError={(e) => {

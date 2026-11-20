@@ -45,6 +45,9 @@ import VideoStream from './components/VideoStream';
 import RulesPopup from './components/RulesPopup';
 
 const MatkaTable = lazy(() => import('../../components/tables/MatkaTable'));
+const MatkaCalendar = lazy(
+  () => import('../../components/tables/MatkaCalendar')
+);
 
 import DesktopBetSlip from '../../components/betting/DesktopBetSlip';
 import NewMobileBetDrawer from '../../components/betting/MobileBetDrawer';
@@ -240,6 +243,7 @@ export default function CasinoBet() {
   const isMatkaBazaar = gameid === 'worli3';
   const containerCls = CONTAINER_CLASS_MAP[gameid] || 'game-market';
   const [activeWorliMid, setActiveWorliMid] = useState(null);
+  const [calendarBazaar, setCalendarBazaar] = useState(null);
   const [mobileMatkaTab, setMobileMatkaTab] = useState('game');
 
   // =============================================
@@ -340,15 +344,13 @@ export default function CasinoBet() {
 
     dispatch(getPendingBet());
 
-    // Fetch My Bets using slug and eventName
-    if (eventName) {
-      dispatch(
-        getMyCasinoBets({
-          slug: gameid,
-          eventName,
-        })
-      );
-    }
+    // Fetch My Bets using slug (works on both /casino/:gameid and /casino/:match/:gameid)
+    dispatch(
+      getMyCasinoBets({
+        slug: gameid,
+        eventName: eventName || gameid,
+      })
+    );
   }, [gameid, eventName, dispatch]);
 
   // =============================================
@@ -450,7 +452,14 @@ export default function CasinoBet() {
     if (hasInitializedRef.current && previousMid !== currentMid) {
       console.log('Provider MID changed:', previousMid, '=>', currentMid);
 
-      // Preserve existing bet slip's captured MID
+      // Clear stale bet slip from previous round (skip multi-bazaar worli3)
+      if (
+        !isMatkaBazaar &&
+        betting.betControl &&
+        String(betting.betControl.roundId) !== currentMid
+      ) {
+        betting.resetBettingState();
+      }
       dispatch(clearPendingBetAmounts());
 
       const timer = setTimeout(() => {
@@ -463,15 +472,13 @@ export default function CasinoBet() {
           })
         );
 
-        // Refresh My Bets on round change
-        if (eventName) {
-          dispatch(
-            getMyCasinoBets({
-              slug: gameid,
-              eventName,
-            })
-          );
-        }
+        // Refresh My Bets on round change (all routes)
+        dispatch(
+          getMyCasinoBets({
+            slug: gameid,
+            eventName: eventName || gameid,
+          })
+        );
       }, 100);
 
       previousMidRef.current = currentMid;
@@ -534,10 +541,13 @@ export default function CasinoBet() {
         sub: [],
       };
 
-  // Roulette Statistics: reference har round (mid) change pe lastresults2
-  // refetch karta hy — ham dated-result silent refetch karte hy (5s cache).
+  // Roulette Statistics & Goal/Goal2 scorer beads: refetch dated results on round change
   useEffect(() => {
-    if (!ROULETTE_STAT_SLUGS.has(gameid) || !mockBettingData.mid) return;
+    const needsDatedRefresh =
+      ROULETTE_STAT_SLUGS.has(gameid) ||
+      gameid === 'goal' ||
+      gameid === 'goal2';
+    if (!needsDatedRefresh || !mockBettingData.mid) return;
     const now = new Date();
     const date = [
       now.getFullYear(),
@@ -584,6 +594,35 @@ export default function CasinoBet() {
   // RENDER
   // =============================================
 
+  // For worli3 multi-bazaar, default to the first OPEN bazaar and scope active mid/sub to it
+  const resolvedWorliMid = isMatkaBazaar
+    ? String(
+        activeWorliMid ||
+          (mockBettingData.rounds || []).find((r) => r.mtype === 'OPEN')?.mid ||
+          mockBettingData.rounds?.[0]?.mid ||
+          mockBettingData.mid ||
+          ''
+      )
+    : mockBettingData.mid;
+
+  const effectiveBettingData =
+    isMatkaBazaar &&
+    resolvedWorliMid &&
+    mockBettingData.subs?.[resolvedWorliMid]
+      ? {
+          ...mockBettingData,
+          mid: resolvedWorliMid,
+          mname:
+            mockBettingData.subs[resolvedWorliMid].mname ||
+            mockBettingData.mname,
+          mtype:
+            mockBettingData.subs[resolvedWorliMid].mtype ||
+            mockBettingData.mtype,
+          sub:
+            mockBettingData.subs[resolvedWorliMid].sub || mockBettingData.sub,
+        }
+      : mockBettingData;
+
   return (
     <>
       {/* Bet Loader */}
@@ -595,7 +634,7 @@ export default function CasinoBet() {
 
       <CasinoUiProvider
         gameid={gameid}
-        bettingData={mockBettingData}
+        bettingData={effectiveBettingData}
         betting={betting}
         isMobile={!isDesktop}
       >
@@ -630,11 +669,7 @@ export default function CasinoBet() {
                       <li className='nav-item' key={String(r.mid)}>
                         <a
                           className={`nav-link ${
-                            String(r.mid) ===
-                            String(
-                              activeWorliMid ||
-                                mockBettingData?.rounds?.[0]?.mid
-                            )
+                            String(r.mid) === String(resolvedWorliMid)
                               ? 'active'
                               : ''
                           }`}
@@ -700,6 +735,7 @@ export default function CasinoBet() {
                       bettingData={mockBettingData}
                       showWinner={results.showWinner}
                       winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+                      latestResultMid={results.resultData?.res?.[0]?.mid}
                     />
                   ) : (
                     <VideoStream
@@ -707,6 +743,7 @@ export default function CasinoBet() {
                       bettingData={mockBettingData}
                       showWinner={results.showWinner}
                       winnerLabel={winnerMap[results.resultData?.res?.[0]?.win]}
+                      latestResultMid={results.resultData?.res?.[0]?.mid}
                     />
                   )}
 
@@ -723,7 +760,7 @@ export default function CasinoBet() {
                         <MatkaTable
                           isMobile={!isDesktop}
                           isSuspended={betting.isSuspended}
-                          activeMid={activeWorliMid}
+                          activeMid={resolvedWorliMid}
                         />
                       </Suspense>
                     ) : (mockBettingData.sub || []).length > 0 ? (
@@ -765,7 +802,14 @@ export default function CasinoBet() {
                         </div>
                         <div className='casino-last-results matka-result'>
                           {(results.resultData?.res || []).map((r, i) => (
-                            <span className='result result-b' key={r.mid || i}>
+                            <span
+                              className='result result-b'
+                              style={{ cursor: 'pointer' }}
+                              key={r.mid || i}
+                              onClick={() =>
+                                setCalendarBazaar(String(r.win || ''))
+                              }
+                            >
                               {r.win}
                             </span>
                           ))}
@@ -838,6 +882,17 @@ export default function CasinoBet() {
           eventName={casinoEventName}
           onClose={() => setShowRules(false)}
         />
+      )}
+
+      {/* Worli3 Matka Calendar modal — exact D247 @2953052 (opens from Last Result bazaar chip) */}
+      {calendarBazaar && (
+        <Suspense fallback={null}>
+          <MatkaCalendar
+            slug={gameid}
+            bazaarName={calendarBazaar}
+            onClose={() => setCalendarBazaar(null)}
+          />
+        </Suspense>
       )}
     </>
   );

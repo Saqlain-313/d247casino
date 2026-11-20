@@ -1,13 +1,8 @@
 import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCasino } from '../../context/CasinoContext';
-import { getUser } from '../../redux/reducer/authReducer';
 import ButtonValues from '../header/ButtonValues';
-import {
-  clearCasinoBetError,
-  getMyCasinoBets,
-  placeCasinoBet,
-} from '../../redux/reducer/casinoBetSlice';
+import { clearCasinoBetError } from '../../redux/reducer/casinoBetSlice';
 import {
   DEFAULT_DESKTOP_CASINO_STAKES,
   useCasinoQuickStakes,
@@ -16,7 +11,7 @@ import {
 export default function DesktopBetSlip() {
   const dispatch = useDispatch();
 
-  const { betSlip, closeBetSlip, updateStake } = useCasino();
+  const { betSlip, closeBetSlip, updateStake, submitBet } = useCasino();
 
   const { placeBetLoading, placeBetError, balance } = useSelector(
     (state) => state.casinoBet
@@ -27,70 +22,10 @@ export default function DesktopBetSlip() {
   if (!betSlip.isOpen) return null;
 
   // -----------------------------------------
-  // SUBMIT CASINO BET
+  // SUBMIT CASINO BET (unified via CasinoContext.submitBet so Desktop & Mobile
+  // share live pre-submit market/odds verification, NationBook & MyBet refresh)
   // -----------------------------------------
-  const handleSubmitBet = async () => {
-    const slug = betSlip.slug;
-    const roundId = betSlip.roundId;
-    const selection = betSlip.selection;
-    const stake = Number(betSlip.stake);
-    const odds = Number(betSlip.odds);
-
-    if (!slug || !roundId || !selection) {
-      alert('Game or round information is missing');
-      console.error('Missing casino data:', {
-        slug,
-        roundId,
-        selection,
-        betSlip,
-      });
-      return;
-    }
-
-    const minStake = Number(betSlip.min || 100);
-    const maxStake = Number(betSlip.max || Infinity);
-
-    if (!stake || stake < minStake) {
-      alert(`Minimum stake is ₹${minStake}`);
-      return;
-    }
-
-    if (Number.isFinite(maxStake) && stake > maxStake) {
-      alert(`Maximum stake is ₹${maxStake}`);
-      return;
-    }
-
-    if (!odds || odds <= 1) {
-      alert('Invalid odds');
-      return;
-    }
-
-    dispatch(clearCasinoBetError());
-
-    try {
-      const response = await dispatch(
-        placeCasinoBet({
-          slug,
-          roundId,
-          side: betSlip.type,
-          selection,
-          nation: betSlip.nation || String(selection),
-          odds,
-          stake,
-        })
-      ).unwrap();
-
-      if (response.success) {
-        dispatch(getUser());
-        dispatch(getMyCasinoBets(slug));
-        alert('Bet placed successfully!');
-        closeBetSlip();
-      }
-    } catch (error) {
-      console.error('Casino bet failed:', error);
-      alert(typeof error === 'string' ? error : 'Unable to place bet');
-    }
-  };
+  const handleSubmitBet = () => submitBet();
 
   // -----------------------------------------
   // RESET

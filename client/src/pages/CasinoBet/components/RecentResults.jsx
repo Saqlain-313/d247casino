@@ -24,34 +24,43 @@ const RecentResults = memo(function RecentResults({
   directResultsError = null,
   onItemClick,
 }) {
+  const goalGame = isGoalGame(gameid);
+
   const visibleResults = useMemo(() => {
     const direct = Array.isArray(directResults) ? directResults : [];
-    const casino = Array.isArray(results) ? results : [];
+    const casino =
+      currentGameId === gameid && Array.isArray(results) ? results : [];
 
-    const casinoByMid = new Map(
-      casino.map((item) => [String(item?.mid), item])
-    );
+    // Goal/Goal2 need player-scorer `nat` from direct-result-by-date;
+    // all other casinos must prioritize live newest-first WS `results` (`res`)
+    // enriched with `direct` metadata by mid so new rounds appear immediately.
+    if (goalGame) {
+      const casinoByMid = new Map(
+        casino.map((item) => [String(item?.mid), item])
+      );
+      if (!direct.length) return casino;
+      return direct.map((item) => ({
+        ...item,
+        ...(casinoByMid.get(String(item?.mid)) || {}),
+        nat: item?.nat,
+      }));
+    }
 
-    if (!direct.length) return casino;
+    if (casino.length) {
+      const directByMid = new Map(
+        direct.map((item) => [String(item?.mid), item])
+      );
+      return casino.map((item) => {
+        const d = directByMid.get(String(item?.mid));
+        return d ? { ...d, ...item, nat: d.nat || item.nat } : item;
+      });
+    }
 
-    return direct.map((item) => ({
-      ...item,
-      ...(casinoByMid.get(String(item?.mid)) || {}),
-      nat: item?.nat,
-    }));
-  }, [directResults, results]);
-
-  const goalGame = isGoalGame(gameid);
-  const legacyResults =
-    currentGameId === gameid && Array.isArray(results) ? results : [];
-
-  const allItems =
-    goalGame || (Array.isArray(directResults) && directResults.length)
-      ? visibleResults
-      : legacyResults;
+    return direct;
+  }, [directResults, results, currentGameId, gameid, goalGame]);
 
   // Show exactly the latest 10 results on the game screen.
-  const items = allItems.slice(0, 10);
+  const items = visibleResults.slice(0, 10);
 
   return (
     <div className='mb-25 lg:mb-2'>

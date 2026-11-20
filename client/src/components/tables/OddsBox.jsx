@@ -4,6 +4,7 @@ import { useCasino } from '../../context/CasinoContext';
 export default function OddsBox({
   nation,
   odds,
+  displayOdds,
   volume,
   type = 'back',
   isHeader = false,
@@ -30,6 +31,7 @@ export default function OddsBox({
   };
 
   const dead = isSuspended || !(Number(odds) > 1);
+  const shown = dead ? '0' : (displayOdds ?? odds);
 
   return (
     <div
@@ -39,8 +41,10 @@ export default function OddsBox({
       onClick={dead ? undefined : handleClick}
       style={{ cursor: dead ? 'not-allowed' : 'pointer' }}
     >
-      <span className='casino-odds'>{dead ? '0' : odds}</span>
-      {volume && !dead && <span className='casino-volume'>{volume}</span>}
+      <span className='casino-odds'>{shown}</span>
+      {volume !== undefined && volume !== null && volume !== '' && !dead && (
+        <span className='casino-volume'>{volume}</span>
+      )}
     </div>
   );
 }

@@ -279,8 +279,18 @@ export const getWinnerMap = (gameid) => {
   if (['vaaa', 'aaa', 'aaa2'].includes(g)) {
     return { 1: 'Amar', 2: 'Akbar', 3: 'Anthony' };
   }
-  if (g === 'vdtl20') {
-    return { 1: 'Dragon', 2: 'Tiger', 3: 'Lion' };
+  if (g === 'vdtl20' || g === 'dtl20') {
+    return { 1: 'Dragon', 2: 'Tiger', 3: 'Lion', 21: 'Tiger', 41: 'Lion' };
+  }
+  if (['vbtable', 'btable', 'btable2'].includes(g)) {
+    return {
+      1: 'Don',
+      2: 'Amar Akbar Anthony',
+      3: 'Sahib Bibi Aur Ghulam',
+      4: 'Dharam Veer',
+      5: 'Kis Kis ko Pyaar Karoon',
+      6: 'Ghulam',
+    };
   }
   if (['card32', 'card32eu', 'pcard32'].includes(g)) {
     return {
@@ -290,17 +300,14 @@ export const getWinnerMap = (gameid) => {
       4: 'Player 11',
     };
   }
-  if (
-    [
-      'lucky7',
-      'lucky7eu',
-      'lucky7eu2',
-      'vlucky7',
-      'plucky7',
-      'lucky5',
-    ].includes(g)
-  ) {
-    return { 1: 'Low Card', 2: 'High Card', 3: 'Tie' };
+  if (['lucky7', 'lucky7eu', 'lucky7eu2', 'vlucky7', 'plucky7'].includes(g)) {
+    return { 1: 'Low Card', 2: 'High Card', 0: 'Tie (7)', 3: 'Tie (7)' };
+  }
+  if (g === 'lucky5') {
+    return { 1: 'Low Card', 2: 'High Card', 0: 'Tie (6)', 3: 'Tie (6)' };
+  }
+  if (g === 'abj') {
+    return { 1: 'Andar', 2: 'Bahar' };
   }
   if (g === 'dum10') {
     return { 1: 'Yes', 2: 'No' };
@@ -317,8 +324,36 @@ export const getWinnerMap = (gameid) => {
   if (g === 'teen120') {
     return { 1: 'Player', 2: 'Dealer', 3: 'Tie' };
   }
+  if (g === 'teen9') {
+    return { 1: 'Tiger', 2: 'Lion', 3: 'Dragon' };
+  }
+  if (g === 'superover') {
+    return { 1: 'ENG', 2: 'RSA', 3: 'Tie', 0: 'Tie' };
+  }
   if (g === 'superover2') {
-    return { 1: 'Team 1', 2: 'Team 2' };
+    return { 1: 'IND', 2: 'ENG', 3: 'Tie', 0: 'Tie' };
+  }
+  if (g === 'superover3') {
+    return { 1: 'IND', 2: 'AUS', 3: 'Tie', 0: 'Tie' };
+  }
+  if (g === 'cricketv3') {
+    return { 1: 'AUS', 2: 'IND', 3: 'Tie', 0: 'Tie' };
+  }
+  if (g === 'race2') {
+    return { 1: 'Player A', 2: 'Player B', 3: 'Player C', 4: 'Player D' };
+  }
+  if (g === 'race20') {
+    return {
+      1: 'K of Spade',
+      2: 'K of Heart',
+      3: 'K of Club',
+      4: 'K of Diamond',
+    };
+  }
+  if (g === 'cmatch20') {
+    return Object.fromEntries(
+      Array.from({ length: 10 }, (_, i) => [i + 1, `Run ${i + 1}`])
+    );
   }
   if (g === 'queen') {
     return { 1: 'Total 0', 2: 'Total 1', 3: 'Total 2', 4: 'Total 3' };
@@ -358,12 +393,22 @@ export const getResultLabel = (gameid, win) => {
   if (R_BADGE_GAMES.has(g)) return 'R';
   if (ROULETTE_GAMES.has(g)) return w || '-';
   if (g === 'sicbo' || g === 'sicbo2') return w || '-';
+  if (g === 'lottcard') {
+    const digs = w.match(/\d/g);
+    return digs ? digs.join('') : w || '-';
+  }
 
   if (['vaaa', 'aaa', 'aaa2'].includes(g)) {
     return w === '1' ? 'A' : w === '2' ? 'B' : 'C';
   }
-  if (g === 'vdtl20') {
-    return w === '1' ? 'D' : w === '2' ? 'T' : 'L';
+  if (g === 'vdtl20' || g === 'dtl20') {
+    if (w === '1') return 'D';
+    if (w === '21' || w === '2') return 'T';
+    if (w === '41' || w === '3') return 'L';
+    return 'L';
+  }
+  if (['vbtable', 'btable', 'btable2'].includes(g)) {
+    return { 1: 'A', 2: 'B', 3: 'C', 4: 'D', 5: 'E', 6: 'F' }[w] || w || '-';
   }
   if (['baccarat', 'baccarat2', 'pbaccarat'].includes(g)) {
     return w === '1' ? 'P' : w === '2' ? 'B' : 'T';
@@ -395,14 +440,35 @@ export const getResultLabel = (gameid, win) => {
   if (g === 'race17') {
     return w === '1' ? 'Y' : 'N';
   }
+  if (g === 'superover') {
+    return w === '1' ? 'E' : w === '2' ? 'R' : 'T';
+  }
   if (g === 'superover2') {
-    return w === '1' ? 'E' : 'I';
+    return w === '1' ? 'I' : w === '2' ? 'E' : 'T';
+  }
+  if (g === 'superover3') {
+    return w === '1' ? 'I' : w === '2' ? 'A' : 'T';
+  }
+  if (g === 'cricketv3') {
+    return w === '1' ? 'A' : w === '2' ? 'I' : 'T';
+  }
+  if (g === 'race2') {
+    return { 1: 'A', 2: 'B', 3: 'C', 4: 'D' }[w] || w || '-';
+  }
+  if (g === 'race20') {
+    return { 1: '♠', 2: '♥', 3: '♣', 4: '♦' }[w] || w || '-';
+  }
+  if (g === 'cmatch20') {
+    return w || '-';
   }
   if (g === 'teen1') {
     return w === '1' ? 'P' : 'D';
   }
   if (g === 'teen120') {
     return w === '1' ? 'P' : w === '2' ? 'D' : 'T';
+  }
+  if (g === 'teen9') {
+    return w === '1' ? 'T' : w === '2' ? 'L' : w === '3' ? 'D' : w || '-';
   }
   if (g === 'queen') {
     return { 1: '0', 2: '1', 3: '2', 4: '3' }[w] || '0';
@@ -433,14 +499,17 @@ export const getResultBgColor = (gameid, win) => {
       ? 'bg-[#d9534f] text-white'
       : 'bg-[#222222] text-white';
   }
-  if (g === 'sicbo' || g === 'sicbo2') {
+  if (g === 'sicbo' || g === 'sicbo2' || g === 'lottcard') {
     return 'bg-[#355e3b] text-[#f5cc03]';
   }
-  if (g === 'vaaa' || g === 'vdtl20') {
+  if (['vaaa', 'aaa', 'aaa2', 'vdtl20', 'dtl20'].includes(g)) {
     if (w === '1') return 'bg-[#ff4500] text-white';
-    if (w === '2') return 'bg-[#e2ee26] text-black';
-    if (w === '3') return 'bg-[#33c6ff] text-black';
+    if (w === '2' || w === '21') return 'bg-[#e2ee26] text-black';
+    if (w === '3' || w === '41') return 'bg-[#33c6ff] text-black';
     return 'bg-gray-400';
+  }
+  if (['vbtable', 'btable', 'btable2'].includes(g)) {
+    return 'bg-[#355e3b] text-[#f5cc03]';
   }
   if (['baccarat', 'baccarat2', 'pbaccarat'].includes(g)) {
     if (w === '1') return 'bg-[#428bca] text-white';

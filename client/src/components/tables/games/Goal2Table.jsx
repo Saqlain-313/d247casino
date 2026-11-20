@@ -1,60 +1,52 @@
 import { useCasino } from '../../../context/CasinoContext';
+import { NationBook } from '../casino/shared';
 
-export default function Goal2Table() {
-  const { roundData, isSuspended, openBetSlip } = useCasino();
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1200;
+const formatMax = (max) => {
+  const n = Number(max || 50000);
+  if (n >= 100000) return `${+(n / 100000).toFixed(2)}L`;
+  return n >= 1000 ? `${Math.round(n / 1000)}K` : String(n);
+};
 
-  const subs = Array.isArray(roundData?.sub) ? roundData.sub : [];
-  const playersMarket = subs.filter(
-    (s) => s.subtype === 'player' || (!s.subtype && Number(s.sid) <= 12)
+function Goal2OddsCell({ item, type, isSuspended, openBetSlip, isMobile }) {
+  const isBack = type === 'back';
+  const odds = isBack ? item.b : item.l;
+  const size = isBack ? item.bs : item.ls;
+  const gs = String(item.gstatus || '').toUpperCase();
+  const dead =
+    isSuspended ||
+    (gs && !['OPEN', 'ACTIVE'].includes(gs)) ||
+    !(Number(odds) > 1);
+
+  return (
+    <div
+      onClick={() =>
+        !dead && openBetSlip(String(item.sid ?? item.nat), odds, type, isMobile)
+      }
+      className={`market-odd-box ${type} ${dead ? 'suspended-box' : ''}`}
+      style={{
+        cursor: dead ? 'not-allowed' : 'pointer',
+        flex: 1,
+        minHeight: '42px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <span className='market-odd'>{dead ? '0' : odds}</span>
+      {!dead && size ? <span className='market-volume'>{size}</span> : null}
+    </div>
   );
-  const methodsMarket = subs.filter(
-    (s) =>
-      s.subtype === 'method' ||
-      (!s.subtype && Number(s.sid) >= 21 && Number(s.sid) <= 25)
-  );
-  const combosMarket = subs.filter(
-    (s) => s.subtype === 'combo' || (!s.subtype && Number(s.sid) > 100)
-  );
+}
 
-  const formatMax = (max) => {
-    const n = Number(max || 50000);
-    return n >= 1000 ? `${Math.round(n / 1000)}K` : n;
-  };
-
-  const OddsCell = ({ item, type }) => {
-    const isBack = type === 'back';
-    const odds = isBack ? item.b : item.l;
-    const size = isBack ? item.bs : item.ls;
-    const gs = String(item.gstatus || '').toUpperCase();
-    const dead =
-      isSuspended ||
-      (gs && !['OPEN', 'ACTIVE'].includes(gs)) ||
-      !(Number(odds) > 1);
-
-    return (
-      <div
-        onClick={() =>
-          !dead && openBetSlip(item.sid ?? item.nat, odds, type, isMobile)
-        }
-        className={`market-odd-box ${type} ${dead ? 'suspended-box' : ''}`}
-        style={{
-          cursor: dead ? 'not-allowed' : 'pointer',
-          flex: 1,
-          minHeight: '42px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <span className='market-odd'>{dead ? '0' : odds}</span>
-        {!dead && size ? <span className='market-volume'>{size}</span> : null}
-      </div>
-    );
-  };
-
-  const MarketTable = ({ title, items }) => (
+function Goal2MarketTable({
+  title,
+  items,
+  isSuspended,
+  openBetSlip,
+  isMobile,
+}) {
+  return (
     <div className='game-market market-6 container-fluid container-fluid-5'>
       <div className='market-title row row5'>{title}</div>
       <div className='market-header row row5'>
@@ -80,10 +72,23 @@ export default function Goal2Table() {
               <div className='market-row'>
                 <div className='market-nation-detail'>
                   <span className='market-nation-name pointer'>{item.nat}</span>
+                  <NationBook id={`player:${item.sid}`} />
                 </div>
                 <div className='blb-box goal2-odds-box'>
-                  <OddsCell item={item} type='back' />
-                  <OddsCell item={item} type='lay' />
+                  <Goal2OddsCell
+                    item={item}
+                    type='back'
+                    isSuspended={isSuspended}
+                    openBetSlip={openBetSlip}
+                    isMobile={isMobile}
+                  />
+                  <Goal2OddsCell
+                    item={item}
+                    type='lay'
+                    isSuspended={isSuspended}
+                    openBetSlip={openBetSlip}
+                    isMobile={isMobile}
+                  />
                 </div>
                 <div className='fancy-min-max-box'>
                   <div className='fancy-min-max'>
@@ -98,12 +103,42 @@ export default function Goal2Table() {
       </div>
     </div>
   );
+}
+
+export default function Goal2Table() {
+  const { roundData, isSuspended, openBetSlip } = useCasino();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1200;
+
+  const subs = Array.isArray(roundData?.sub) ? roundData.sub : [];
+  const playersMarket = subs.filter(
+    (s) => s.subtype === 'player' || (!s.subtype && Number(s.sid) <= 12)
+  );
+  const methodsMarket = subs.filter(
+    (s) =>
+      s.subtype === 'method' ||
+      (!s.subtype && Number(s.sid) >= 21 && Number(s.sid) <= 25)
+  );
+  const combosMarket = subs.filter(
+    (s) => s.subtype === 'combo' || (!s.subtype && Number(s.sid) > 100)
+  );
 
   return (
     <div className='w-full min-w-0'>
       <div className='detail-page-container position-relative flex flex-wrap items-start'>
-        <MarketTable title='Who Will Goal Next?' items={playersMarket} />
-        <MarketTable title='Method Of Next Goal' items={methodsMarket} />
+        <Goal2MarketTable
+          title='Who Will Goal Next?'
+          items={playersMarket}
+          isSuspended={isSuspended}
+          openBetSlip={openBetSlip}
+          isMobile={isMobile}
+        />
+        <Goal2MarketTable
+          title='Method Of Next Goal'
+          items={methodsMarket}
+          isSuspended={isSuspended}
+          openBetSlip={openBetSlip}
+          isMobile={isMobile}
+        />
       </div>
 
       {combosMarket.length > 0 && (
@@ -132,7 +167,7 @@ export default function Goal2Table() {
                       onClick={() =>
                         !dead &&
                         openBetSlip(
-                          item.sid ?? item.nat,
+                          String(item.sid ?? item.nat),
                           item.b,
                           'back',
                           isMobile

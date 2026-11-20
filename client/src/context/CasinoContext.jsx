@@ -10,7 +10,11 @@ import {
 import { useDispatch } from 'react-redux';
 import api from '../redux/api';
 import { getUser } from '../redux/reducer/authReducer';
-import { placeCasinoBet } from '../redux/reducer/casinoBetSlice';
+import {
+  clearCasinoBetError,
+  getMyCasinoBets,
+  placeCasinoBet,
+} from '../redux/reducer/casinoBetSlice';
 
 const CasinoContext = createContext(null);
 
@@ -31,9 +35,21 @@ const isMarketOpen = (market) => {
   const status = String(market?.gstatus ?? market?.status ?? '')
     .trim()
     .toUpperCase();
-
-  return ['OPEN', 'ACTIVE'].includes(status);
+  if (status) return ['OPEN', 'ACTIVE'].includes(status);
+  // Roulette API sends numeric s: 1 (open) / 0 (suspended) without gstatus
+  if (market?.s !== undefined && market?.s !== null) {
+    return Number(market.s) === 1;
+  }
+  return false;
 };
+
+const SICBO_RATIO_SLUGS = new Set([
+  'sicbo',
+  'sicbo2',
+  'baccarat',
+  'baccarat2',
+  'pbaccarat',
+]);
 
 export function CasinoUiProvider({
   children,
@@ -144,16 +160,34 @@ export function CasinoUiProvider({
   const hasAnyOpenMarket = marketList.some((item) => {
     const visible = isMarketVisible(item);
     const open = isMarketOpen(item);
-    if (String(gameid).toLowerCase() === 'worli3' && visible && open) {
+    if (!visible || !open) return false;
+    if (String(gameid).toLowerCase() === 'worli3') {
       return true;
     }
     const back = Number(item?.b ?? item?.back ?? item?.odds);
     const lay = Number(item?.l ?? item?.lay);
-    return (
-      visible &&
-      open &&
-      ((Number.isFinite(back) && back > 1) || (Number.isFinite(lay) && lay > 1))
-    );
+    if (SICBO_RATIO_SLUGS.has(String(gameid || '').toLowerCase()) && back > 0) {
+      return true;
+    }
+    if (
+      (Number.isFinite(back) && back > 1) ||
+      (Number.isFinite(lay) && lay > 1)
+    ) {
+      return true;
+    }
+    if (
+      String(item?.etype || '').toLowerCase() === 'fancy2' &&
+      (Number(item?.bbhav) > 0 || Number(item?.lbhav) > 0)
+    ) {
+      return true;
+    }
+    if (
+      Array.isArray(item?.odds) &&
+      item.odds.some((o) => Number(o?.b) > 1 || Number(o?.l) > 1)
+    ) {
+      return true;
+    }
+    return false;
   });
 
   const isSuspended =
@@ -172,6 +206,11 @@ export function CasinoUiProvider({
       const entry = {
         back: String(item?.b ?? item?.back ?? item?.odds ?? ''),
         lay: String(item?.l ?? item?.lay ?? ''),
+        bbhav: Number(item?.bbhav ?? 0),
+        lbhav: Number(item?.lbhav ?? 0),
+        etype: item?.etype ?? '',
+        subtype: item?.subtype ?? '',
+        odds: Array.isArray(item?.odds) ? item.odds : null,
         nat: item?.nat ?? item?.n ?? item?.name ?? item?.label ?? '',
         sid: providerId != null ? String(providerId) : '',
         gstatus: item?.gstatus ?? item?.status ?? '',
@@ -179,6 +218,10 @@ export function CasinoUiProvider({
         min: Number(item?.min ?? 100),
         max: Number(item?.max ?? 100000),
       };
+
+      if (providerId != null && providerId !== '') {
+        map[`sid:${String(providerId)}`] = entry;
+      }
 
       const aliases = [
         item?.nat,
@@ -247,64 +290,238 @@ export function CasinoUiProvider({
 
       const lookupNation = normalizeSelection(nation);
 
-      // Find actual provider selection
-      let selectedMarket = marketList.find((item) => {
-        const providerId = item?.sid ?? item?.i;
-
-        const providerNames = [
-          item?.nat,
-          item?.n,
-          item?.name,
-          item?.label,
-          item?.selection,
-          item?.selectionName,
-        ];
-
-        const nameMatches = providerNames.some(
-          (name) => normalizeSelection(name) === lookupNation
+      // 1. Nested Odd/Even, Trap High/Low/JQK, Teen6 Suit/Card, or Notenum Card selection
+      let selectedMarket = null;
+      const nestedM = String(nation).match(/^(\d+):(odd|even|high|low|jqk)$/i);
+      const teen6SuitM = String(nation).match(
+        /^(\d+):suit:(spade|diamond|club|heart)$/i
+      );
+      const notenumCardM = String(nation).match(/^(\d+):card:(\d{1,2})$/i);
+      if (nestedM) {
+        const parentSid = nestedM[1];
+        const subKey = nestedM[2].toLowerCase();
+        const parent = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === parentSid &&
+            Array.isArray(item?.odds)
         );
+        const child = parent?.odds?.find(
+          (o) =>
+            String(o?.nat || '')
+              .trim()
+              .toLowerCase() === subKey
+        );
+        if (parent && child) {
+          selectedMarket = {
+            ...parent,
+            sid: `${parentSid}:${subKey}`,
+            nat: `${parent.nat || `Card ${parentSid}`} ${child.nat}`,
+            b: Number(child.b ?? 0),
+            l: Number(child.l ?? 0),
+          };
+        }
+      } else if (teen6SuitM) {
+        const parentSid = teen6SuitM[1];
+        const suit = teen6SuitM[2].toLowerCase();
+        const parent = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === parentSid &&
+            Array.isArray(item?.odds)
+        );
+        const child = parent?.odds?.find(
+          (o) =>
+            String(o?.nat || '')
+              .trim()
+              .toLowerCase() === suit
+        );
+        if (parent && child) {
+          selectedMarket = {
+            ...parent,
+            sid: `${parentSid}:suit:${suit}`,
+            nat: `${parent.nat || `Card ${parentSid}`} ${child.nat}`,
+            b: Number(child.b ?? 0),
+            l: Number(child.l ?? 0),
+          };
+        }
+      } else if (notenumCardM) {
+        const parentSid = notenumCardM[1];
+        const rankNum = Number(notenumCardM[2]);
+        const parent = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === parentSid &&
+            Array.isArray(item?.odds)
+        );
+        const child = parent?.odds?.find(
+          (o) => Number(o?.ssid ?? o?.sid ?? o?.sno) === rankNum
+        );
+        if (parent && child) {
+          selectedMarket = {
+            ...parent,
+            sid: `${parentSid}:card:${rankNum}`,
+            nat: `${parent.nat || `Card ${parentSid}`} - ${child.nat}`,
+            b: Number(child.b ?? 0),
+            l: Number(child.l ?? 0),
+          };
+        }
+      }
 
-        const idMatches =
-          providerId !== undefined &&
-          providerId !== null &&
-          String(providerId) === String(nation);
+      // 2. Exact SID match first (avoids duplicate-nat collision e.g. vteen sid 17/18 Consecutive)
+      if (!selectedMarket) {
+        selectedMarket = marketList.find((item) => {
+          const providerId = item?.sid ?? item?.i;
+          return (
+            providerId !== undefined &&
+            providerId !== null &&
+            String(providerId) === String(nation)
+          );
+        });
+      }
 
-        return nameMatches || idMatches;
-      });
+      // 3. Normalized provider name match
+      if (!selectedMarket) {
+        selectedMarket = marketList.find((item) => {
+          const providerNames = [
+            item?.nat,
+            item?.n,
+            item?.name,
+            item?.label,
+            item?.selection,
+            item?.selectionName,
+          ];
+          return providerNames.some(
+            (name) => normalizeSelection(name) === lookupNation
+          );
+        });
+      }
 
       // Selection not found
       if (!selectedMarket) {
+        // teenunique: "unique:1-3-5" -> backed by marketList[0]
+        const uniqM = String(nation).match(/^unique:([1-6])-([1-6])-([1-6])$/i);
+        if (String(gameid).toLowerCase() === 'teenunique' && uniqM) {
+          const baseSub = marketList[0];
+          if (baseSub) {
+            selectedMarket = {
+              ...baseSub,
+              sid: `unique:${uniqM[1]}-${uniqM[2]}-${uniqM[3]}`,
+              nat: `Unique Cards (${uniqM[1]}, ${uniqM[2]}, ${uniqM[3]})`,
+            };
+          }
+        }
+        // 3cardj: "3cj:yes:1-7-13" / "3cj:no:1-7-13" -> backed by live sid 1 (Yes) / 2 (No)
+        const j3m = String(nation).match(/^3cj:(yes|no):(\d+)-(\d+)-(\d+)$/i);
+        if (String(gameid).toLowerCase() === '3cardj' && j3m) {
+          const mode = j3m[1].toLowerCase();
+          const picks = [Number(j3m[2]), Number(j3m[3]), Number(j3m[4])];
+          const secSub = marketList.find(
+            (m) => String(m.sid ?? m.i) === (mode === 'yes' ? '1' : '2')
+          );
+          if (secSub) {
+            const rLbl = (r) =>
+              ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[r] || String(r);
+            selectedMarket = {
+              ...secSub,
+              sid: `3cj:${mode}:${picks.join('-')}`,
+              nat: `${mode === 'yes' ? 'Yes' : 'No'} (${picks.map(rLbl).join(', ')})`,
+            };
+          }
+        }
+        // Lottcard: "lott:single:5" / "lott:double:45" / "lott:triple:457" -> backed by live sid 1/2/3
+        const lottM = String(nation).match(
+          /^lott:(single|double|triple):(\d{1,3})$/i
+        );
+        if (String(gameid).toLowerCase() === 'lottcard' && lottM) {
+          const mode = lottM[1].toLowerCase();
+          const digits = lottM[2];
+          const sidMap = { single: '1', double: '2', triple: '3' };
+          const secSub = marketList.find(
+            (m) => String(m.sid ?? m.i) === sidMap[mode]
+          );
+          if (secSub) {
+            selectedMarket = {
+              ...secSub,
+              sid: `lott:${mode}:${digits}`,
+              nat: `${mode[0].toUpperCase() + mode.slice(1)} ${digits}`,
+            };
+          }
+        }
+        // ab3 / ab4: "abchild:<cardNum>:<andar|bahar>:<rank>" -> backed by live sub[0] + child[rank]
+        const abChildM = String(nation).match(
+          /^abchild:(\d+):(andar|bahar):(\d{1,2})$/i
+        );
+        if (['ab3', 'ab4'].includes(String(gameid).toLowerCase()) && abChildM) {
+          const [, cardNum, abSide, rankStr] = abChildM;
+          const rankNum = Number(rankStr);
+          const activeSub = marketList.find(
+            (m) => String(m.sid ?? m.i) === cardNum
+          );
+          const childSid =
+            abSide.toLowerCase() === 'andar' ? rankNum : 20 + rankNum;
+          const childEntry = (casinoData?.child || []).find(
+            (c) => Number(c.sid) === childSid
+          );
+          if (
+            activeSub &&
+            (!childEntry ||
+              (Number(childEntry.b) === 1 && Number(childEntry.l) > 0))
+          ) {
+            const rankLbl =
+              { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }[rankNum] || String(rankNum);
+            selectedMarket = {
+              ...activeSub,
+              sid: `abchild:${cardNum}:${abSide.toLowerCase()}:${rankNum}`,
+              nat: `${abSide.toLowerCase() === 'andar' ? 'Andar' : 'Bahar'} ${rankLbl} (Card ${cardNum})`,
+            };
+          }
+        }
         // Matka local markets (jodi/pana/sp/dp/trio/cycle/motor/charts/abr): selection logic hamare
         // end pe hy — provider sids nahi deta, local payout table use karo.
         const localM = String(nation).match(
           /^(single|jodi|sp|dp|tp|trio|pana|cycle|motor|chart56|chart64|abr|commonsp|commondp|colordp):/
         );
         if (['worli', 'worli2', 'worli3'].includes(String(gameid)) && localM) {
-          const LOCAL_ODDS = {
-            single: 9.5,
-            jodi: 95,
-            sp: 140,
-            pana: 140,
-            dp: 240,
-            tp: 700,
-            trio: 700,
-            cycle: 9.5,
-            motor: 9.5,
-            chart56: 9.5,
-            chart64: 9.5,
-            abr: 9.5,
-            commonsp: 9.5,
-            commondp: 9.5,
-            colordp: 9.5,
+          const MATKA_SID_MAP = {
+            single: 1,
+            pana: 2,
+            sp: 3,
+            dp: 4,
+            tp: 5,
+            trio: 5,
+            cycle: 6,
+            motor: 7,
+            chart56: 8,
+            chart64: 9,
+            abr: 10,
+            commonsp: 11,
+            commondp: 12,
+            colordp: 13,
+            jodi: 14,
           };
-          selectedMarket = {
-            sid: String(nation),
-            nat: String(nation),
-            b: LOCAL_ODDS[localM[1]] || 9.5,
-            gstatus: 'OPEN',
-            min: 10,
-            max: 20000,
-          };
+          const secSid = MATKA_SID_MAP[localM[1]];
+          const secSub = marketList.find(
+            (m) => Number(m.sid ?? m.i) === secSid
+          );
+          if (secSub) {
+            const [k, arg] = String(nation).split(':');
+            const prettyNat =
+              k === 'single'
+                ? arg === 'line1'
+                  ? 'Line 1 Single'
+                  : arg === 'line2'
+                    ? 'Line 2 Single'
+                    : arg === 'odd'
+                      ? 'ODD Single'
+                      : arg === 'even'
+                        ? 'EVEN Single'
+                        : `${arg} Single`
+                : `${k.toUpperCase()} ${String(arg || '').toUpperCase()}`.trim();
+            selectedMarket = {
+              ...secSub,
+              sid: String(nation),
+              nat: prettyNat,
+              b: Number(odds) > 1 ? Number(odds) : Number(secSub.b || 0),
+            };
+          }
         }
       }
       if (!selectedMarket) {
@@ -334,9 +551,11 @@ export function CasinoUiProvider({
         return;
       }
 
-      // Providers may send OPEN or ACTIVE for an open market.
+      // Providers may send OPEN / ACTIVE, or numeric s=1 on Roulette.
       const marketStatus = String(
-        selectedMarket.gstatus ?? selectedMarket.status ?? ''
+        selectedMarket.gstatus ??
+          selectedMarket.status ??
+          (Number(selectedMarket.s) === 1 ? 'OPEN' : 'SUSPENDED')
       ).toUpperCase();
 
       if (!['OPEN', 'ACTIVE'].includes(marketStatus)) {
@@ -353,23 +572,47 @@ export function CasinoUiProvider({
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '');
       const slugLower = String(gameid || '').toLowerCase();
+      // 1-day Dragon Tiger (dt6/vdt6/pdt6) has suit tiebreak (NO half-loss -> Lay allowed!)
       const isHalfLoss =
-        (['dt20', 'dt202', 'dt6', 'vdt6'].includes(slugLower) &&
+        (['dt20', 'dt202', 'pdt20'].includes(slugLower) &&
           ['dragon', 'tiger'].includes(natKeyLower)) ||
-        (['lucky7', 'lucky7eu', 'lucky7eu2', 'lucky5', 'lucky15'].includes(
-          slugLower
-        ) &&
+        ([
+          'lucky7',
+          'lucky7eu',
+          'lucky7eu2',
+          'vlucky7',
+          'plucky7',
+          'lucky5',
+          'lucky15',
+        ].includes(slugLower) &&
           ['lowcard', 'low', 'highcard', 'high'].includes(natKeyLower)) ||
-        (['aaa', 'aaa2'].includes(slugLower) &&
-          ['under7', 'over7'].includes(natKeyLower));
+        (['aaa', 'aaa2', 'vaaa'].includes(slugLower) &&
+          ['under7', 'over7'].includes(natKeyLower)) ||
+        (slugLower === 'dolidana' &&
+          ['lessthan7', 'greaterthan7', 'lt7', 'gt7'].includes(natKeyLower));
       if (requestedSide === 'lay' && isHalfLoss) {
         window.alert('Lay not allowed on half-loss markets.');
         return;
       }
-      const rawOdds =
-        requestedSide === 'lay'
+      const isFancy2Session =
+        String(selectedMarket.etype || '').toLowerCase() === 'fancy2' &&
+        (Number(selectedMarket.bbhav) > 0 || Number(selectedMarket.lbhav) > 0);
+      const isSicboRatio = SICBO_RATIO_SLUGS.has(slugLower);
+      const rawOdds = isFancy2Session
+        ? requestedSide === 'lay'
+          ? Number(selectedMarket.lbhav) > 0
+            ? Math.round((1 + Number(selectedMarket.lbhav) / 100) * 100) / 100
+            : 0
+          : Number(selectedMarket.bbhav) > 0
+            ? Math.round((1 + Number(selectedMarket.bbhav) / 100) * 100) / 100
+            : 0
+        : requestedSide === 'lay'
           ? (selectedMarket.l ?? selectedMarket.lay)
-          : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
+          : isSicboRatio
+            ? Number(selectedMarket.b ?? 0) > 0
+              ? Number(selectedMarket.b) + 1
+              : 0
+            : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
       const numericOdds =
         String(gameid).toLowerCase() === 'worli3' &&
         requestedSide === 'back' &&
@@ -388,14 +631,39 @@ export function CasinoUiProvider({
 
       setSlipMode(mobile ? 'mobile' : 'desktop');
 
+      const baseNat = String(
+        selectedMarket.nat ?? selectedMarket.n ?? selectedMarket.name ?? nation
+      );
+      const abjLabelMap =
+        slugLower === 'abj'
+          ? {
+              2: 'Andar 1st Bet',
+              3: 'Andar 2nd Bet',
+              5: 'Bahar 1st Bet',
+              6: 'Bahar 2nd Bet',
+            }
+          : null;
+      const poker20Prefix =
+        slugLower === 'poker20'
+          ? Number(providerId) >= 21
+            ? `Player B ${baseNat}`
+            : `Player A ${baseNat}`
+          : null;
+      const displayNat = abjLabelMap?.[String(providerId)]
+        ? abjLabelMap[String(providerId)]
+        : poker20Prefix
+          ? poker20Prefix
+          : ['vcon', 'con'].includes(
+                String(selectedMarket.subtype || '').toLowerCase()
+              )
+            ? `${baseNat} Consecutive`
+            : isFancy2Session
+              ? `${baseNat} (${requestedSide === 'lay' ? selectedMarket.l : selectedMarket.b})`
+              : baseNat;
+
       // Set bet control
       betting.setBetControl({
-        nat: String(
-          selectedMarket.nat ??
-            selectedMarket.n ??
-            selectedMarket.name ??
-            nation
-        ),
+        nat: displayNat,
 
         sid: String(providerId),
 
@@ -403,9 +671,9 @@ export function CasinoUiProvider({
 
         type: type === 'lay' ? 'lay' : 'back',
 
-        min: Number(selectedMarket.min ?? 100),
+        min: Number(selectedMarket.min ?? casinoData?.min ?? 100),
 
-        max: Number(selectedMarket.max ?? 100000),
+        max: Number(selectedMarket.max ?? casinoData?.max ?? 100000),
 
         visible: isMarketVisible(selectedMarket),
         gstatus: marketStatus,
@@ -496,20 +764,140 @@ export function CasinoUiProvider({
     // Re-check the selected market immediately before submitting.
     // This prevents a stale slip from placing a bet after the provider closes it.
     if (!isLocalMatka) {
-      const latestMarket = marketList.find(
-        (item) =>
-          String(item?.sid ?? item?.i ?? '') === String(control.selection)
+      const nestedSubmitM = String(control.selection).match(
+        /^(\d+):(odd|even|high|low|jqk)$/i
       );
+      const teen6SuitSubmitM = String(control.selection).match(
+        /^(\d+):suit:(spade|diamond|club|heart)$/i
+      );
+      const notenumSubmitM = String(control.selection).match(
+        /^(\d+):card:(\d{1,2})$/i
+      );
+      const uniqSubmitM = String(control.selection).match(
+        /^unique:([1-6])-([1-6])-([1-6])$/i
+      );
+      const j3SubmitM = String(control.selection).match(
+        /^3cj:(yes|no):(\d+)-(\d+)-(\d+)$/i
+      );
+      const lottSubmitM = String(control.selection).match(
+        /^lott:(single|double|triple):(\d{1,3})$/i
+      );
+      const abChildSubmitM = String(control.selection).match(
+        /^abchild:(\d+):(andar|bahar):(\d{1,2})$/i
+      );
+      let latestMarket = null;
+      let latestRawOdds = 0;
+      if (uniqSubmitM && String(control.slug).toLowerCase() === 'teenunique') {
+        latestMarket = marketList[0] || null;
+        latestRawOdds = latestMarket?.b ?? 0;
+      } else if (teen6SuitSubmitM) {
+        const p = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === teen6SuitSubmitM[1] &&
+            Array.isArray(item?.odds)
+        );
+        const child = p?.odds?.find(
+          (o) =>
+            String(o?.nat || '')
+              .trim()
+              .toLowerCase() === teen6SuitSubmitM[2].toLowerCase()
+        );
+        if (p && child) {
+          latestMarket = p;
+          latestRawOdds = child.b ?? 0;
+        }
+      } else if (j3SubmitM && String(control.slug).toLowerCase() === '3cardj') {
+        latestMarket = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') ===
+            (j3SubmitM[1].toLowerCase() === 'yes' ? '1' : '2')
+        );
+        latestRawOdds = latestMarket?.b ?? 0;
+      } else if (
+        lottSubmitM &&
+        String(control.slug).toLowerCase() === 'lottcard'
+      ) {
+        const sidMap = { single: '1', double: '2', triple: '3' };
+        latestMarket = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') ===
+            sidMap[lottSubmitM[1].toLowerCase()]
+        );
+        latestRawOdds = latestMarket?.b ?? 0;
+      } else if (
+        abChildSubmitM &&
+        ['ab3', 'ab4'].includes(String(control.slug).toLowerCase())
+      ) {
+        latestMarket = marketList.find(
+          (item) => String(item?.sid ?? item?.i ?? '') === abChildSubmitM[1]
+        );
+        latestRawOdds = latestMarket?.b ?? 0;
+      } else if (notenumSubmitM) {
+        const p = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === notenumSubmitM[1] &&
+            Array.isArray(item?.odds)
+        );
+        const child = p?.odds?.find(
+          (o) =>
+            Number(o?.ssid ?? o?.sid ?? o?.sno) === Number(notenumSubmitM[2])
+        );
+        if (p && child) {
+          latestMarket = p;
+          latestRawOdds = child.b ?? 0;
+        }
+      } else if (nestedSubmitM) {
+        const p = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === nestedSubmitM[1] &&
+            Array.isArray(item?.odds)
+        );
+        const child = p?.odds?.find(
+          (o) =>
+            String(o?.nat || '')
+              .trim()
+              .toLowerCase() === nestedSubmitM[2].toLowerCase()
+        );
+        if (p && child) {
+          latestMarket = p;
+          latestRawOdds =
+            control.type === 'lay' ? (child.l ?? 0) : (child.b ?? 0);
+        }
+      } else {
+        latestMarket = marketList.find(
+          (item) =>
+            String(item?.sid ?? item?.i ?? '') === String(control.selection)
+        );
+        const isLatestFancy2 =
+          String(latestMarket?.etype || '').toLowerCase() === 'fancy2' &&
+          (Number(latestMarket?.bbhav) > 0 || Number(latestMarket?.lbhav) > 0);
+        const isLatestSicbo = SICBO_RATIO_SLUGS.has(
+          String(control.slug || '').toLowerCase()
+        );
+        latestRawOdds = isLatestFancy2
+          ? control.type === 'lay'
+            ? Number(latestMarket?.lbhav) > 0
+              ? Math.round((1 + Number(latestMarket.lbhav) / 100) * 100) / 100
+              : 0
+            : Number(latestMarket?.bbhav) > 0
+              ? Math.round((1 + Number(latestMarket.bbhav) / 100) * 100) / 100
+              : 0
+          : control.type === 'lay'
+            ? (latestMarket?.l ?? latestMarket?.lay)
+            : isLatestSicbo
+              ? Number(latestMarket?.b ?? 0) > 0
+                ? Number(latestMarket.b) + 1
+                : 0
+              : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
+      }
       const latestStatus = String(
-        latestMarket?.gstatus ?? latestMarket?.status ?? ''
+        latestMarket?.gstatus ??
+          latestMarket?.status ??
+          (Number(latestMarket?.s) === 1 ? 'OPEN' : 'SUSPENDED')
       )
         .trim()
         .toUpperCase();
       const latestVisible = isMarketVisible(latestMarket);
-      const latestRawOdds =
-        control.type === 'lay'
-          ? (latestMarket?.l ?? latestMarket?.lay)
-          : (latestMarket?.b ?? latestMarket?.back ?? latestMarket?.odds);
       const latestOdds = Number(latestRawOdds);
 
       if (
@@ -529,6 +917,7 @@ export function CasinoUiProvider({
       }
     }
 
+    dispatch(clearCasinoBetError());
     try {
       await dispatch(
         placeCasinoBet({
@@ -545,6 +934,7 @@ export function CasinoUiProvider({
       betting.resetBettingState();
 
       dispatch(getUser());
+      dispatch(getMyCasinoBets(control.slug));
       loadNationBook();
       window.dispatchEvent(new CustomEvent('casino:bet-placed'));
 
@@ -577,9 +967,15 @@ export function CasinoUiProvider({
         [cellId]: (previous[cellId] || 0) + 100,
       }));
 
-      openBetSlip(`Roulette: ${spotName}`, odds, rouletteMode, isMobile);
+      // Pass exact provider spot ID `cellId` (matches live API `i` directly without name mismatch)
+      const side = ['roulette13', 'ourroullete'].includes(
+        String(gameid || '').toLowerCase()
+      )
+        ? 'back'
+        : rouletteMode;
+      openBetSlip(String(cellId || spotName), odds, side, isMobile);
     },
-    [isSuspended, openBetSlip, rouletteMode, isMobile]
+    [isSuspended, openBetSlip, rouletteMode, isMobile, gameid]
   );
 
   // =========================================

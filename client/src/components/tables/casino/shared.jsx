@@ -38,69 +38,125 @@ const formatInlineCard = (code) => {
 };
 
 function TableT2Generic() {
-  const { roundData, isSuspended } = useCasino();
+  const { roundData, isSuspended, openBetSlip } = useCasino();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1200;
   const groups = roundData?.mgroups || [];
+  const subs = Array.isArray(roundData?.sub) ? roundData.sub : [];
   const markets = roundData?.markets || {};
-  if (!groups.length) return null;
+  if (!groups.length && !subs.length) return null;
 
-  const Cell = ({ nat, type = 'back' }) => {
-    const e = markets[normalizeSelection(nat)];
-    const odds = type === 'lay' ? e?.lay : e?.back;
-    const live = e && Number(odds) > 0;
-    if (!live) {
-      return (
-        <div className={`casino-odds-box ${type} suspended-box`}>
-          <span className='casino-odds'>0</span>
-        </div>
-      );
-    }
-    return <OddsBox nation={nat} odds={odds} type={type} />;
+  const effectiveGroups = groups.length
+    ? groups
+    : [{ mname: 'Bookmaker', section: subs }];
+
+  const formatMax = (v) => {
+    const n = Number(v || 0);
+    if (!n) return '';
+    if (n >= 100000) return `${+(n / 100000).toFixed(2)}L`;
+    if (n >= 1000) return `${+(n / 1000).toFixed(2)}K`;
+    return String(n);
+  };
+
+  const renderCell = (x, type = 'back') => {
+    const key = x?.sid != null ? `sid:${x.sid}` : normalizeSelection(x?.nat);
+    const e = markets[key] || markets[normalizeSelection(x?.nat)] || x;
+    const gs = String(e?.gstatus ?? x?.gstatus ?? '').toUpperCase();
+    const openStatus = !gs || ['OPEN', 'ACTIVE'].includes(gs);
+    const isFancy2 =
+      String(e?.etype ?? x?.etype ?? '').toLowerCase() === 'fancy2' &&
+      (Number(e?.bbhav ?? x?.bbhav) > 0 || Number(e?.lbhav ?? x?.lbhav) > 0);
+    const rawOdds = type === 'lay' ? (e?.lay ?? x?.l) : (e?.back ?? x?.b);
+    const bhav =
+      type === 'lay'
+        ? Number(e?.lbhav ?? x?.lbhav)
+        : Number(e?.bbhav ?? x?.bbhav);
+    const decOdds = isFancy2
+      ? bhav > 0
+        ? Math.round((1 + bhav / 100) * 100) / 100
+        : 0
+      : Number(rawOdds);
+    const live =
+      !isSuspended &&
+      openStatus &&
+      (isFancy2 ? Number(rawOdds) > 0 && bhav > 0 : decOdds > 1);
+    const sidOrNat = x?.sid != null ? String(x.sid) : x?.nat;
+    const vol = isFancy2 ? bhav : type === 'lay' ? x?.ls || '' : x?.bs || '';
+    return (
+      <div
+        className={`market-odd-box ${type} ${live ? '' : 'suspended-box'}`}
+        style={{ cursor: live ? 'pointer' : 'not-allowed' }}
+        onClick={() => live && openBetSlip(sidOrNat, decOdds, type, isMobile)}
+      >
+        <span className='market-odd'>{live ? rawOdds : '0'}</span>
+        {live && vol ? <span className='market-volume'>{vol}</span> : null}
+      </div>
+    );
   };
 
   return (
-    <div className='w-full min-w-0 bg-[#f6f6f6] p-1'>
-      {groups.map((g, gi) => {
+    <div className='detail-page-container position-relative w-full min-w-0'>
+      {effectiveGroups.map((g, gi) => {
         const secs = g.section || [];
-        const hasLay = secs.some(
-          (x) => Number(markets[normalizeSelection(x.nat)]?.lay) > 0
-        );
+        const hasLay = secs.some((x) => {
+          const e =
+            markets[`sid:${x?.sid}`] ||
+            markets[normalizeSelection(x?.nat)] ||
+            x;
+          return Number(e?.lay ?? x?.l ?? 0) > 0;
+        });
+        const firstMin = secs[0]?.min;
+        const firstMax = secs[0]?.max;
         return (
-          <div
-            key={g.mname || gi}
-            className='mb-2 w-full min-w-0 border border-[#c7c8ca] bg-white'
-          >
-            <div className='bg-secondary text-secondary px-2 py-1 text-[13px] font-bold'>
-              {g.mname}
+          <div key={g.mname || gi} className='game-market market-2 mb-2'>
+            <div className='market-title'>
+              <span>{g.mname}</span>
             </div>
-            <div className='flex border-b border-[#c7c8ca] bg-[#f7f7f7] text-[13px] font-bold text-[#333]'>
-              <div className='min-w-0 flex-1 px-2 py-1'>Nation</div>
-              <div className='w-[30%] shrink-0 bg-[#72bbef] px-1 py-1 text-center'>
-                Back
+            <div className='market-header'>
+              <div className='market-nation-detail'>
+                {firstMin || firstMax ? (
+                  <span className='market-nation-name'>
+                    Min: {Number(firstMin || 100).toFixed(2)}{' '}
+                    {firstMax ? `Max: ${formatMax(firstMax)}` : ''}
+                  </span>
+                ) : null}
+              </div>
+              <div className='market-odd-box back'>
+                <b>Back</b>
               </div>
               {hasLay && (
-                <div className='w-[30%] shrink-0 bg-[#faa9ba] px-1 py-1 text-center'>
-                  Lay
+                <div className='market-odd-box lay'>
+                  <b>Lay</b>
                 </div>
               )}
             </div>
-            {secs.map((x) => (
-              <div
-                key={x.sid || x.nat}
-                className='flex items-stretch border-b border-[#e3e3e3]'
-              >
-                <div className='min-w-0 flex-1 px-2 py-1 text-[13px] font-semibold text-[#333]'>
-                  {x.nat}
-                </div>
-                <div className='w-[30%] shrink-0'>
-                  <Cell nat={x.nat} />
-                </div>
-                {hasLay && (
-                  <div className='w-[30%] shrink-0'>
-                    <Cell nat={x.nat} type='lay' />
+            <div className='market-body'>
+              {secs.map((x, idx) => {
+                const gs = String(x?.gstatus || '').toUpperCase();
+                const rowSusp =
+                  isSuspended || (gs && !['OPEN', 'ACTIVE'].includes(gs));
+                return (
+                  <div
+                    key={`${x?.sid ?? x?.nat}-${idx}`}
+                    className={`market-row ${rowSusp ? 'suspended-row' : ''}`}
+                  >
+                    <div className='market-nation-detail'>
+                      <span className='market-nation-name'>{x.nat}</span>
+                      <NationBook
+                        id={
+                          String(x?.sid) === '1'
+                            ? 'team1'
+                            : String(x?.sid) === '2'
+                              ? 'team2'
+                              : normalizeSelection(x?.nat)
+                        }
+                      />
+                    </div>
+                    {renderCell(x, 'back')}
+                    {hasLay && renderCell(x, 'lay')}
                   </div>
-                )}
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
         );
       })}
@@ -108,35 +164,7 @@ function TableT2Generic() {
   );
 }
 
-const LIVE_SUB_SLUGS = new Set([
-  'cmatch20',
-  'notenum',
-  'dum10',
-  'superover',
-  'superover2',
-  'superover3',
-  'trap',
-  'trio',
-  'race20',
-  'race17',
-  'teen',
-  'pteen',
-  'teen1',
-  'teen120',
-  'cmeter1',
-  'ab3',
-  'ab4',
-  'teen9',
-  'teensin',
-  'joker20',
-  'poison',
-  'poison20',
-  'teen6',
-  'teenmuf',
-  'poker',
-  'card32eu',
-  'abj',
-]);
+const LIVE_SUB_SLUGS = new Set([]);
 
 function LiveSubMarketTable({ isMobile, isSuspended, openBetSlip }) {
   const { roundData } = useCasino();
@@ -169,7 +197,19 @@ function LiveSubMarketTable({ isMobile, isSuspended, openBetSlip }) {
     );
 
   const renderBox = (item, side, odds) => {
-    const open = isOpen(item) && Number(odds) > 0;
+    const isFancy2 =
+      String(item?.etype || '').toLowerCase() === 'fancy2' &&
+      (Number(item?.bbhav) > 0 || Number(item?.lbhav) > 0);
+    const bhav = side === 'lay' ? Number(item?.lbhav) : Number(item?.bbhav);
+    const effectiveOdds = isFancy2
+      ? bhav > 0
+        ? Math.round((1 + bhav / 100) * 100) / 100
+        : 0
+      : Number(odds);
+    const open =
+      isOpen(item) &&
+      (isFancy2 ? Number(odds) > 0 && bhav > 0 : effectiveOdds > 1);
+    const keyOrNat = item?.sid != null ? String(item.sid) : item?.nat;
     return (
       <div
         className={`casino-odds-box ${side} ${!open ? 'suspended-box' : ''}`}
@@ -179,10 +219,11 @@ function LiveSubMarketTable({ isMobile, isSuspended, openBetSlip }) {
           cursor: open ? 'pointer' : 'not-allowed',
         }}
         onClick={() =>
-          open && openBetSlip(item.nat, String(odds), side, isMobile)
+          open && openBetSlip(keyOrNat, String(effectiveOdds), side, isMobile)
         }
       >
         <span className='casino-odds'>{open ? odds : '0'}</span>
+        {isFancy2 && open && <span className='casino-volume'>{bhav}</span>}
       </div>
     );
   };

@@ -19,12 +19,16 @@ const MONTHS = [
   'December',
 ];
 
-export default function MatkaCalendar({ slug, onClose }) {
+export default function MatkaCalendar({ slug, bazaarName = '', onClose }) {
   const now = new Date();
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [day, setDay] = useState(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const bazaarFilter = String(bazaarName || '')
+    .trim()
+    .toLowerCase();
 
   const daysInMonth = new Date(ym.y, ym.m + 1, 0).getDate();
   const today = new Date();
@@ -56,7 +60,16 @@ export default function MatkaCalendar({ slug, onClose }) {
       const r = await api.get('/casino/direct-result-by-date', {
         params: { date, eventName: slug },
       });
-      setRows(Array.isArray(r.data?.data) ? r.data.data : []);
+      const list = Array.isArray(r.data?.data) ? r.data.data : [];
+      setRows(
+        bazaarFilter
+          ? list.filter((row) =>
+              String(row?.nat || '')
+                .toLowerCase()
+                .includes(bazaarFilter)
+            )
+          : list
+      );
     } catch {
       setRows([]);
     }
@@ -81,6 +94,7 @@ export default function MatkaCalendar({ slug, onClose }) {
             &lt;
           </button>
           <b>
+            {bazaarName ? `${bazaarName} — ` : ''}
             {MONTHS[ym.m]} {ym.y}
           </b>
           <button

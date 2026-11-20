@@ -48,26 +48,32 @@ export const useCasinoWebSocket = ({
   const globalSocketRef = useRef(null);
   const lastRoundIdRef = useRef(null);
   const gameidRef = useRef(gameid);
+  const userIdRef = useRef(userId);
+  const bettingDataMidRef = useRef(bettingDataMid);
+  const onBettingDataUpdateRef = useRef(onBettingDataUpdate);
   const isFetchingResultsRef = useRef(false);
   const prevGameidRef = useRef(null);
 
-  // =====================================================
-  // EFFECT 1: Keep gameidRef updated
-  // =====================================================
   useEffect(() => {
     gameidRef.current = gameid;
   }, [gameid]);
 
-  // =====================================================
-  // EFFECT 2: Keep isFetchingResultsRef in sync
-  // =====================================================
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
+
+  useEffect(() => {
+    bettingDataMidRef.current = bettingDataMid;
+  }, [bettingDataMid]);
+
+  useEffect(() => {
+    onBettingDataUpdateRef.current = onBettingDataUpdate;
+  }, [onBettingDataUpdate]);
+
   useEffect(() => {
     isFetchingResultsRef.current = state.isFetchingResults;
   }, [state.isFetchingResults]);
 
-  // =====================================================
-  // EFFECT 3: Reset on game change
-  // =====================================================
   useEffect(() => {
     if (prevGameidRef.current !== gameid && gameid) {
       prevGameidRef.current = gameid;
@@ -78,11 +84,13 @@ export const useCasinoWebSocket = ({
   }, [gameid]);
 
   // =====================================================
-  // CALLBACKS
+  // CALLBACKS (stable across roundId updates so socket never reconnects per round)
   // =====================================================
 
   const subscribe = useCallback(() => {
     const currentGameId = gameidRef.current;
+    const currentUserId = userIdRef.current;
+    const currentMid = bettingDataMidRef.current;
     if (
       globalSocketRef.current &&
       globalSocketRef.current.readyState === WebSocket.OPEN
@@ -92,23 +100,23 @@ export const useCasinoWebSocket = ({
           type: 'subscribe',
           gameid: currentGameId,
           apitype: 'casino',
-          userId,
+          userId: currentUserId,
         })
       );
 
-      if (bettingDataMid) {
+      if (currentMid) {
         globalSocketRef.current.send(
           JSON.stringify({
             type: 'subscribe',
             gameid: currentGameId,
             apitype: 'casino',
-            roundId: bettingDataMid,
-            userId,
+            roundId: currentMid,
+            userId: currentUserId,
           })
         );
       }
     }
-  }, [userId, bettingDataMid]);
+  }, []);
 
   const unsubscribe = useCallback((gameIdToUnsubscribe) => {
     if (
@@ -166,7 +174,7 @@ export const useCasinoWebSocket = ({
         }
 
         if (data.type === 'casino_update') {
-          onBettingDataUpdate?.(data.data);
+          onBettingDataUpdateRef.current?.(data.data);
           const newRoundId = data.data?.mid;
           if (newRoundId) lastRoundIdRef.current = newRoundId;
         }
@@ -196,14 +204,7 @@ export const useCasinoWebSocket = ({
       closeSocketOnly();
       dispatch({ type: 'DISCONNECTED' });
     };
-  }, [
-    gameid,
-    reduxDispatch,
-    closeSocketOnly,
-    subscribe,
-    unsubscribe,
-    onBettingDataUpdate,
-  ]);
+  }, [gameid, reduxDispatch, closeSocketOnly, subscribe, unsubscribe]);
 
   // =====================================================
   // EFFECT 5: Re-subscribe when bettingDataMid changes

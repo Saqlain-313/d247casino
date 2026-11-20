@@ -9,6 +9,7 @@ const VideoStream = memo(function VideoStream({
   bettingData,
   showWinner,
   winnerLabel,
+  latestResultMid,
 }) {
   const slug = String(bettingData?.gtype || eventName || '').toLowerCase();
   const streamUrl = getVideoStreamUrl(eventName);
@@ -17,6 +18,12 @@ const VideoStream = memo(function VideoStream({
   const rdesc = bettingData?.rdesc;
   const dum10Card =
     slug === 'dum10' ? String(bettingData?.card || '').split(',')[0] : '';
+  const isCurrentRoundWinner =
+    showWinner &&
+    winnerLabel &&
+    (!latestResultMid ||
+      !bettingData?.mid ||
+      String(latestResultMid) === String(bettingData.mid));
 
   return (
     <div className={`casino-video ${showCards ? '' : 'no-cards'}`}>
@@ -53,7 +60,7 @@ const VideoStream = memo(function VideoStream({
           )}
 
           {/* Winner Banner */}
-          {showWinner && winnerLabel && (
+          {isCurrentRoundWinner && (
             <div className='absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-tl-[15px] rounded-br-[15px] bg-gradient-to-t from-[#ff5100] to-[#ff8100] px-3 py-1 font-bold text-black shadow-lg'>
               {winnerLabel} Win
             </div>

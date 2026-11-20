@@ -6,6 +6,7 @@ const RED_NUMBERS = new Set([
 
 export default function RouletteTable() {
   const {
+    selectedGame,
     rouletteMode,
     setRouletteMode,
     setStatisticsModalOpen,
@@ -13,6 +14,11 @@ export default function RouletteTable() {
     rouletteBets,
     isSuspended,
   } = useCasino();
+
+  const slug = String(selectedGame || '').toLowerCase();
+  const supportsLay = slug === 'roulette11' || slug === 'roulette12';
+  const showTransferBoard = slug !== 'ourroullete';
+  const suspCls = isSuspended ? 'suspended-box' : '';
 
   const handleSpotClick = (id, name, odds = 36) => {
     if (isSuspended) return;
@@ -82,47 +88,53 @@ export default function RouletteTable() {
 
   return (
     <div className='casino-table'>
-      {/* Transfer Board: Back/Lay Toggle + Statistics link */}
-      <div className='transfer-board'>
-        <div className='mb-2.5 flex h-[48px] w-[190px] max-w-full overflow-hidden rounded-full bg-[#f5f5f5]'>
-          <div
-            onClick={() => setRouletteMode('back')}
-            className={`flex flex-1 cursor-pointer items-center justify-center rounded-l-full border-[3px] bg-[#72b9e8] text-[18px] font-bold text-[#344454] transition-colors ${
-              rouletteMode === 'back' ? 'border-black' : 'border-transparent'
-            }`}
-          >
-            Back
-          </div>
+      {/* Transfer Board: Back/Lay Toggle (roulette11 & roulette12 only) + Statistics link */}
+      {showTransferBoard && (
+        <div className='transfer-board'>
+          {supportsLay && (
+            <div className='mb-2.5 flex h-[48px] w-[190px] max-w-full overflow-hidden rounded-full bg-[#f5f5f5]'>
+              <div
+                onClick={() => setRouletteMode('back')}
+                className={`flex flex-1 cursor-pointer items-center justify-center rounded-l-full border-[3px] bg-[#72b9e8] text-[18px] font-bold text-[#344454] transition-colors ${
+                  rouletteMode === 'back'
+                    ? 'border-black'
+                    : 'border-transparent'
+                }`}
+              >
+                Back
+              </div>
 
-          <div
-            onClick={() => setRouletteMode('lay')}
-            className={`flex flex-1 cursor-pointer items-center justify-center rounded-r-full border-[3px] bg-[#f5a5b8] text-[18px] font-bold text-[#344454] transition-colors ${
-              rouletteMode === 'lay' ? 'border-black' : 'border-transparent'
-            }`}
-          >
-            Lay
-          </div>
+              <div
+                onClick={() => setRouletteMode('lay')}
+                className={`flex flex-1 cursor-pointer items-center justify-center rounded-r-full border-[3px] bg-[#f5a5b8] text-[18px] font-bold text-[#344454] transition-colors ${
+                  rouletteMode === 'lay' ? 'border-black' : 'border-transparent'
+                }`}
+              >
+                Lay
+              </div>
+            </div>
+          )}
+          <h5 className='d-block d-lg-none m-0'>
+            <a
+              onClick={(e) => {
+                e.preventDefault();
+                setStatisticsModalOpen(true);
+              }}
+              style={{
+                cursor: 'pointer',
+                color: '#0088cc',
+                textDecoration: 'underline',
+              }}
+            >
+              Statistics
+            </a>
+          </h5>
         </div>
-        <h5 className='d-block d-lg-none m-0'>
-          <a
-            onClick={(e) => {
-              e.preventDefault();
-              setStatisticsModalOpen(true);
-            }}
-            style={{
-              cursor: 'pointer',
-              color: '#0088cc',
-              textDecoration: 'underline',
-            }}
-          >
-            Statistics
-          </a>
-        </h5>
-      </div>
+      )}
 
       {/* Main Roulette Board Box */}
       <div className='casino-table-box'>
-        <div className='roulette-box-container'>
+        <div className={`roulette-box-container ${suspCls}`}>
           <div className='board-in'>
             {/* Right Column: 2 to 1 for the 3 rows */}
             <div className='board-right'>

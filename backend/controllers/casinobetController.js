@@ -19,9 +19,16 @@ const STALE_BET_MINUTES = Number(process.env.STALE_BET_MINUTES ?? 30);
 
 const getUid = (req) => req.id ?? req.user?._id; // placeBet used req.id, others req.user._id
 
-// Provider kabhi ACTIVE bhejta hai, kabhi OPEN
-const isActive = (s) =>
-  ['ACTIVE', 'OPEN'].includes(String(s ?? '').toUpperCase());
+// Provider kabhi ACTIVE bhejta hai, kabhi OPEN, aur Roulette me numeric s: 1 (0 = suspended)
+const isActive = (s, numericS = undefined) => {
+  if (s !== undefined && s !== null && String(s).trim() !== '') {
+    return ['ACTIVE', 'OPEN'].includes(String(s).trim().toUpperCase());
+  }
+  if (numericS !== undefined && numericS !== null) {
+    return Number(numericS) === 1;
+  }
+  return false;
+};
 
 // ======================================================================
 // Provider API helpers  (direct-casino endpoints)
@@ -49,9 +56,19 @@ const pickResultRows = (body) => {
 
 // LIVE DATA API  -> used for placing bets (current round / betting status)
 export const fetchCasinoData = async (slug) => {
-  // worli family round-based hy: shared cache wala assembler (tabdata + batched
-  // mid data + sections) use karo, base route sirf rounds-list deta hy.
-  if (['worli', 'worli2', 'worli3'].includes(slug)) {
+  // worli family (tabdata + sections) aur t1/t2 cricket casino family (superover/cricketv3)
+  // shared table cache assembler use karti hy jo canonical { mid, sub, mgroups } return karta hy.
+  if (
+    [
+      'worli',
+      'worli2',
+      'worli3',
+      'superover',
+      'superover2',
+      'superover3',
+      'cricketv3',
+    ].includes(slug)
+  ) {
     return getCasinoTable(slug);
   }
   const url = `${API_URL}/diamond/direct-casino/data/${encodeURIComponent(slug)}?key=${API_KEY}`;
@@ -93,29 +110,51 @@ export const fetchCasinoResult = async (slug) => {
   }
 };
 
-// Matka family ka nodate result sirf bazaar legend hy ({mid:1,win:'Diamond'});
-// real round results dated endpoint pe hy: rows [{mid, nat:'257  -  4  -  GULF CLOSE'}].
+// Matka family ka nodate result worli3 me sirf bazaar legend hy ({mid:1,win:'Diamond'});
+// real round results dated endpoint pe hy (worli/worli2: "440", worli3: "257 - 4 - GULF CLOSE").
+// Midnight rollover ke liye today + yesterday dono merge karte hy.
+const formatYmd = (d) =>
+  [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
+
 const fetchDatedCasinoResult = async (slug) => {
   const now = new Date();
-  const date = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, '0'),
-    String(now.getDate()).padStart(2, '0'),
-  ].join('-');
-  const url = `${API_URL}/diamond/direct-casino/result/${date}/${encodeURIComponent(slug)}?key=${API_KEY}`;
-  const { data } = await axios.get(url, { timeout: 15000 });
-  return Array.isArray(data?.data) ? data.data : [];
+  const dates = [formatYmd(now), formatYmd(new Date(now.getTime() - 86400000))];
+  const seen = new Set();
+  const out = [];
+  for (const date of dates) {
+    try {
+      const url = `${API_URL}/diamond/direct-casino/result/${date}/${encodeURIComponent(slug)}?key=${API_KEY}`;
+      const { data } = await axios.get(url, { timeout: 15000 });
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      for (const row of rows) {
+        const key = String(row?.mid ?? '');
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        out.push({ ...row, _resultDate: date });
+      }
+    } catch {
+      /* e.g. 404 before first round of the day */
+    }
+  }
+  return out;
 };
 
 // Provider result row -> engine result object (winCode path).
-// Result API sirf {mid, win} deta hy: side codes per family, roulette me number,
-// dolidana me per-die sibling rows (<mid>001/002/003), sicbo me total.
-// Card-dependent selections (red/black/even/odd/card:N/pairs...) win code se
-// decidable nahi hy — engine unhe throw karta hy aur bet pending rehti hy.
-// "257  -  4  -  GULF CLOSE" -> { pana:'257', digit:4, bazaar:'GULF', kind:'CLOSE' }
+// - worli / worli2 dated nat: "440" -> { pana:'440', digit:8, bazaar:null, kind:'SINGLE_ROUND' }
+// - worli3 dated nat: "257  -  4  -  GULF CLOSE" -> { pana:'257', digit:4, bazaar:'GULF', kind:'CLOSE' }
 const parseMatkaNat = (nat) => {
   if (typeof nat !== 'string') return null;
-  const parts = nat.split('-').map((p) => p.trim());
+  const trimmed = nat.trim();
+  if (/^\d{3}$/.test(trimmed)) {
+    const digit =
+      (Number(trimmed[0]) + Number(trimmed[1]) + Number(trimmed[2])) % 10;
+    return { pana: trimmed, digit, bazaar: null, kind: 'SINGLE_ROUND' };
+  }
+  const parts = trimmed.split('-').map((p) => p.trim());
   const pana = parts[0];
   const digit = Number(parts[1]);
   const rest = parts.slice(2).join(' ');
@@ -134,10 +173,15 @@ const normalizeResult = (slug, row, list = []) => {
   const w = String(row?.win);
   if (fam === 'matka') {
     const m = parseMatkaNat(row?.nat);
-    if (!m) throw new Error(`unparseable matka result: ${row?.nat}`);
-    return m.kind === 'OPEN'
-      ? { open: m.digit, openPana: m.pana }
-      : { close: m.digit, closePana: m.pana };
+    if (m) {
+      return m.kind === 'CLOSE'
+        ? { close: m.digit, closePana: m.pana }
+        : { open: m.digit, openPana: m.pana };
+    }
+    if (/^[0-9]$/.test(w)) {
+      return { open: Number(w) };
+    }
+    throw new Error(`unparseable matka result: ${row?.nat ?? row?.win}`);
   }
   const rc = { winCode: w, win: w };
   if (fam === 'roulette') {
@@ -167,46 +211,6 @@ const resultRows = (resp) => {
 // Provider market label (nat) -> engine selection key. Frontend selection me
 // sid bhejta hy, engine family keys ('dragon', 'pairplus:A', 'split:1-2'...)
 // expect karta hy — placement par hi canonical key store karte hy.
-// Matka local markets: provider sids nahi deta, payout table hamari taraf se
-// (reference sections boards: single 9.5, sp 140, dp 240, tp 700; jodi 95).
-const LOCAL_MATKA_ODDS = {
-  single: 9.5,
-  jodi: 95,
-  sp: 140,
-  pana: 140,
-  dp: 240,
-  tp: 700,
-  trio: 700,
-  cycle: 9.5,
-  motor: 9.5,
-  chart56: 9.5,
-  chart64: 9.5,
-  abr: 9.5,
-  commonsp: 9.5,
-  commondp: 9.5,
-  colordp: 9.5,
-};
-const LOCAL_MATKA_LABEL = (sel) => {
-  const [k, arg] = String(sel).split(':');
-  const names = {
-    single: 'Single',
-    jodi: 'Jodi',
-    sp: 'SP',
-    dp: 'DP',
-    tp: 'Triple Patti',
-    trio: 'Trio',
-    pana: 'SP Patti',
-    cycle: 'Cycle',
-    motor: 'Motor SP',
-    chart56: '56 Charts',
-    chart64: '64 Charts',
-    abr: 'ABR',
-    commonsp: 'Common SP',
-    commondp: 'Common DP',
-    colordp: 'Color DP',
-  };
-  return `${names[k] || k} ${arg ?? ''}`.trim();
-};
 const parseCardRank = (tok) => {
   const t = String(tok ?? '')
     .trim()
@@ -220,16 +224,10 @@ const parseCardRank = (tok) => {
 };
 const natKey = (fam, nat, market = null) => {
   if (fam === 'matka') {
-    const sid = Number(market?.sid ?? market?.i);
-    const sr = Number(market?.sr);
-    if (sid >= 1 && sid <= 10 && Number.isFinite(sr)) {
-      return `single:${sr % 10}`;
-    }
-    if (sid === 11) return 'single:line1';
-    if (sid === 12) return 'single:line2';
-    if (sid === 13) return 'single:odd';
-    if (sid === 14) return 'single:even';
-    return null;
+    return engine.normalizeMatkaSelection(market?.canonicalSelection ?? nat);
+  }
+  if (market?.canonicalSelection) {
+    return String(market.canonicalSelection);
   }
   const n = String(nat ?? '')
     .trim()
@@ -250,6 +248,73 @@ const natKey = (fam, nat, market = null) => {
       }
       return null;
     }
+    case 'lucky5': {
+      if (n === 'low card') return 'low';
+      if (n === 'high card') return 'high';
+      if (['even', 'odd', 'red', 'black'].includes(n)) return n;
+      if (cardM) {
+        const r = parseCardRank(cardM[1]);
+        return r ? `card:${r}` : null;
+      }
+      return null;
+    }
+    case 'lucky15': {
+      const rm = n.match(/^([01246])\s*runs?$/);
+      if (rm) return `runs:${rm[1]}`;
+      if (n === 'wicket') return 'wicket';
+      return null;
+    }
+    case 'mogambo': {
+      if (n === 'mogambo') return 'mogambo';
+      if (n.includes('daga') || n.includes('teja')) return 'dagateja';
+      if (n.includes('3 card total') || n.includes('total')) {
+        const line = Number(
+          market?.sessionLine ?? market?.b ?? market?.l ?? 21
+        );
+        return Number.isFinite(line) ? `total:${line}` : 'total:21';
+      }
+      return null;
+    }
+    case 'lottcard': {
+      if (/^lott:(single|double|triple):\d{1,3}$/.test(n)) return n;
+      return null;
+    }
+    case 'andarbahar': {
+      const subType = String(market?.subtype || '').toLowerCase();
+      const sidNum = Number(market?.sid ?? market?.i);
+      if (
+        subType === 'abj' ||
+        (sidNum >= 1 &&
+          sidNum <= 25 &&
+          (n === 'sa' ||
+            n === 'sb' ||
+            n.includes('bet') ||
+            n.startsWith('joker')))
+      ) {
+        if (sidNum === 1 || n === 'sa') return 'abj:sa';
+        if (sidNum === 2) return 'abj:a1';
+        if (sidNum === 3) return 'abj:a2';
+        if (sidNum === 4 || n === 'sb') return 'abj:sb';
+        if (sidNum === 5) return 'abj:b1';
+        if (sidNum === 6) return 'abj:b2';
+        if (n === 'joker odd') return 'joker:odd';
+        if (n === 'joker even') return 'joker:even';
+        const jSuit = n.match(/^joker\s+(spade|club|heart|diamond)$/);
+        if (jSuit) return `joker:suit:${jSuit[1]}`;
+        const jCard = n.match(/^joker\s+([a-z0-9]+)$/);
+        if (jCard) {
+          const r = parseCardRank(jCard[1]);
+          return r ? `joker:card:${r}` : null;
+        }
+      }
+      const ab20M = n.match(/^(andar|bahar)\s+([a-z0-9]+)$/);
+      if (ab20M) {
+        const r = parseCardRank(ab20M[2]);
+        return r ? `ab20:${ab20M[1]}:${r}` : null;
+      }
+      if (n === 'andar' || n === 'bahar') return n;
+      return null;
+    }
     case 'aaa': {
       if (
         ['amar', 'akbar', 'anthony', 'even', 'odd', 'red', 'black'].includes(n)
@@ -266,6 +331,11 @@ const natKey = (fam, nat, market = null) => {
     case 'dt': {
       if (['dragon', 'tiger', 'tie', 'pair'].includes(n)) return n;
       if (n === 'suited tie') return 'suitedtie';
+      const dtc = n.match(/^(dragon|tiger)\s+card\s+([a-z0-9]+)$/);
+      if (dtc) {
+        const r = parseCardRank(dtc[2]);
+        return r ? `card:${dtc[1]}:${r}` : null;
+      }
       const dtm = n.match(
         /^(dragon|tiger)\s+(even|odd|red|black|spade|heart|diamond|club)$/
       );
@@ -277,6 +347,62 @@ const natKey = (fam, nat, market = null) => {
       }
       return null;
     }
+    case 'dtl20': {
+      const letterMap = { d: 'dragon', t: 'tiger', l: 'lion' };
+      const wm = n.match(/^(winner|black|red|odd|even)\s+([dtl])$/);
+      if (wm) {
+        const [, kind, code] = wm;
+        const who = letterMap[code];
+        if (kind === 'winner') return `winner:${who}`;
+        if (kind === 'black' || kind === 'red') return `color:${who}:${kind}`;
+        return `parity:${who}:${kind}`;
+      }
+      const cm = n.match(/^(dragon|tiger|lion)\s+([a-z0-9]+)$/);
+      if (cm) {
+        const r = parseCardRank(cm[2]);
+        return r ? `card:${cm[1]}:${r}` : null;
+      }
+      return null;
+    }
+    case 'trio': {
+      if (n === 'session') {
+        const line = Number(
+          market?.sessionLine ?? market?.b ?? market?.l ?? 21
+        );
+        return Number.isFinite(line) ? `session:${line}` : 'session:21';
+      }
+      if (/1\s*2\s*4/.test(n)) return 'judge:124';
+      if (/j\s*q\s*k/.test(n)) return 'judge:jqk';
+      if (n === 'two red only') return 'twored';
+      if (n === 'two black only') return 'twoblack';
+      if (n === 'two odd only') return 'twoodd';
+      if (n === 'two even only') return 'twoeven';
+      if (n === 'pair') return 'pair';
+      if (n === 'flush') return 'flush';
+      if (n === 'straight') return 'straight';
+      if (n === 'trio') return 'trio';
+      if (n === 'straight flush') return 'straightflush';
+      return null;
+    }
+    case 'bollywood': {
+      if (n === 'don' || n === 'a.don') return 'don';
+      if (n === 'amar akbar anthony' || n === 'b.amar akbar anthony')
+        return 'aaa';
+      if (n === 'sahib bibi aur ghulam' || n === 'c.sahib bibi aur ghulam')
+        return 'sbg';
+      if (n === 'dharam veer' || n === 'd.dharam veer') return 'dv';
+      if (n === 'kis kis ko pyaar karoon' || n === 'e.kis kis ko pyaar karoon')
+        return 'kkpk';
+      if (n === 'ghulam' || n === 'f.ghulam') return 'ghulam';
+      if (n === 'odd' || n === 'red' || n === 'black') return n;
+      if (n.includes('dulha dulhan')) return 'dulhadulhan';
+      if (n.includes('barati')) return 'barati';
+      if (cardM) {
+        const r = parseCardRank(cardM[1]);
+        return r ? `card:${r}` : null;
+      }
+      return null;
+    }
     case 'baccarat':
       if (['player', 'banker', 'tie'].includes(n)) return n;
       if (n === 'player pair') return 'playerPair';
@@ -285,11 +411,33 @@ const natKey = (fam, nat, market = null) => {
       if (n === 'perfect pair') return 'perfectPair';
       if (n === 'big') return 'big';
       if (n === 'small') return 'small';
+      if (n === 'score 1-4') return 'score:1-4';
+      if (n === 'score 5-6') return 'score:5-6';
+      if (n === 'score 7') return 'score:7';
+      if (n === 'score 8') return 'score:8';
+      if (n === 'score 9') return 'score:9';
       return null;
     case 'teen':
     case 'muflis': {
+      const subType = String(market?.subtype || '').toLowerCase();
+      if (subType === 'vcon' || subType === 'con') {
+        if (n.includes('player a')) return 'consec:A';
+        if (n.includes('player b')) return 'consec:B';
+      }
+      if (/^unique:\d-\d-\d$/.test(n)) return n;
+      const cpM = n.match(/^card\s*([1-6])\s+(odd|even)$/);
+      if (cpM) return `cardparity:${cpM[1]}:${cpM[2]}`;
+      const psM = n.match(/^player\s+([ab])\s+(spade|heart|club|diamond)$/);
+      if (psM) return `playersuit:${psM[1].toUpperCase()}:${psM[2]}`;
+      const uoM = n.match(/^player\s+([ab])\s+(under|over)\s*2[12]$/);
+      if (uoM) return `${uoM[2]}21:${uoM[1].toUpperCase()}`;
+      if (n === 'lucky 9') return 'lucky9';
+      const pjM = n.match(
+        /^(poison|joker)\s+(even|odd|red|black|spade|heart|diamond|club)$/
+      );
+      if (pjM) return `special:${pjM[2]}`;
       const m = n.match(
-        /^(player|pair plus|total|3 baccarat|m baccarat|top 9|black|red)\s+([ab])$/
+        /^(player|pair plus|total|3 baccarat|m baccarat|top 9|black|red|high card|pair|color plus)\s+([ab])$/
       );
       if (m) {
         const who = m[2].toUpperCase();
@@ -299,8 +447,55 @@ const natKey = (fam, nat, market = null) => {
         if (m[1] === '3 baccarat' || m[1] === 'm baccarat')
           return `baccarat:${who}`;
         if (m[1] === 'top 9') return `top9:${who}`;
-        if (m[1] === 'black') return `redblack:black`;
-        if (m[1] === 'red') return `redblack:red`;
+        if (m[1] === 'black') return `redblack:${who}:black`;
+        if (m[1] === 'red') return `redblack:${who}:red`;
+        if (m[1] === 'high card') return `highcard:${who}`;
+        if (m[1] === 'pair') return `pair:${who}`;
+        if (m[1] === 'color plus') return `colorplus:${who}`;
+      }
+      return null;
+    }
+    case 'teen1': {
+      if (['player', 'dealer', 'tie', 'pair'].includes(n)) return n;
+      const ud = n.match(/^7\s+(up|down)\s+(player|dealer)$/);
+      if (ud) return `${ud[1]}7:${ud[2]}`;
+      return null;
+    }
+    case 'teen8': {
+      const p8 = n.match(/^player\s+([1-8])$/);
+      if (p8) return `player:${p8[1]}`;
+      const pp8 = n.match(/^pair plus\s+([1-8])$/);
+      if (pp8) return `pairplus:${pp8[1]}`;
+      const t8 = n.match(/^total\s+([1-8])$/);
+      if (t8) return `total:${t8[1]}`;
+      if (n === 'any colour' || n === 'any color') return 'anycolour';
+      if (n === 'any straight') return 'anystraight';
+      if (n === 'any trio') return 'anytrio';
+      if (n === 'any straight flush') return 'anystraightflush';
+      return null;
+    }
+    case 'teen9': {
+      const t9 = n.match(
+        /^(tiger|lion|dragon)\s+(winner|pair|flush|straight|trio|straight flush)$/
+      );
+      if (t9) {
+        if (t9[2] === 'winner') return `winner:${t9[1]}`;
+        return `cat:${t9[1]}:${t9[2].replace(/\s+/g, '')}`;
+      }
+      return null;
+    }
+    case 'patti2': {
+      if (n === 'player a') return 'playerA';
+      if (n === 'player b') return 'playerB';
+      if (n === 'mini baccarat a') return 'minibacc:A';
+      if (n === 'mini baccarat b') return 'minibacc:B';
+      if (n === 'color plus') return 'colorplus';
+      const p2t = n.match(/^total\s+([ab])$/);
+      if (p2t) {
+        const line = Number(
+          market?.sessionLine ?? market?.b ?? market?.l ?? 15
+        );
+        return `total:${p2t[1].toUpperCase()}:${line}`;
       }
       return null;
     }
@@ -309,17 +504,161 @@ const natKey = (fam, nat, market = null) => {
       if (n === 'big') return 'big';
       if (n === 'any triple') return 'anytriple';
       if (n === 'odd' || n === 'even') return n;
-      const dm = n.match(/^double (\d)$/);
+      const dm = n.match(/^double\s+(\d)$/);
       if (dm) return `double:${dm[1]}`;
-      const tm = n.match(/^triple (\d)$/);
+      const tm = n.match(/^triple\s+(\d)$/);
       if (tm) return `triple:${tm[1]}`;
-      const sm = n.match(/^sum (\d+)$/);
+      const sm = n.match(/^(?:sum|total)\s+(\d+)$/);
       if (sm) return `sum:${sm[1]}`;
+      const cm = n.match(/^combination\s+(\d)\s+and\s+(\d)$/);
+      if (cm) return `combo:${cm[1]}-${cm[2]}`;
+      const sg = n.match(/^single\s+(\d)$/);
+      if (sg) return `single:${sg[1]}`;
+      return null;
+    }
+    case 'dolidana': {
+      if (n === 'player a') return 'playerA';
+      if (n === 'player b') return 'playerB';
+      if (n === 'any pair') return 'anypair';
+      const pm = n.match(/^(\d)-\1\s+pair$/);
+      if (pm) return `pair:${pm[1]}`;
+      const sm = n.match(/^sum total\s+(\d+)$/);
+      if (sm) return `sum:${sm[1]}`;
+      if (n === 'odd' || n === 'even') return n;
+      if (n === 'less than 7' || n === '< 7') return 'lt7';
+      if (n === 'greater than 7' || n === '> 7') return 'gt7';
+      if (n === 'lucky 7') return 'lucky7';
+      return null;
+    }
+    case 'ballbyball': {
+      const rm = n.match(/^([0-6])\s*runs?$/);
+      if (rm) return `runs:${rm[1]}`;
+      if (n === 'boundary') return 'boundary';
+      if (n === 'wicket') return 'wicket';
+      if (n.includes('extra')) return 'extra';
+      return null;
+    }
+    case 'cmatch20': {
+      const rm = n.match(/^run\s*(\d+)$/);
+      if (rm) return `run:${rm[1]}`;
+      return null;
+    }
+    case 'goal': {
+      const st = String(market?.subtype || '').toLowerCase();
+      const sidNum = market?.sid ?? market?.i;
+      if (st === 'combo' || n.includes(' and ')) {
+        const [pPart, mPart] = n.split(' and ');
+        return `combo:${(pPart || '').replace(/[^a-z0-9]/g, '')}+${(mPart || '').replace(/[^a-z0-9]/g, '')}`;
+      }
+      if (st === 'goal' || st === 'method') {
+        return `method:${n.replace(/[^a-z0-9]/g, '')}`;
+      }
+      if (sidNum != null && /^\d+$/.test(String(sidNum))) {
+        return `player:${sidNum}`;
+      }
+      return `player:${n}`;
+    }
+    case 'race2': {
+      if (n === 'player a') return 'playerA';
+      if (n === 'player b') return 'playerB';
+      if (n === 'player c') return 'playerC';
+      if (n === 'player d') return 'playerD';
+      return null;
+    }
+    case 'race17': {
+      if (n === 'race to 17') return 'race17';
+      const bm = n.match(/big card.*?-\s*(\d+)/);
+      if (bm) return `bigcard:${bm[1]}`;
+      const zm = n.match(/zero card.*?-\s*(\d+)/);
+      if (zm) return `zerocard:${zm[1]}`;
+      if (n === 'any zero') return 'anyzero';
+      return null;
+    }
+    case 'race20': {
+      const km = n.match(/^k of (spade|heart|club|diamond)$/);
+      if (km) return `king:${km[1]}`;
+      const wm = n.match(/^win with\s*(\d+)$/);
+      if (wm) return `winwith:${wm[1]}`;
+      if (n === 'total points') return `totalpoints:${Number(market?.b || 0)}`;
+      if (n === 'total cards') return `totalcards:${Number(market?.b || 0)}`;
+      return null;
+    }
+    case 'superover': {
+      const sidStr = String(market?.sid ?? market?.i ?? '');
+      if (sidStr === '1') return 'team1';
+      if (sidStr === '2') return 'team2';
+      if (n === 'tie') return 'tie';
       return null;
     }
     case 'card32': {
       const pm = n.match(/^player (\d+)$/);
-      return pm ? `player${pm[1]}` : null;
+      if (pm) return `player${pm[1]}`;
+      const oem = n.match(/^player (\d+)\s+(odd|even)$/);
+      if (oem) return `parity:${oem[1]}:${oem[2]}`;
+      if (n === 'any three card black' || n === 'any 3 card black')
+        return 'any3black';
+      if (n === 'any three card red' || n === 'any 3 card red')
+        return 'any3red';
+      if (n === 'two black two red') return 'twoblacktwored';
+      if (n === '8 & 9 total') return 'total89';
+      if (n === '10 & 11 total') return 'total1011';
+      const sg = n.match(/^single\s+(\d)$/);
+      if (sg) return `single:${sg[1]}`;
+      return null;
+    }
+    case 'poker': {
+      const sidNum = Number(market?.sid ?? market?.i);
+      const st = String(market?.subtype || '').toLowerCase();
+      if (st === 'poker6') {
+        const p6 = n.match(/^player\s+([1-6])$/);
+        if (p6) return `player:${p6[1]}`;
+        const pat = n.replace(/[^a-z]/g, '');
+        if (pat) return `pattern:${pat}`;
+        return null;
+      }
+      if (st === 'poker20') {
+        const who = sidNum >= 21 ? 'B' : 'A';
+        if (n === 'winner') return `winner:${who}`;
+        const clean = n.replace(/[^a-z]/g, '');
+        return clean ? `hand:${who}:${clean}` : null;
+      }
+      if (n === 'player a') return 'playerA';
+      if (n === 'player b') return 'playerB';
+      if (n.includes('player a') && n.includes('2 card')) return 'bonus2:A';
+      if (n.includes('player b') && n.includes('2 card')) return 'bonus2:B';
+      if (n.includes('player a') && n.includes('7 card')) return 'bonus7:A';
+      if (n.includes('player b') && n.includes('7 card')) return 'bonus7:B';
+      return null;
+    }
+    case '3cardj': {
+      if (/^3cj:(yes|no):\d+-\d+-\d+$/.test(n)) return n;
+      return null;
+    }
+    case 'queen': {
+      const qm = n.match(/^total\s+([0-3])$/);
+      return qm ? `total${qm[1]}` : null;
+    }
+    case 'trap': {
+      if (n === 'player a') return 'playerA';
+      if (n === 'player b') return 'playerB';
+      return null;
+    }
+    case 'notenum': {
+      if (n === 'baccarat 1') return 'bacc1';
+      if (n === 'baccarat 2') return 'bacc2';
+      const nm = n.match(/^(odd|even|black|red|low|high)\s+card\s+(\d+)$/);
+      if (nm) return `card:${nm[2]}:${nm[1]}`;
+      return null;
+    }
+    case 'dum10': {
+      if (n.startsWith('next total')) return 'nexttotal';
+      if (['red', 'black', 'even', 'odd'].includes(n)) return n;
+      return null;
+    }
+    case 'cmeter1': {
+      if (n === 'fighter a') return 'fighterA';
+      if (n === 'fighter b') return 'fighterB';
+      return null;
     }
     case 'roulette': {
       const nums = n
@@ -498,9 +837,20 @@ export const placeBet = async (req, res) => {
       console.warn('saveCasinoRoundSnapshot failed:', e.message)
     );
 
-    // Bet hamesha provider ke CURRENT round par store hoti hai.
-    // Client ka roundId ignore hota hai, isliye stale roundId se error nahi aata.
-    const currentRoundId = String(liveData.mid);
+    // For worli3 (multi-bazaar), honor the specific open bazaar roundId selected by the user;
+    // for all other games, bets always attach to the provider's current live round mid.
+    let activeRoundData = liveData;
+    if (slug === 'worli3' && roundId) {
+      const subRound = liveData.subs?.[String(roundId)];
+      if (!subRound) {
+        return res.status(400).json({
+          success: false,
+          message: 'Selected bazaar round is closed or unavailable',
+        });
+      }
+      activeRoundData = subRound;
+    }
+    const currentRoundId = String(activeRoundData.mid);
     if (roundId && String(roundId) !== currentRoundId) {
       console.log('placeBet: client roundId stale, using live mid', {
         clientRoundId: String(roundId),
@@ -508,71 +858,319 @@ export const placeBet = async (req, res) => {
       });
     }
 
-    // Market live data se hi lo (Round collection ki zarurat nahi)
-    if (family === 'matka') {
-      const s = String(selection).trim();
-      if (/^\d+\s*single$/i.test(s) || /^single\s*[-:]?\s*\d+$/i.test(s)) {
-        selection = `single:${s.replace(/\D/g, '')}`;
-      } else if (/line\s*1/i.test(s)) {
-        selection = 'single:line1';
-      } else if (/line\s*2/i.test(s)) {
-        selection = 'single:line2';
-      } else if (/odd/i.test(s)) {
-        selection = 'single:odd';
-      } else if (/even/i.test(s)) {
-        selection = 'single:even';
-      } else if (/jodi\s*[-:]?\s*(\d+)/i.test(s)) {
-        selection = `jodi:${s.replace(/\D/g, '')}`;
-      } else if (
-        /pana\s*[-:]?\s*(\d+)/i.test(s) ||
-        /sp\s*[-:]?\s*(\d+)/i.test(s)
-      ) {
-        selection = `sp:${s.replace(/\D/g, '')}`;
-      } else if (/dp\s*[-:]?\s*(\d+)/i.test(s)) {
-        selection = `dp:${s.replace(/\D/g, '')}`;
-      } else if (
-        /trio\s*[-:]?\s*(\d+)/i.test(s) ||
-        /tp\s*[-:]?\s*(\d+)/i.test(s)
-      ) {
-        selection = `tp:${s.replace(/\D/g, '')}`;
-      }
-    }
-
     const normNat = (v) =>
       String(v || '')
         .trim()
         .toLowerCase();
     const reqNation = req.body?.nation;
-    let selectedMarket =
-      (reqNation &&
-        liveData.sub?.find(
-          (item) =>
-            String(item.sid ?? item.i) === String(selection) &&
-            normNat(item.nat ?? item.n ?? item.name) === normNat(reqNation)
-        )) ||
-      liveData.sub?.find(
-        (item) => String(item.sid ?? item.i) === String(selection)
-      );
+    let selectedMarket = null;
+    let matkaPricing = null;
 
-    // Matka local markets (jodi/pana/sp/dp/trio/cycle/motor/charts/abr): selection logic hamare end pe —
-    // provider sub me inke sids nahi hote, odds/limits local payout table se.
-    const localMatka =
-      !selectedMarket &&
-      family === 'matka' &&
-      /^(single|jodi|sp|dp|tp|trio|pana|cycle|motor|chart56|chart64|abr|commonsp|commondp|colordp):/.test(
-        String(selection)
+    if (family === 'matka') {
+      matkaPricing = engine.getMatkaBetPricing(
+        slug,
+        selection,
+        liveData.sections || {}
       );
-    if (localMatka) {
-      const key = String(selection).split(':')[0];
-      odds = LOCAL_MATKA_ODDS[key] || 9.5; // server-authoritative payout rate
+      if (!matkaPricing) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid Matka selection',
+        });
+      }
+      // Validate against the REAL live provider section (sid 1..14) for gstatus, min & max
+      const sectionSub = activeRoundData.sub?.find(
+        (item) => Number(item.sid ?? item.i) === matkaPricing.sectionSid
+      );
+      if (!sectionSub) {
+        return res.status(400).json({
+          success: false,
+          message: 'This Matka market is not available on this table',
+        });
+      }
+      selection = matkaPricing.selection;
+      odds = matkaPricing.effectiveOdds;
       selectedMarket = {
-        sid: String(selection),
-        nat: LOCAL_MATKA_LABEL(String(selection)),
-        b: odds,
-        gstatus: 'OPEN',
-        min: 10,
-        max: 20000,
+        ...sectionSub,
+        sid: matkaPricing.selection,
+        canonicalSelection: matkaPricing.selection,
+        nat: matkaPricing.label,
+        b: matkaPricing.effectiveOdds,
       };
+    } else if (slug === 'lottcard') {
+      const lottM = String(selection).match(
+        /^lott:(single|double|triple):(\d{1,3})$/i
+      );
+      if (!lottM) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid Lottery selection format',
+        });
+      }
+      const mode = lottM[1].toLowerCase();
+      const digits = lottM[2];
+      const expectedLen = mode === 'single' ? 1 : mode === 'double' ? 2 : 3;
+      if (digits.length !== expectedLen) {
+        return res.status(400).json({
+          success: false,
+          message: `${mode} requires exactly ${expectedLen} digit(s)`,
+        });
+      }
+      const sidByMode = { single: '1', double: '2', triple: '3' };
+      const secSub = activeRoundData.sub?.find(
+        (item) => String(item.sid ?? item.i) === sidByMode[mode]
+      );
+      if (secSub) {
+        const canonical = `lott:${mode}:${digits}`;
+        selectedMarket = {
+          ...secSub,
+          sid: canonical,
+          canonicalSelection: canonical,
+          nat: `${mode[0].toUpperCase() + mode.slice(1)} ${digits}`,
+        };
+      }
+    } else if (slug === 'ab3' || slug === 'ab4') {
+      const abChildM = String(selection).match(
+        /^abchild:(\d+):(andar|bahar):(\d{1,2})$/i
+      );
+      if (abChildM) {
+        const cardNum = abChildM[1];
+        const abSide = abChildM[2].toLowerCase();
+        const rankNum = Number(abChildM[3]);
+        const activeSub = activeRoundData.sub?.find(
+          (item) => String(item.sid ?? item.i) === cardNum
+        );
+        const childSid = abSide === 'andar' ? rankNum : 20 + rankNum;
+        const childEntry = activeRoundData.child?.find(
+          (c) => Number(c.sid) === childSid
+        );
+        if (!activeSub) {
+          return res.status(400).json({
+            success: false,
+            message: 'Active Andar Bahar card slot has changed',
+          });
+        }
+        if (
+          childEntry &&
+          (Number(childEntry.b) !== 1 || Number(childEntry.l) <= 0)
+        ) {
+          return res.status(400).json({
+            success: false,
+            message: 'Selected card side is currently closed',
+          });
+        }
+        const rankLbl =
+          { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }[rankNum] || String(rankNum);
+        const canonical = `abchild:${cardNum}:${abSide}:${rankNum}`;
+        selectedMarket = {
+          ...activeSub,
+          sid: canonical,
+          canonicalSelection: canonical,
+          nat: `${abSide === 'andar' ? 'Andar' : 'Bahar'} ${rankLbl} (Card ${cardNum})`,
+        };
+      }
+    } else if (slug === 'teenunique') {
+      const uM = String(selection).match(/^unique:([1-6])-([1-6])-([1-6])$/i);
+      if (!uM) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Please select 3 distinct card slots (1-6) for Unique Teenpatti',
+        });
+      }
+      const picks = [Number(uM[1]), Number(uM[2]), Number(uM[3])];
+      if (new Set(picks).size !== 3) {
+        return res.status(400).json({
+          success: false,
+          message: '3 distinct card positions are required',
+        });
+      }
+      const baseSub = activeRoundData.sub?.[0];
+      if (baseSub) {
+        const canonical = `unique:${picks.join('-')}`;
+        selectedMarket = {
+          ...baseSub,
+          sid: canonical,
+          canonicalSelection: canonical,
+          nat: `Unique Cards (${picks.join(', ')})`,
+        };
+      }
+    } else if (
+      slug === 'teen6' &&
+      /^(\d+):(suit|card):([a-z0-9]+)$/i.test(String(selection))
+    ) {
+      const t6m = String(selection).match(/^(\d+):(suit|card):([a-z0-9]+)$/i);
+      const parentSid = t6m[1];
+      const kind = t6m[2].toLowerCase();
+      const arg = t6m[3].toLowerCase();
+      const parent = activeRoundData.sub?.find(
+        (item) =>
+          String(item.sid ?? item.i) === parentSid && Array.isArray(item.odds)
+      );
+      const child =
+        kind === 'suit'
+          ? parent?.odds?.find(
+              (o) =>
+                String(o?.nat || '')
+                  .trim()
+                  .toLowerCase() === arg
+            )
+          : parent?.odds?.find(
+              (o) =>
+                Number(o?.sid ?? o?.sno) === Number(arg) ||
+                String(o?.nat || '')
+                  .trim()
+                  .toLowerCase() === arg
+            );
+      if (parent && child) {
+        const cardNumM = String(parent.nat || '').match(/(\d+)/);
+        const cardNum = cardNumM ? cardNumM[1] : parentSid;
+        const rNum =
+          kind === 'card' ? parseCardRank(child.nat) || Number(arg) : null;
+        selectedMarket = {
+          ...parent,
+          sid: `${parentSid}:${kind}:${arg}`,
+          nat: `${parent.nat || `Card ${cardNum}`} ${child.nat}`,
+          canonicalSelection:
+            kind === 'suit'
+              ? `cardsuit:${cardNum}:${arg}`
+              : `cardrank:${cardNum}:${rNum}`,
+          b: Number(child.b ?? 0),
+          l: Number(child.l ?? 0),
+        };
+      }
+    } else if (slug === '3cardj') {
+      const j3m = String(selection).match(/^3cj:(yes|no):(\d+)-(\d+)-(\d+)$/i);
+      if (!j3m) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please select 3 distinct cards for 3 Cards Judgement',
+        });
+      }
+      const mode = j3m[1].toLowerCase();
+      const picks = [Number(j3m[2]), Number(j3m[3]), Number(j3m[4])];
+      if (
+        new Set(picks).size !== 3 ||
+        picks.some((r) => !Number.isFinite(r) || r < 1 || r > 13)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: '3 distinct valid cards (A-K) are required',
+        });
+      }
+      const secSub = activeRoundData.sub?.find(
+        (item) => String(item.sid ?? item.i) === (mode === 'yes' ? '1' : '2')
+      );
+      if (secSub) {
+        const rName = (r) =>
+          ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[r] || String(r);
+        const canonical = `3cj:${mode}:${picks.join('-')}`;
+        selectedMarket = {
+          ...secSub,
+          sid: canonical,
+          canonicalSelection: canonical,
+          nat: `${mode === 'yes' ? 'Yes' : 'No'} (${picks.map(rName).join(', ')})`,
+        };
+      }
+    } else if (
+      slug === 'trap' &&
+      /^(\d+):(high|low|jqk)$/i.test(String(selection))
+    ) {
+      const tm = String(selection).match(/^(\d+):(high|low|jqk)$/i);
+      const parentSid = tm[1];
+      const subChoice = tm[2].toLowerCase();
+      const parent = activeRoundData.sub?.find(
+        (item) =>
+          String(item.sid ?? item.i) === parentSid && Array.isArray(item.odds)
+      );
+      const child = parent?.odds?.find(
+        (o) =>
+          String(o?.nat || '')
+            .trim()
+            .toLowerCase() === subChoice
+      );
+      if (parent && child) {
+        const cardNumM = String(parent.nat || '').match(/(\d+)/);
+        const cardNum = cardNumM ? cardNumM[1] : parentSid;
+        selectedMarket = {
+          ...parent,
+          sid: `${parentSid}:${subChoice}`,
+          nat: `${parent.nat || `Card ${cardNum}`} ${child.nat}`,
+          canonicalSelection:
+            subChoice === 'jqk'
+              ? `jqk:${cardNum}`
+              : `highlow:${cardNum}:${subChoice}`,
+          b: Number(child.b ?? 0),
+          l: Number(child.l ?? 0),
+        };
+      }
+    } else if (
+      slug === 'notenum' &&
+      /^(\d+):card:(\d+)$/i.test(String(selection))
+    ) {
+      const nm = String(selection).match(/^(\d+):card:(\d+)$/i);
+      const parentSid = nm[1];
+      const rankNum = Number(nm[2]);
+      const parent = activeRoundData.sub?.find(
+        (item) =>
+          String(item.sid ?? item.i) === parentSid && Array.isArray(item.odds)
+      );
+      const child = parent?.odds?.find(
+        (o) => Number(o?.ssid ?? o?.sno) === rankNum
+      );
+      if (parent && child) {
+        const cardNumM = String(parent.nat || '').match(/(\d+)/);
+        const cardNum = cardNumM ? cardNumM[1] : parentSid;
+        selectedMarket = {
+          ...parent,
+          sid: `${parentSid}:card:${rankNum}`,
+          nat: `${parent.nat || `Card ${cardNum}`} - ${child.nat}`,
+          canonicalSelection: `card:${cardNum}:rank:${rankNum}`,
+          b: Number(child.b ?? 0),
+          l: Number(child.l ?? 0),
+        };
+      }
+    } else {
+      const nestedM = String(selection).match(/^(\d+):(odd|even)$/i);
+      if (nestedM) {
+        const parentSid = nestedM[1];
+        const parity = nestedM[2].toLowerCase();
+        const parent = activeRoundData.sub?.find(
+          (item) =>
+            String(item.sid ?? item.i) === parentSid && Array.isArray(item.odds)
+        );
+        const child = parent?.odds?.find(
+          (o) =>
+            String(o?.nat || '')
+              .trim()
+              .toLowerCase() === parity
+        );
+        if (parent && child) {
+          const cardNumM = String(parent.nat || '').match(/(\d+)/);
+          const cardNum = cardNumM ? cardNumM[1] : parentSid;
+          const prettyParity = parity === 'odd' ? 'Odd' : 'Even';
+          selectedMarket = {
+            ...parent,
+            sid: `${parentSid}:${parity}`,
+            nat: `${parent.nat || `Card ${cardNum}`} ${prettyParity}`,
+            canonicalSelection: `cardparity:${cardNum}:${parity}`,
+            b: Number(child.b ?? 0),
+            l: Number(child.l ?? 0),
+          };
+        }
+      }
+      if (!selectedMarket) {
+        selectedMarket =
+          (reqNation &&
+            activeRoundData.sub?.find(
+              (item) =>
+                String(item.sid ?? item.i) === String(selection) &&
+                normNat(item.nat ?? item.n ?? item.name) === normNat(reqNation)
+            )) ||
+          activeRoundData.sub?.find(
+            (item) => String(item.sid ?? item.i) === String(selection)
+          );
+      }
     }
 
     if (!selectedMarket) {
@@ -581,20 +1179,27 @@ export const placeBet = async (req, res) => {
         .json({ success: false, message: 'Invalid selection for this round' });
     }
 
-    // D247 exact open/suspend gate (provider open markets on dt6/vdt6/aaa send visible:0, so only gstatus + odds gate)
+    // D247 exact open/suspend gate (provider open markets on dt6/vdt6/aaa send visible:0,
+    // and roulette11/12/13/ourroullete send numeric s: 1/0 instead of gstatus)
     const rawGs = selectedMarket.gstatus ?? selectedMarket.status;
-    const marketOpen = isActive(rawGs);
+    const marketOpen = isActive(rawGs, selectedMarket.s);
     if (process.env.ALLOW_SUSPENDED_BETS !== '1' && !marketOpen) {
       return res.status(400).json({
         success: false,
         message: 'This selection is suspended',
-        selection: selectedMarket.nat || selectedMarket.sid,
-        status: rawGs || 'SUSPENDED',
+        selection:
+          selectedMarket.nat ||
+          selectedMarket.n ||
+          selectedMarket.sid ||
+          selectedMarket.i,
+        status: rawGs || (selectedMarket.s === 0 ? 'SUSPENDED' : 'SUSPENDED'),
       });
     }
 
-    const minStake = Number(selectedMarket.min ?? 0);
-    const maxStake = Number(selectedMarket.max ?? Infinity);
+    const minStake = Number(selectedMarket.min ?? activeRoundData.min ?? 0);
+    const maxStake = Number(
+      selectedMarket.max ?? activeRoundData.max ?? Infinity
+    );
 
     if (stake < minStake || stake > maxStake) {
       return res.status(400).json({
@@ -603,18 +1208,41 @@ export const placeBet = async (req, res) => {
       });
     }
 
+    // Authoritative live odds check (D247 rule: no bet on 0/missing rate;
+    // no Lay on Back-only or half-loss markets; Fancy2 Session uses bbhav/lbhav;
+    // Sic Bo sends profit-to-1 ratio X -> decimal = X + 1!)
+    const sideLower = String(side || '').toLowerCase();
+    const isFancy2Session =
+      String(selectedMarket.etype || '').toLowerCase() === 'fancy2' &&
+      (Number(selectedMarket.bbhav) > 0 || Number(selectedMarket.lbhav) > 0);
+    const isSicboRatio = family === 'sicbo' || family === 'baccarat';
+    if (isFancy2Session) {
+      const line = Number(
+        sideLower === 'lay' ? selectedMarket.l : selectedMarket.b
+      );
+      selectedMarket = { ...selectedMarket, sessionLine: line };
+    }
+
     // Client sid/nat bhejta hy; engine ko canonical selection key chahiye.
     const providerNat = selectedMarket.nat ?? selectedMarket.n;
     const selKey =
       natKey(family, providerNat, selectedMarket) || String(selection);
 
-    // Authoritative live odds check (D247 rule: no bet on 0/missing rate;
-    // no Lay on Back-only or half-loss markets)
-    const sideLower = String(side || '').toLowerCase();
-    const rawProviderOdds =
-      sideLower === 'lay'
+    const rawProviderOdds = isFancy2Session
+      ? sideLower === 'lay'
+        ? Number(selectedMarket.lbhav) > 0
+          ? Math.round((1 + Number(selectedMarket.lbhav) / 100) * 100) / 100
+          : 0
+        : Number(selectedMarket.bbhav) > 0
+          ? Math.round((1 + Number(selectedMarket.bbhav) / 100) * 100) / 100
+          : 0
+      : sideLower === 'lay'
         ? (selectedMarket.l ?? selectedMarket.lay)
-        : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
+        : isSicboRatio
+          ? Number(selectedMarket.b ?? 0) > 0
+            ? Number(selectedMarket.b) + 1
+            : 0
+          : (selectedMarket.b ?? selectedMarket.back ?? selectedMarket.odds);
     const providerOdds = Number(rawProviderOdds);
     if (sideLower === 'lay') {
       if (!Number.isFinite(providerOdds) || providerOdds <= 1) {
@@ -630,18 +1258,14 @@ export const placeBet = async (req, res) => {
         });
       }
       odds = providerOdds;
-    } else if (!localMatka) {
-      // worli3 live feed sends b:0 with OPEN status (Matka local rate 9.5)
-      if (family === 'matka' && !(providerOdds > 1)) {
-        odds = LOCAL_MATKA_ODDS.single;
-      } else if (!Number.isFinite(providerOdds) || providerOdds <= 1) {
+    } else if (!matkaPricing) {
+      if (!Number.isFinite(providerOdds) || providerOdds <= 1) {
         return res.status(400).json({
           success: false,
           message: 'Betting odds are currently closed',
         });
-      } else {
-        odds = providerOdds;
       }
+      odds = providerOdds;
     }
 
     let exposure = NaN;
@@ -717,10 +1341,14 @@ export const placeBet = async (req, res) => {
     }
 
     const nationLabel = String(
-      providerNat ||
-        (family === 'matka'
-          ? `Single ${Number(selectedMarket.sr) % 10}`
-          : req.body?.nation || selKey)
+      String(selectedMarket.subtype || '').toLowerCase() === 'vcon'
+        ? `${providerNat} Consecutive`
+        : isFancy2Session
+          ? `${providerNat} (${selectedMarket.sessionLine})`
+          : providerNat ||
+            (family === 'matka'
+              ? `Single ${Number(selectedMarket.sr) % 10}`
+              : req.body?.nation || selKey)
     );
 
     let bet;
@@ -843,7 +1471,17 @@ const settleCore = async (slug, roundId, result) => {
           bet.selection,
           enrichedResult
         );
-        const s = engine.settleBet(bet, selOutcome);
+        const dynamicOdds =
+          selOutcome === 'win'
+            ? engine.getDynamicSettlementOdds?.(
+                slug,
+                bet.selection,
+                enrichedResult
+              )
+            : null;
+        const betForSettle =
+          dynamicOdds && dynamicOdds > 1 ? { ...bet, odds: dynamicOdds } : bet;
+        const s = engine.settleBet(betForSettle, selOutcome);
 
         // pending -> settled is the idempotency guard (credit only once)
         const claimed = await Bet.findOneAndUpdate(
@@ -1126,34 +1764,99 @@ export const settlePendingForSlug = (
       const isMatka = engine.familyOf(cleanSlug) === 'matka';
 
       if (isMatka) {
-        const rows = Array.isArray(datedRowsHint)
-          ? datedRowsHint
-          : await getCachedOrFetchDatedResult(cleanSlug).catch(() => []);
+        const [datedRows, listRaw] = await Promise.all([
+          Array.isArray(datedRowsHint)
+            ? Promise.resolve(datedRowsHint)
+            : getCachedOrFetchDatedResult(cleanSlug).catch(() => []),
+          cleanSlug === 'worli2'
+            ? Array.isArray(resultRowsHint)
+              ? Promise.resolve(resultRowsHint)
+              : getCachedOrFetchCasinoResult(cleanSlug).catch(() => [])
+            : Promise.resolve([]),
+        ]);
+
+        // 1. Single-round Matka games (worli & worli2): dated nat is 3-digit pana ("440", "356")
+        const settledMids = new Set();
         const byBazaar = {};
-        for (const row of rows) {
+        for (const row of datedRows) {
+          const midStr = String(row?.mid ?? '');
           const m = parseMatkaNat(row?.nat);
-          if (!m) continue;
-          byBazaar[m.bazaar] = byBazaar[m.bazaar] || {};
-          byBazaar[m.bazaar][m.kind] = { mid: String(row.mid), ...m };
-        }
-        for (const pair of Object.values(byBazaar)) {
-          const result = {
-            open: pair.OPEN?.digit,
-            close: pair.CLOSE?.digit,
-            openPana: pair.OPEN?.pana,
-            closePana: pair.CLOSE?.pana,
-          };
-          for (const kind of ['OPEN', 'CLOSE']) {
-            const mid = pair[kind]?.mid;
-            if (!mid || !pending.includes(mid)) continue;
+          if (!m || !midStr) continue;
+          if (m.kind === 'SINGLE_ROUND') {
+            if (!pending.includes(midStr)) continue;
             try {
-              const out = await settleCore(cleanSlug, mid, result);
+              const out = await settleCore(cleanSlug, midStr, {
+                open: m.digit,
+                openPana: m.pana,
+              });
               settledCount += out.settled;
+              settledMids.add(midStr);
             } catch (e) {
-              console.error(`poller settle ${cleanSlug}/${mid}:`, e.message);
+              console.error(`poller settle ${cleanSlug}/${midStr}:`, e.message);
+            }
+          } else {
+            const bKey = `${row._resultDate || ''}|${m.bazaar}`;
+            byBazaar[bKey] = byBazaar[bKey] || {};
+            byBazaar[bKey][m.kind] = { mid: midStr, ...m };
+          }
+        }
+
+        // 2. worli3 OPEN / CLOSE bazaar pairs (OPEN single/pana only checks open; jodi uses open + jodiClose)
+        for (const pair of Object.values(byBazaar)) {
+          if (pair.OPEN?.mid && pending.includes(pair.OPEN.mid)) {
+            try {
+              const out = await settleCore(cleanSlug, pair.OPEN.mid, {
+                open: pair.OPEN.digit,
+                openPana: pair.OPEN.pana,
+                ...(pair.CLOSE?.digit !== undefined
+                  ? { jodiClose: pair.CLOSE.digit }
+                  : {}),
+              });
+              settledCount += out.settled;
+              settledMids.add(pair.OPEN.mid);
+            } catch (e) {
+              console.error(
+                `poller settle ${cleanSlug}/${pair.OPEN.mid}:`,
+                e.message
+              );
+            }
+          }
+          if (pair.CLOSE?.mid && pending.includes(pair.CLOSE.mid)) {
+            try {
+              const out = await settleCore(cleanSlug, pair.CLOSE.mid, {
+                close: pair.CLOSE.digit,
+                closePana: pair.CLOSE.pana,
+              });
+              settledCount += out.settled;
+              settledMids.add(pair.CLOSE.mid);
+            } catch (e) {
+              console.error(
+                `poller settle ${cleanSlug}/${pair.CLOSE.mid}:`,
+                e.message
+              );
             }
           }
         }
+
+        // 3. worli2 fast fallback from /result/worli2 ({ mid, win: "4" }) when dated pana hasn't published yet
+        if (cleanSlug === 'worli2') {
+          for (const row of resultRows(listRaw)) {
+            const midStr = String(row?.mid ?? '');
+            const w = String(row?.win ?? '');
+            if (!midStr || settledMids.has(midStr) || !pending.includes(midStr))
+              continue;
+            if (!/^[0-9]$/.test(w)) continue;
+            try {
+              const out = await settleCore(cleanSlug, midStr, {
+                open: Number(w),
+              });
+              settledCount += out.settled;
+            } catch (e) {
+              console.error(`poller settle ${cleanSlug}/${midStr}:`, e.message);
+            }
+          }
+        }
+
         return { settled: settledCount };
       }
 
