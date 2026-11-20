@@ -110,17 +110,19 @@ export default function DesktopBetSlip() {
         </div>
       </div>
 
-      {/* QUICK STAKE BUTTONS */}
+      {/* QUICK STAKE BUTTONS (additive +label matching D247 & sports PlaceBet) */}
       <div className='place-bet-buttons'>
-        {quickStakes.map((stk) => (
+        {quickStakes.map((stk, idx) => (
           <button
-            key={stk.label}
+            key={`${stk.label}-${stk.value}-${idx}`}
             type='button'
             className='btn btn-place-bet'
-            onClick={() => updateStake(stk.value)}
+            onClick={() =>
+              updateStake((Number(betSlip.stake) || 0) + Number(stk.value || 0))
+            }
             disabled={placeBetLoading}
           >
-            {stk.label}
+            +{stk.label}
           </button>
         ))}
 

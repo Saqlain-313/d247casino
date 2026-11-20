@@ -7,6 +7,7 @@ import LoginHistory from '../models/loginHistory.js';
 import passwordHistory from '../models/passwordHistory.js';
 import SubAdmin from '../models/subAdminModel.js';
 import { calcTotalCasinoExposure } from '../services/casinoEngine.js';
+import { getDateRangeUTC } from '../utils/dateUtils.js';
 import { calculateAllExposure } from '../utils/exposureUtils.js';
 import { saveLoginHistory } from '../utils/loginHistory.js';
 
@@ -248,18 +249,22 @@ export const getPasswordHistoryByUserId = async (req, res) => {
   const { id } = req;
   try {
     // passed in route as /credit-ref-history/:userId
-    const { page = 1, limit = 10, searchQuery = '' } = req.query;
+    const { page = 1, limit = 10, startDate, endDate } = req.query;
 
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 10);
 
     const filter = {
       userId: id,
     };
 
+    if (startDate && endDate) {
+      filter.createdAt = getDateRangeUTC(startDate, endDate);
+    }
+
     const data = await passwordHistory
       .find(filter)
-      .sort({ createdAt: -1 }) // optional: latest first
+      .sort({ createdAt: -1 }) // latest first
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 
@@ -269,7 +274,7 @@ export const getPasswordHistoryByUserId = async (req, res) => {
       message: 'Password History fetched successfully',
       data,
       total,
-      totalPages: Math.ceil(total / limitNum),
+      totalPages: Math.ceil(total / limitNum) || 1,
       currentPage: pageNum,
       success: true,
     });
@@ -284,8 +289,18 @@ export const getPasswordHistoryByUserId = async (req, res) => {
 };
 export const getLoginHistory = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const data = await LoginHistory.find({ userId });
+    const isAdminCaller = req.role && req.role !== 'user';
+    const targetUserId = isAdminCaller
+      ? req.params.userId
+      : String(req.id || req.params.userId);
+    const { startDate, endDate } = req.query || {};
+
+    const filter = { userId: String(targetUserId) };
+    if (startDate && endDate) {
+      filter.createdAt = getDateRangeUTC(startDate, endDate);
+    }
+
+    const data = await LoginHistory.find(filter).sort({ createdAt: -1 });
     res.status(200).json({
       message: 'Login history fetched successfully',
       data,

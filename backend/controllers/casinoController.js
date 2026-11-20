@@ -1,13 +1,18 @@
 import dotenv from 'dotenv';
 
 import redis, { connectRedis } from '../config/redis.js';
+import {
+  findStoredResultsForSlug,
+  getOrSyncCasinoResultsByDate,
+  mapCasinoWinLabel,
+  saveCasinoResults,
+} from '../services/casinoResultStore.js';
 import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
 import {
   fetchCasinoDetailResult as fetchCasinoDetailResultApi,
   fetchCasinoResult as fetchCasinoResultApi,
   fetchCasinoTables,
-  fetchDirectCasinoResultByDate as fetchDirectCasinoResultByDateApi,
 } from '../services/matchApi/index.js';
 import { settlePendingForSlug } from './casinobetController.js';
 
@@ -285,6 +290,9 @@ export const getCasinoResultData = async (req, res) => {
     );
 
     if (Array.isArray(data?.res) && data.res.length) {
+      saveCasinoResults(eventName, data.res, { source: 'live' }).catch(
+        () => {}
+      );
       settlePendingForSlug(eventName, { resultRowsHint: data.res }).catch(
         () => {}
       );
@@ -302,41 +310,13 @@ export const getCasinoResultData = async (req, res) => {
   }
 };
 
-const mapFallbackNat = (eventName, item) => {
-  if (item?.nat) return String(item.nat);
-  const s = String(eventName || '').toLowerCase();
-  const w = String(item?.win ?? '');
-  if (['pdt6', 'dt6', 'vdt6', 'pdt20', 'dt20', 'dt202'].includes(s)) {
-    return w === '1' ? 'Dragon' : w === '2' ? 'Tiger' : w === '3' ? 'Tie' : w;
-  }
-  if (['pbaccarat', 'baccarat', 'baccarat2'].includes(s)) {
-    return w === '1' ? 'Player' : w === '2' ? 'Banker' : w === '3' ? 'Tie' : w;
-  }
-  if (['plucky7', 'lucky7', 'lucky7eu', 'lucky7eu2', 'vlucky7'].includes(s)) {
-    return w === '1'
-      ? 'Low Card'
-      : w === '2'
-        ? 'High Card'
-        : w === '3'
-          ? 'Tie'
-          : w;
-  }
-  if (['pcard32', 'card32', 'card32eu'].includes(s)) {
-    return (
-      { 1: 'Player 8', 2: 'Player 9', 3: 'Player 10', 4: 'Player 11' }[w] || w
-    );
-  }
-  if (['superover', 'superover2', 'superover3', 'cricketv3'].includes(s)) {
-    return w === '1' ? 'Team 1' : w === '2' ? 'Team 2' : w === '0' ? 'Tie' : w;
-  }
-  return w === '1' ? 'Player A' : w === '2' ? 'Player B' : w;
-};
-
 /**
  * GET /casino/direct-result-by-date?date=YYYY-MM-DD&eventName=aaa
  *
- * Endpoint pattern: /diamond/direct-casino/result/<date>/:eventName
- * Example:          /diamond/direct-casino/result/2026-11-13/aaa
+ * Primary:  provider dated API (/diamond/direct-casino/result/<date>/:eventName)
+ * Fallback: provider non-dated API (/diamond/direct-casino/result/:eventName)
+ * Stored & merged with our local 4-day MongoDB `casinoresults` collection.
+ * Always responds 200 with `{ data: [] }` when no results exist (never 404).
  */
 export const getDirectCasinoResultByDate = async (req, res) => {
   const { date, eventName } = req.query;
@@ -363,55 +343,7 @@ export const getDirectCasinoResultByDate = async (req, res) => {
   try {
     const data = await getWithCache(
       `${CACHE.directResultByDate.prefix}:${date}:${eventName}`,
-      async () => {
-        try {
-          const response = await fetchDirectCasinoResultByDateApi(
-            date,
-            eventName
-          );
-
-          if (response) {
-            if (
-              typeof response === 'object' &&
-              'success' in response &&
-              'data' in response
-            ) {
-              if (response.success) {
-                return response.data;
-              }
-            } else {
-              return response;
-            }
-          }
-        } catch {
-          // Some games (p*, superover*, cricketv3) lack dated direct-casino
-          // history on the provider; fall back to recent result feed below.
-        }
-
-        const recent = await fetchCasinoResultApi(eventName);
-        if (recent?.success && Array.isArray(recent?.data?.res)) {
-          const mapped = recent.data.res.map((item) => ({
-            mid: item?.mid != null ? String(item.mid) : '',
-            win: item?.win != null ? String(item.win) : '',
-            nat: mapFallbackNat(eventName, item),
-            date,
-          }));
-          return {
-            fetchedAt: new Date().toISOString(),
-            date,
-            eventName,
-            apiStatus: 200,
-            apiSuccess: true,
-            fallback: true,
-            count: mapped.length,
-            data: mapped,
-          };
-        }
-
-        const error = new Error('Invalid Response from API');
-        error.provider = recent;
-        throw error;
-      },
+      () => getOrSyncCasinoResultsByDate(eventName, date),
       CACHE.directResultByDate.ttl
     );
 
@@ -428,10 +360,18 @@ export const getDirectCasinoResultByDate = async (req, res) => {
       error?.message || error
     );
 
-    return res.status(error.provider !== undefined ? 502 : 503).json({
-      success: false,
-      message: error.message || 'Casino provider temporarily unavailable',
-      ...(error.provider !== undefined ? { provider: error.provider } : {}),
+    // Return empty list cleanly instead of surfacing raw provider 404 errors to UI
+    return res.status(200).json({
+      success: true,
+      data: {
+        fetchedAt: new Date().toISOString(),
+        date,
+        eventName,
+        apiStatus: 200,
+        apiSuccess: true,
+        count: 0,
+        data: [],
+      },
     });
   }
 };
@@ -473,21 +413,39 @@ export const getCasinoResultDetailData = async (req, res) => {
           }
         } catch {
           // Provider A does not expose /casino/detail_result; synthesize
-          // summary detail from the live recent result feed if present.
+          // summary detail from our 4-day stored result DB or live result feed.
         }
 
-        const recent = await fetchCasinoResultApi(gtype);
-        const match = (recent?.data?.res || []).find(
-          (r) => String(r?.mid) === String(mid)
-        );
-        return match
-          ? {
+        const stored = await findStoredResultsForSlug(gtype, [String(mid)]);
+        if (stored.length) {
+          const s = stored[0];
+          return {
+            mid: String(s.roundId),
+            win: String(s.win ?? ''),
+            winnat: s.nat || mapCasinoWinLabel(gtype, s),
+            card: s.card || '',
+            rdesc: s.rdesc || '',
+            gtype,
+          };
+        }
+
+        try {
+          const recent = await fetchCasinoResultApi(gtype);
+          const match = (recent?.data?.res || []).find(
+            (r) => String(r?.mid) === String(mid)
+          );
+          if (match) {
+            return {
               mid: String(match.mid),
               win: String(match.win ?? ''),
-              winnat: mapFallbackNat(gtype, match),
+              winnat: mapCasinoWinLabel(gtype, match),
               gtype,
-            }
-          : null;
+            };
+          }
+        } catch {
+          /* ignore */
+        }
+        return null;
       },
       CACHE.resultDetail.ttl
     );

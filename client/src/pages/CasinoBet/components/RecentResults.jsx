@@ -67,7 +67,11 @@ const RecentResults = memo(function RecentResults({
       <div className='bg-secondary text-secondary flex items-center justify-between p-1 text-[15px] font-bold'>
         <span>Last Result</span>
         <Link
-          to='/casino-results'
+          to={
+            gameid
+              ? `/casino-results?game=${encodeURIComponent(gameid)}`
+              : '/casino-results'
+          }
           className='text-[13px] font-semibold hover:underline'
         >
           View All

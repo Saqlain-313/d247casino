@@ -17,32 +17,38 @@ function ActivityLog() {
   );
   const { userInfo } = useSelector((state) => state.auth);
 
-  // Date setup - default to last 4 months
+  // Date setup - default to last 4 months (local YYYY-MM-DD avoids UTC shift)
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
   const currentDate = new Date();
   const fourMonthsAgo = new Date();
   fourMonthsAgo.setMonth(currentDate.getMonth() - 4);
-  const formatDate = (date) => date.toISOString().split('T')[0];
+  const todayStr = formatDate(currentDate);
 
   const [logType, setLogType] = useState('login');
   const [startDate, setStartDate] = useState(formatDate(fourMonthsAgo));
-  const [endDate, setEndDate] = useState(formatDate(currentDate));
+  const [endDate, setEndDate] = useState(todayStr);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
 
   const userId = userInfo?._id;
 
-  // Fetch login history
+  // Fetch login history with date range
   const fetchLoginHistory = useCallback(() => {
     if (userId) {
-      dispatch(getLoginHistory(userId));
+      dispatch(getLoginHistory({ userId, startDate, endDate }));
     }
-  }, [dispatch, userId]);
+  }, [dispatch, userId, startDate, endDate]);
 
-  // Fetch password history
+  // Fetch password history with date range
   const fetchPasswordHistory = useCallback(() => {
-    dispatch(passwordHistory({ page, limit }));
-  }, [dispatch, page, limit]);
+    dispatch(passwordHistory({ page, limit, startDate, endDate }));
+  }, [dispatch, page, limit, startDate, endDate]);
 
   // Fetch user info on mount
   useEffect(() => {
@@ -117,10 +123,10 @@ function ActivityLog() {
   const displayData = logType === 'login' ? paginatedLoginData : filteredData;
 
   const handleSubmit = () => {
+    setPage(1);
     if (logType === 'login') {
       fetchLoginHistory();
     } else if (logType === 'change-password') {
-      setPage(1);
       fetchPasswordHistory();
     }
   };
@@ -139,16 +145,22 @@ function ActivityLog() {
                 placeholder='Start Date'
                 className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                max={todayStr}
               />
               <input
                 type='date'
                 placeholder='End Date'
                 className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                max={todayStr}
               />
             </div>
             <select

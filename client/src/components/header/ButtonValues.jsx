@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateQuickStakes } from '../../redux/reducer/authReducer';
+import { getUser, updateQuickStakes } from '../../redux/reducer/authReducer';
 import { toast } from 'react-toastify';
 
 const GAME_DEFAULTS = [
@@ -66,6 +66,12 @@ function ButtonValues({ onClose, initialTab = 'game' }) {
   );
 
   useEffect(() => {
+    if (!userInfo?.quickStakes && !userInfo?.casinoQuickStakes) {
+      dispatch(getUser());
+    }
+  }, [dispatch, userInfo?.quickStakes, userInfo?.casinoQuickStakes]);
+
+  useEffect(() => {
     if (userInfo) {
       if (userInfo.quickStakes?.length) {
         setGameButtons(buildButtons(GAME_DEFAULTS, userInfo.quickStakes));
@@ -86,7 +92,12 @@ function ButtonValues({ onClose, initialTab = 'game' }) {
       const updated = [...prev];
       updated[index] = {
         ...updated[index],
-        [field]: field === 'value' ? Number(rawValue) || 0 : rawValue,
+        [field]:
+          field === 'value'
+            ? rawValue === ''
+              ? ''
+              : Number(rawValue)
+            : rawValue,
       };
       return updated;
     });

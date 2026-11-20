@@ -4380,11 +4380,37 @@ export const getBetHistory = async (req, res) => {
 
     // Filter by selectedGame if provided
     if (selectedGame) {
-      // Account Statement sends "Sport" to represent all sports.
+      // Account Statement sends "Sport" to represent all non-casino sports.
       if (selectedGame === 'Sport') {
         query.gameName = {
-          $in: ['Cricket Game', 'Soccer Game', 'Tennis Game'],
+          $in: [
+            'Cricket Game',
+            'Cricket',
+            'E-Cricket',
+            'Soccer Game',
+            'Soccer',
+            'Football',
+            'Tennis Game',
+            'Tennis',
+            'Horse Racing',
+            'Horse Racing Game',
+            'Greyhound Racing',
+            'Greyhound Racing Game',
+            'Basket Ball Game',
+            'Lottery Game',
+          ],
         };
+      } else if (
+        selectedGame === 'Horse Racing' ||
+        selectedGame === 'Horse Racing Game'
+      ) {
+        query.gameName = { $in: ['Horse Racing', 'Horse Racing Game'] };
+      } else if (selectedGame === 'Cricket Game') {
+        query.gameName = { $in: ['Cricket Game', 'Cricket', 'E-Cricket'] };
+      } else if (selectedGame === 'Soccer Game') {
+        query.gameName = { $in: ['Soccer Game', 'Soccer', 'Football'] };
+      } else if (selectedGame === 'Tennis Game') {
+        query.gameName = { $in: ['Tennis Game', 'Tennis'] };
       } else {
         query.gameName = selectedGame;
       }
@@ -4401,12 +4427,15 @@ export const getBetHistory = async (req, res) => {
       query.status = 0;
     }
 
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 10);
+
     const bets = await betHistoryModel
       .find(query)
       // Show statement rows in settlement order first to match before/after balances.
       .sort({ settledAt: -1, date: -1, createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit));
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum);
 
     const total = await betHistoryModel.countDocuments(query);
 
@@ -4415,8 +4444,8 @@ export const getBetHistory = async (req, res) => {
       data: bets,
       pagination: {
         total,
-        page: parseInt(page),
-        pages: Math.ceil(total / limit),
+        page: pageNum,
+        pages: Math.ceil(total / limitNum) || 1,
       },
     });
   } catch (error) {
@@ -4435,6 +4464,7 @@ export const getProfitlossHistory = async (req, res) => {
     gameName,
     marketName,
     marketId,
+    roundId,
   } = req.query;
 
   try {
@@ -4448,13 +4478,14 @@ export const getProfitlossHistory = async (req, res) => {
     };
 
     if (startDate && endDate) {
-      betQuery.date = getDateRangeUTC(startDate, endDate);
+      betQuery.createdAt = getDateRangeUTC(startDate, endDate);
     }
 
     // Apply filters if provided
     if (gameName) betQuery.gameName = gameName;
     if (eventName) betQuery.eventName = eventName;
     if (marketName) betQuery.marketName = marketName;
+    if (roundId) betQuery.roundId = String(roundId);
     if (marketId) {
       betQuery.market_id = { $regex: `${marketId}$` };
     }
@@ -4620,29 +4651,27 @@ export const getTransactionHistoryByUserAndDate = async (req, res) => {
     }
 
     const filter = {
-      userId: id,
+      userId: String(id),
     };
 
     if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-
-      end.setDate(end.getDate() + 1);
-
-      filter.createdAt = {
-        $gte: start,
-        $lte: end,
-      };
+      filter.createdAt = getDateRangeUTC(startDate, endDate);
     }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, parseInt(limit, 10) || 10);
 
     const user = await SubAdmin.findById(id, { userName: 1 }).lean();
     const currentUserName = user?.userName;
 
-    const transactions = await TransactionHistory.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .lean();
+    const [transactions, total] = await Promise.all([
+      TransactionHistory.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((pageNum - 1) * limitNum)
+        .limit(limitNum)
+        .lean(),
+      TransactionHistory.countDocuments(filter),
+    ]);
 
     // Privacy: hide master/upline name from client users
     const maskedTransactions = transactions.map((txn) => {
@@ -4658,6 +4687,11 @@ export const getTransactionHistoryByUserAndDate = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: maskedTransactions,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum) || 1,
+      },
     });
   } catch (error) {
     console.error('Error fetching transactions:', error);

@@ -6,6 +6,10 @@ import Bet from '../models/CasinoBet.js';
 import Round from '../models/CasinoRound.js';
 import User from '../models/subAdminModel.js'; // existing User model (numeric `balance`) - adjust path
 import * as engine from '../services/casinoEngine.js';
+import {
+  findStoredResultsForSlug,
+  saveCasinoResults,
+} from '../services/casinoResultStore.js';
 import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
 
@@ -166,6 +170,72 @@ const parseMatkaNat = (nat) => {
     bazaar: kindM[1].trim() || rest,
     kind: kindM[2].toUpperCase(),
   };
+};
+
+// Reverse-map dated `nat` (e.g. "Player A", "Dragon", "Banker", "17") to winCode
+// when settling a missed round from a dated-only stored CasinoResult row.
+const inferWinCodeFromNat = (slug, nat) => {
+  const s = String(slug || '').toLowerCase();
+  const n = String(nat || '')
+    .trim()
+    .toLowerCase();
+  if (!n) return '';
+  const fam = engine.familyOf(s);
+  if (fam === 'roulette') {
+    const numM = n.match(/\d+/);
+    return numM ? numM[0] : '';
+  }
+  if (fam === 'dt') {
+    if (n === 'dragon') return '1';
+    if (n === 'tiger') return '2';
+    if (n === 'tie') return '3';
+  }
+  if (fam === 'dtl20') {
+    if (n === 'dragon') return '21';
+    if (n === 'tiger') return '22';
+    if (n === 'lion') return '23';
+  }
+  if (fam === 'baccarat') {
+    if (n === 'player') return '1';
+    if (n === 'banker') return '2';
+    if (n === 'tie') return '3';
+  }
+  if (fam === 'lucky7' || fam === 'lucky5') {
+    if (n.includes('low')) return '1';
+    if (n.includes('high')) return '2';
+    if (n === 'tie' || n === 'card 7') return '0';
+  }
+  if (fam === 'aaa') {
+    if (n === 'amar') return '1';
+    if (n === 'akbar') return '2';
+    if (n === 'anthony') return '3';
+  }
+  if (fam === 'card32') {
+    if (n === 'player 8') return '1';
+    if (n === 'player 9') return '2';
+    if (n === 'player 10') return '3';
+    if (n === 'player 11') return '4';
+  }
+  if (fam === 'teen9') {
+    if (n === 'tiger') return '1';
+    if (n === 'lion') return '2';
+    if (n === 'dragon') return '3';
+  }
+  if (fam === 'teen1') {
+    if (n === 'player') return '1';
+    if (n === 'dealer') return '2';
+    if (n === 'tie') return '3';
+  }
+  if (fam === 'andarbahar') {
+    if (n === 'andar') return '1';
+    if (n === 'bahar') return '2';
+  }
+  if (n === 'player a' || n === 'fighter a' || n === 'eng' || n === 'ind')
+    return '1';
+  if (n === 'player b' || n === 'fighter b' || n === 'rsa' || n === 'aus')
+    return '2';
+  if (n === 'tie') return '0';
+  return '';
 };
 
 const normalizeResult = (slug, row, list = []) => {
@@ -852,12 +922,14 @@ export const placeBet = async (req, res) => {
     }
     const currentRoundId = String(activeRoundData.mid);
     if (roundId && String(roundId) !== currentRoundId) {
-      console.log('placeBet: client roundId stale, using live mid', {
-        clientRoundId: String(roundId),
-        currentRoundId,
+      return res.status(400).json({
+        success: false,
+        message:
+          'Round has closed or changed. Please place bet on the current round.',
       });
     }
 
+    const clientOdds = odds;
     const normNat = (v) =>
       String(v || '')
         .trim()
@@ -886,6 +958,13 @@ export const placeBet = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: 'This Matka market is not available on this table',
+        });
+      }
+      if (Math.abs(clientOdds - matkaPricing.effectiveOdds) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: `Odds changed. Current: ${matkaPricing.effectiveOdds.toFixed(2)}. Please re-select.`,
+          currentOdds: matkaPricing.effectiveOdds,
         });
       }
       selection = matkaPricing.selection;
@@ -1220,6 +1299,17 @@ export const placeBet = async (req, res) => {
       const line = Number(
         sideLower === 'lay' ? selectedMarket.l : selectedMarket.b
       );
+      if (
+        req.body?.sessionLine !== undefined &&
+        req.body?.sessionLine !== null &&
+        Math.abs(Number(req.body.sessionLine) - line) > 0.01
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Line changed. Current: ${line}. Please re-select.`,
+          currentLine: line,
+        });
+      }
       selectedMarket = { ...selectedMarket, sessionLine: line };
     }
 
@@ -1257,12 +1347,26 @@ export const placeBet = async (req, res) => {
           message: 'Lay not allowed on half-loss markets',
         });
       }
+      if (Math.abs(clientOdds - providerOdds) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: `Odds changed. Current: ${providerOdds.toFixed(2)}. Please re-select.`,
+          currentOdds: providerOdds,
+        });
+      }
       odds = providerOdds;
     } else if (!matkaPricing) {
       if (!Number.isFinite(providerOdds) || providerOdds <= 1) {
         return res.status(400).json({
           success: false,
           message: 'Betting odds are currently closed',
+        });
+      }
+      if (Math.abs(clientOdds - providerOdds) > 0.01) {
+        return res.status(400).json({
+          success: false,
+          message: `Odds changed. Current: ${providerOdds.toFixed(2)}. Please re-select.`,
+          currentOdds: providerOdds,
         });
       }
       odds = providerOdds;
@@ -1775,10 +1879,36 @@ export const settlePendingForSlug = (
             : Promise.resolve([]),
         ]);
 
+        // Persist fetched Matka dated results into our 4-day CasinoResult store
+        if (Array.isArray(datedRows) && datedRows.length) {
+          saveCasinoResults(cleanSlug, datedRows, { source: 'dated' }).catch(
+            () => {}
+          );
+        }
+
+        // Also merge any stored 4-day Matka results for missed rounds
+        const storedMatka = await findStoredResultsForSlug(
+          cleanSlug,
+          pending
+        ).catch(() => []);
+        const mergedMatkaRows = [...datedRows];
+        const seenMatkaMids = new Set(
+          datedRows.map((r) => String(r?.mid ?? ''))
+        );
+        for (const s of storedMatka) {
+          if (s.roundId && !seenMatkaMids.has(s.roundId) && s.nat) {
+            mergedMatkaRows.push({
+              mid: s.roundId,
+              nat: s.nat,
+              _resultDate: s.date,
+            });
+          }
+        }
+
         // 1. Single-round Matka games (worli & worli2): dated nat is 3-digit pana ("440", "356")
         const settledMids = new Set();
         const byBazaar = {};
-        for (const row of datedRows) {
+        for (const row of mergedMatkaRows) {
           const midStr = String(row?.mid ?? '');
           const m = parseMatkaNat(row?.nat);
           if (!m || !midStr) continue;
@@ -1879,6 +2009,17 @@ export const settlePendingForSlug = (
       ]);
       const list = resultRows(listRaw);
 
+      // Persist fetched results into our 4-day CasinoResult store (dated primary, live fallback)
+      if (Array.isArray(datedRows) && datedRows.length) {
+        saveCasinoResults(cleanSlug, datedRows, { source: 'dated' }).catch(
+          () => {}
+        );
+      }
+      if (list.length) {
+        saveCasinoResults(cleanSlug, list, { source: 'live' }).catch(() => {});
+      }
+
+      const settledMids = new Set();
       for (const row of list) {
         const midStr = String(row?.mid ?? '');
         if (!midStr || !pending.includes(midStr)) continue;
@@ -1888,8 +2029,42 @@ export const settlePendingForSlug = (
           if (datedMatch?.nat) norm.datedNat = datedMatch.nat;
           const out = await settleCore(cleanSlug, midStr, norm);
           settledCount += out.settled;
+          if (out.settled > 0) settledMids.add(midStr);
         } catch (e) {
           console.error(`poller settle ${cleanSlug}/${midStr}:`, e.message);
+        }
+      }
+
+      // Fallback lookup in our 4-day stored CasinoResult DB for any round that scrolled off the live feed
+      const remainingPending = pending.filter((mid) => !settledMids.has(mid));
+      if (remainingPending.length) {
+        const storedDocs = await findStoredResultsForSlug(
+          cleanSlug,
+          remainingPending
+        ).catch(() => []);
+        for (const doc of storedDocs) {
+          const midStr = String(doc.roundId || '');
+          const inferredWin =
+            String(doc.win || '').trim() ||
+            inferWinCodeFromNat(cleanSlug, doc.nat);
+          if (!midStr || (!inferredWin && !doc.nat)) continue;
+          try {
+            const norm = normalizeResult(
+              cleanSlug,
+              { mid: midStr, win: inferredWin, nat: doc.nat },
+              list
+            );
+            if (doc.nat) norm.datedNat = doc.nat;
+            if (doc.card) norm.card = doc.card;
+            if (doc.rdesc) norm.rdesc = doc.rdesc;
+            const out = await settleCore(cleanSlug, midStr, norm);
+            settledCount += out.settled;
+          } catch (e) {
+            console.error(
+              `poller stored-fallback settle ${cleanSlug}/${midStr}:`,
+              e.message
+            );
+          }
         }
       }
 

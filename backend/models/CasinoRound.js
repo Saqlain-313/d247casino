@@ -28,6 +28,11 @@ const casinoRoundSchema = new mongoose.Schema(
 );
 
 casinoRoundSchema.index({ slug: 1, roundId: 1 }, { unique: true });
+// Keep only last 4 days of round snapshots so DB never accumulates stale trash
+casinoRoundSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 4 * 24 * 60 * 60 }
+);
 
 export default mongoose.models.CasinoRound ||
   mongoose.model('CasinoRound', casinoRoundSchema);

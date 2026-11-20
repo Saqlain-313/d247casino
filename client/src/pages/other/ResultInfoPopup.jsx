@@ -20,6 +20,7 @@ function ResultInfoPopup({
   eventName,
   marketName,
   marketId,
+  roundId,
   gameType,
   startDate,
   endDate,
@@ -48,6 +49,7 @@ function ResultInfoPopup({
           endDate,
         });
         if (marketId) params.set('marketId', marketId);
+        if (roundId) params.set('roundId', roundId);
         const response = await api.get(
           `/user/profit-loss/history?${params.toString()}`,
           { withCredentials: true }
@@ -63,7 +65,7 @@ function ResultInfoPopup({
       }
     };
     fetchReport();
-  }, [gameName, eventName, marketName, marketId, startDate, endDate]);
+  }, [gameName, eventName, marketName, marketId, roundId, startDate, endDate]);
 
   const report = data?.data?.report ?? [];
   const total = data?.data?.total ?? {
@@ -201,12 +203,14 @@ function ResultInfoPopup({
                             {row.teamName ?? row.marketName ?? '-'}
                           </td>
                           <td className='border-r border-gray-200 p-2'>
-                            {/* {row.price ?? row.xValue ?? '-'} */}
-                            {row.fancyScore}
+                            {row.fancyScore && Number(row.fancyScore) !== 0
+                              ? row.fancyScore
+                              : (row.xValue ?? '-')}
                           </td>
                           <td className='border-r border-gray-200 p-2'>
-                            {/* {row.fancyScore ?? row.betResult ?? '-'} */}
-                            {row.xValue}
+                            {row.fancyScore && Number(row.fancyScore) !== 0
+                              ? (row.xValue ?? '-')
+                              : '-'}
                           </td>
                           <td className='border-r border-gray-200 p-2'>
                             {row.otype === 'back' ? row.price : row.betAmount}

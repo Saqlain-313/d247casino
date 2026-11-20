@@ -58,13 +58,24 @@ const ResultPopup = ({ item, onClose, gameId }) => {
   const resultLabel = useMemo(() => {
     if (!item) return '—';
     if (goalGame) return item.nat || 'Result';
-    return getResultLabel(gameId, String(item.win ?? ''));
+    const rawWin = String(item.win ?? '').trim();
+    if (rawWin) {
+      const mapped = getResultLabel(gameId, rawWin);
+      if (mapped) return mapped;
+    }
+    const nat = String(item.nat ?? '').trim();
+    if (nat) return nat.length <= 4 ? nat : nat.slice(0, 3);
+    return '—';
   }, [item, gameId, goalGame]);
 
   if (!item) return null;
 
   const winnerMap = getWinnerMap(gameId);
-  const winner = winnerMap?.[String(item.win)] || resultLabel;
+  const rawWin = String(item.win ?? '').trim();
+  const winner =
+    (rawWin && winnerMap?.[rawWin]) ||
+    String(item.nat || item.name || item.selection || '').trim() ||
+    resultLabel;
   const roundId = item.mid ?? item.rid ?? '—';
   const resultName = String(item.nat || item.name || item.selection || winner);
 

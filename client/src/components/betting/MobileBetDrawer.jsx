@@ -103,14 +103,18 @@ export default function MobileBetDrawer() {
           </div>
 
           <div className='mobile-slip-quick-stakes d-flex mb-2 flex-wrap gap-1'>
-            {quickStakes.map((stk) => (
+            {quickStakes.map((stk, idx) => (
               <button
-                key={`${stk.label}-${stk.value}`}
+                key={`${stk.label}-${stk.value}-${idx}`}
                 type='button'
                 className='btn btn-sm btn-outline-secondary m-quick-stake flex-fill'
-                onClick={() => updateStake(stk.value)}
+                onClick={() =>
+                  updateStake(
+                    (Number(betSlip.stake) || 0) + Number(stk.value || 0)
+                  )
+                }
               >
-                {stk.label}
+                +{stk.label}
               </button>
             ))}
             <button

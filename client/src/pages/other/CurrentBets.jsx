@@ -7,15 +7,21 @@ function CurrentBets() {
   const dispatch = useDispatch();
   const { betHistory, loading, pagination } = useSelector((state) => state.bet);
 
-  // Date setup - default to last 4 months
+  // Date setup - default to last 4 months (local YYYY-MM-DD avoids UTC shift)
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
   const currentDate = new Date();
   const fourMonthsAgo = new Date();
   fourMonthsAgo.setMonth(currentDate.getMonth() - 4);
-  const formatDate = (date) => date.toISOString().split('T')[0];
+  const todayStr = formatDate(currentDate);
 
   const [betType, setBetType] = useState('all');
   const [startDate, setStartDate] = useState(formatDate(fourMonthsAgo));
-  const [endDate, setEndDate] = useState(formatDate(currentDate));
+  const [endDate, setEndDate] = useState(todayStr);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [selectedGame, setSelectedGame] = useState('');
@@ -75,14 +81,18 @@ function CurrentBets() {
               id='type'
               className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
               value={selectedGame}
-              onChange={(e) => setSelectedGame(e.target.value)}
+              onChange={(e) => {
+                setSelectedGame(e.target.value);
+                setPage(1);
+              }}
             >
               <option value=''>All Sports</option>
               <option value='Cricket Game'>Cricket</option>
+              <option value='E-Cricket'>E-Cricket</option>
               <option value='Tennis Game'>Tennis</option>
               <option value='Soccer Game'>Soccer</option>
               <option value='Casino'>Casino</option>
-              <option value='Horse Racing Game'>Horse Racing</option>
+              <option value='Horse Racing'>Horse Racing</option>
               <option value='Greyhound Racing Game'>Greyhound Racing</option>
               <option value='Basket Ball Game'>Basket Ball</option>
               <option value='Lottery Game'>Lottery</option>
@@ -91,15 +101,21 @@ function CurrentBets() {
               type='date'
               className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setPage(1);
+              }}
+              max={todayStr}
             />
             <input
               type='date'
               className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setPage(1);
+              }}
+              max={todayStr}
             />
             <select
               name='voidType'

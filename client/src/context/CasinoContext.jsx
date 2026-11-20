@@ -681,6 +681,12 @@ export function CasinoUiProvider({
         slug: String(gameid || ''),
 
         roundId: String(casinoData?.mid || ''),
+
+        sessionLine: isFancy2Session
+          ? Number(
+              requestedSide === 'lay' ? selectedMarket.l : selectedMarket.b
+            )
+          : null,
       });
 
       betting.setBetOdds(numericOdds);
@@ -899,6 +905,10 @@ export function CasinoUiProvider({
         .toUpperCase();
       const latestVisible = isMarketVisible(latestMarket);
       const latestOdds = Number(latestRawOdds);
+      const latestSessionLine =
+        control.sessionLine != null
+          ? Number(control.type === 'lay' ? latestMarket?.l : latestMarket?.b)
+          : null;
 
       if (
         isSuspended ||
@@ -907,7 +917,10 @@ export function CasinoUiProvider({
         !['OPEN', 'ACTIVE'].includes(latestStatus) ||
         !Number.isFinite(latestOdds) ||
         latestOdds <= 1 ||
-        latestOdds !== oddsValue
+        Math.abs(latestOdds - oddsValue) > 0.01 ||
+        (control.sessionLine != null &&
+          (!Number.isFinite(latestSessionLine) ||
+            Math.abs(latestSessionLine - Number(control.sessionLine)) > 0.01))
       ) {
         window.alert(
           'Market changed or is no longer available. Please select it again.'
@@ -928,6 +941,9 @@ export function CasinoUiProvider({
           nation: control.nat || String(control.selection),
           odds: oddsValue,
           stake,
+          ...(control.sessionLine != null
+            ? { sessionLine: control.sessionLine }
+            : {}),
         })
       ).unwrap();
 

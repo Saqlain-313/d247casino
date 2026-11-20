@@ -101,28 +101,42 @@ export const changePasswordByFirstLogin = createAsyncThunk(
 
 export const passwordHistory = createAsyncThunk(
   'user/passwordHistory',
-  async ({ page = 1, limit = 10 }, { rejectWithValue }) => {
-    // console.log("Access denied, admin only", data);
+  async ({ page = 1, limit = 10, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const response = await api.get(
-        `/password/history?page=${page}&limit=${limit}`,
-        {
-          withCredentials: true,
-        }
-      );
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+      if (startDate && endDate) {
+        params.set('startDate', startDate);
+        params.set('endDate', endDate);
+      }
+      const response = await api.get(`/password/history?${params.toString()}`, {
+        withCredentials: true,
+      });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(
+        error.response?.data || { message: 'Fetch failed' }
+      );
     }
   }
 );
 
 export const getLoginHistory = createAsyncThunk(
   'creditRef/getUserLoginHistory',
-  async (userId, { rejectWithValue }) => {
-    console.log('object', userId);
+  async (arg, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/get/user-login-history/${userId}`, {
+      const userId = typeof arg === 'object' ? arg?.userId : arg;
+      const startDate = typeof arg === 'object' ? arg?.startDate : undefined;
+      const endDate = typeof arg === 'object' ? arg?.endDate : undefined;
+      const params = new URLSearchParams();
+      if (startDate && endDate) {
+        params.set('startDate', startDate);
+        params.set('endDate', endDate);
+      }
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await api.get(`/get/user-login-history/${userId}${qs}`, {
         withCredentials: true,
       });
       return res.data;

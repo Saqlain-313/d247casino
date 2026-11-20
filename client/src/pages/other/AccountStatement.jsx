@@ -63,21 +63,28 @@ function AccountStatement() {
     (state) => state.bet
   );
 
-  // Date setup - default to last 4 months
+  // Date setup - default to last 4 months (local YYYY-MM-DD avoids UTC shift)
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
   const currentDate = new Date();
   const fourMonthsAgo = new Date();
   fourMonthsAgo.setMonth(currentDate.getMonth() - 4);
-  const formatDate = (date) => date.toISOString().split('T')[0];
+  const todayStr = formatDate(currentDate);
 
   const [reportType, setReportType] = useState('deposits');
   const [startDate, setStartDate] = useState(formatDate(fourMonthsAgo));
-  const [endDate, setEndDate] = useState(formatDate(currentDate));
+  const [endDate, setEndDate] = useState(todayStr);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [paginationInfo, setPaginationInfo] = useState({ pages: 1, total: 0 });
   const [resultPopupRow, setResultPopupRow] = useState(null);
-  const showSettlementBalanceColumns = reportType === 'sports';
+  const showSettlementBalanceColumns =
+    reportType === 'sports' || reportType === 'casino';
 
   // Fetch transaction history (deposits)
   const fetchTransactions = useCallback(() => {
@@ -91,8 +98,14 @@ function AccountStatement() {
           limit,
         })
       ).then((result) => {
-        if (result.payload?.success) {
-          const total = result.payload?.data?.length || 0;
+        const payload = result.payload;
+        if (payload?.pagination) {
+          setPaginationInfo({
+            pages: payload.pagination.pages || 1,
+            total: payload.pagination.total || 0,
+          });
+        } else if (payload?.success) {
+          const total = payload?.data?.length || 0;
           const pages = Math.ceil(total / limit) || 1;
           setPaginationInfo({ pages, total });
         }
@@ -204,22 +217,22 @@ function AccountStatement() {
       );
     }) || [];
 
-  // Total pages and data to show
+  // Total pages and data to show (backend paginates deposits, sports & casino)
   const totalPages =
-    reportType === 'deposits'
-      ? Math.ceil(filteredTransactions.length / limit) || 1
-      : reportType === 'sports' || reportType === 'casino'
-        ? paginationInfo.pages || 1
-        : 1;
+    reportType === 'deposits' ||
+    reportType === 'sports' ||
+    reportType === 'casino'
+      ? paginationInfo.pages || 1
+      : 1;
 
   const paginatedData = useMemo(
     () =>
       reportType === 'deposits'
-        ? filteredTransactions.slice((page - 1) * limit, page * limit)
+        ? filteredTransactions
         : reportType === 'sports' || reportType === 'casino'
           ? filteredSports
           : [],
-    [reportType, filteredTransactions, filteredSports, page, limit]
+    [reportType, filteredTransactions, filteredSports]
   );
 
   const groupedSportsData = useMemo(() => {
@@ -273,16 +286,22 @@ function AccountStatement() {
                 placeholder='Start Date'
                 className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setStartDate(e.target.value);
+                  setPage(1);
+                }}
+                max={todayStr}
               />
               <input
                 type='date'
                 placeholder='End Date'
                 className='h-[38px] border border-[#dbdbdb] p-1 outline-none'
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setPage(1);
+                }}
+                max={todayStr}
               />
             </div>
             <select
@@ -485,6 +504,7 @@ function AccountStatement() {
           eventName={resultPopupRow.eventName}
           marketName={resultPopupRow.marketName}
           marketId={resultPopupRow.market_id}
+          roundId={resultPopupRow.roundId}
           gameType={resultPopupRow.gameType}
           startDate={startDate}
           endDate={endDate}

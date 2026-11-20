@@ -27,6 +27,7 @@ import nonDeclaredRoutes from './routes/nonDeclaredRoutes.js';
 import soccerRoutes from './routes/soccerRoutes.js';
 import tennisRoutes from './routes/tennisRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { startCasinoResultArchiveSync } from './services/casinoResultStore.js';
 import { setupWebSocket } from './socket/bettingSocket.js';
 
 // DNS
@@ -108,7 +109,10 @@ const startServer = async () => {
     if (env.appType !== 'dashboard') {
       cronJobGame1p();
       startResultPoller();
-      console.log('[CRON] Settlement crons started (client process)');
+      startCasinoResultArchiveSync();
+      console.log(
+        '[CRON] Settlement & 4-day casino result sync started (client process)'
+      );
     } else {
       console.log('[CRON] Settlement crons SKIPPED (dashboard process)');
     }
