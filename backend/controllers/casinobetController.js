@@ -12,6 +12,32 @@ import {
 } from '../services/casinoResultStore.js';
 import { saveCasinoRoundSnapshot } from '../services/casinoRoundSync.js';
 import { getCasinoTable } from '../services/casinoTableCache.js';
+import { updateAllUplines } from './admin/subAdminController.js';
+
+// Coalesced non-blocking upline refresh: zero latency on casino place/settle/void,
+// and multiple rapid bets merge into a single updateAllUplines pass (no DB stampede).
+const pendingUplineUserIds = new Set();
+let uplineFlushRunning = false;
+const scheduleUplineRefresh = (ids) => {
+  for (const uid of Array.isArray(ids) ? ids : [ids]) {
+    if (uid) pendingUplineUserIds.add(String(uid));
+  }
+  if (uplineFlushRunning) return;
+  uplineFlushRunning = true;
+  (async () => {
+    try {
+      while (pendingUplineUserIds.size > 0) {
+        const batch = [...pendingUplineUserIds];
+        pendingUplineUserIds.clear();
+        await updateAllUplines(batch);
+      }
+    } catch (e) {
+      console.error('casino scheduleUplineRefresh:', e.message);
+    } finally {
+      uplineFlushRunning = false;
+    }
+  })();
+};
 
 const API_URL = process.env.API_URL;
 const API_KEY = process.env.API_KEY;
@@ -1416,6 +1442,48 @@ export const placeBet = async (req, res) => {
       Math.round((newRoundExposure - oldRoundExposure + Number.EPSILON) * 100) /
       100;
 
+    // Hierarchy & account guards: status, Casino gamelock, and exposureLimit
+    const userAccount = await User.findById(userId)
+      .select('status gamelock exposure exposureLimit')
+      .lean();
+    if (!userAccount) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found' });
+    }
+    if (userAccount.status && userAccount.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: `Your account is ${userAccount.status}. Betting is not allowed.`,
+      });
+    }
+    const casinoLockEntry = userAccount.gamelock?.find(
+      (g) => String(g?.game || '').toLowerCase() === 'casino'
+    );
+    if (casinoLockEntry && casinoLockEntry.lock === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Casino betting is locked for your account',
+      });
+    }
+    const hasExposureLimit =
+      userAccount.exposureLimit !== undefined &&
+      userAccount.exposureLimit !== null;
+    const projectedTotalExposure =
+      Math.round(
+        (Number(userAccount.exposure || 0) + deltaExposure + Number.EPSILON) *
+          100
+      ) / 100;
+    if (
+      deltaExposure > 0 &&
+      hasExposureLimit &&
+      projectedTotalExposure > Number(userAccount.exposureLimit)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Exposure limit exceeded' });
+    }
+
     // Atomic wallet update: agar hedge hone se risk ghat raha hy (delta <= 0)
     // to main balance nahi katta balki locked exposure wapas avbalance me release hota hy.
     const balanceFilter =
@@ -1500,6 +1568,9 @@ export const placeBet = async (req, res) => {
       })
       .catch((e) => console.error('casino history mirror create:', e.message));
 
+    // Non-blocking coalesced upline exposure rollup (zero latency on bet response)
+    scheduleUplineRefresh([userId]);
+
     return res.status(201).json({
       success: true,
       message: 'Bet placed successfully',
@@ -1562,6 +1633,7 @@ const settleCore = async (slug, roundId, result) => {
   const r2 = (n) => Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
   let settled = 0;
   let failed = 0;
+  const settledUserIds = [];
 
   for (const [uid, userBets] of byUser.entries()) {
     const roundExpBefore = engine.calcRoundExposure(slug, userBets);
@@ -1665,6 +1737,10 @@ const settleCore = async (slug, roundId, result) => {
           console.error('casino history mirror settle:', e.message)
         );
     }
+    settledUserIds.push(uid);
+  }
+  if (settledUserIds.length) {
+    scheduleUplineRefresh(settledUserIds);
   }
   return { settled, failed };
 };
@@ -1712,6 +1788,7 @@ const voidBet = async (bet) => {
         }
       )
       .catch((e) => console.error('casino history mirror void:', e.message));
+    scheduleUplineRefresh([bet.userId]);
     return true;
   }
   return false;

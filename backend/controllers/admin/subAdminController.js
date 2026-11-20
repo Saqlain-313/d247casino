@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import createToken from '../../config/tokenCreate.js';
 import betHistoryModel from '../../models/betHistoryModel.js';
 import betModel from '../../models/betModel.js';
+import CasinoBet from '../../models/CasinoBet.js';
 import creditRefHistory from '../../models/creditRefHistory.js';
 import DepositHistory from '../../models/depositeHistoryModel.js';
 import LoginHistory from '../../models/loginHistory.js';
@@ -12,6 +13,7 @@ import passwordHistory from '../../models/passwordHistory.js';
 import SubAdmin from '../../models/subAdminModel.js';
 import TransactionHistory from '../../models/transtionHistoryModel.js';
 import WithdrawalHistory from '../../models/withdrawalHistoryModel.js';
+import { calcTotalCasinoExposure } from '../../services/casinoEngine.js';
 import { calculateAllExposure } from '../../utils/exposureUtils.js';
 import { saveLoginHistory } from '../../utils/loginHistory.js';
 
@@ -82,9 +84,10 @@ const updateAdmin = async (id) => {
     for (let i = 0; i < endUsers.length; i += USER_BATCH_SIZE) {
       const batch = endUsers.slice(i, i + USER_BATCH_SIZE);
       const batchIds = batch.map((user) => user._id.toString());
+      const batchObjectIds = batch.map((user) => user._id);
 
       try {
-        const [plRows, pendingBets] = await Promise.all([
+        const [plRows, pendingBets, pendingCasinoBets] = await Promise.all([
           betHistoryModel.aggregate([
             { $match: { userId: { $in: batchIds }, status: { $in: [1, 2] } } },
             {
@@ -95,6 +98,12 @@ const updateAdmin = async (id) => {
             },
           ]),
           betModel.find({ userId: { $in: batchIds }, status: 0 }).lean(),
+          CasinoBet.find({
+            userId: { $in: batchObjectIds },
+            status: 'pending',
+          })
+            .select('userId slug roundId side selection odds stake exposure')
+            .lean(),
         ]);
 
         const plByUser = new Map(plRows.map((row) => [row._id, row.totalPL]));
@@ -103,6 +112,12 @@ const updateAdmin = async (id) => {
           const key = String(bet.userId);
           if (!pendingByUser.has(key)) pendingByUser.set(key, []);
           pendingByUser.get(key).push(bet);
+        }
+        const pendingCasinoByUser = new Map();
+        for (const cbet of pendingCasinoBets) {
+          const key = String(cbet.userId);
+          if (!pendingCasinoByUser.has(key)) pendingCasinoByUser.set(key, []);
+          pendingCasinoByUser.get(key).push(cbet);
         }
 
         for (const user of batch) {
@@ -120,10 +135,10 @@ const updateAdmin = async (id) => {
           }
           DownlineTotalBettingProfitLoss += userBettingPL;
 
-          // Market-based exposure calculation (handles fancy + non-fancy + offsetting)
-          DownlineTotalExposure += calculateAllExposure(
-            pendingByUser.get(key) || []
-          );
+          // Market-based sports + hedged casino exposure calculation
+          DownlineTotalExposure +=
+            calculateAllExposure(pendingByUser.get(key) || []) +
+            calcTotalCasinoExposure(pendingCasinoByUser.get(key) || []);
         }
       } catch (error) {
         console.error(
