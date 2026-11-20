@@ -39,7 +39,7 @@ import HorseRacingbet from './pages/HorseRacingbet';
 function App() {
   return (
     <>
-      <Router>
+      <Router basename='/dashboard'>
         <div className='flex h-screen flex-col'>
           <div className='relative'>
             <div className='w-full'>

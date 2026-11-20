@@ -2,6 +2,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dns from 'dns';
 import express from 'express';
+import fs from 'fs';
 import http from 'http';
 import morgan from 'morgan';
 import path from 'path';
@@ -80,17 +81,56 @@ const apiRoutes = [
 apiRoutes.forEach((router) => app.use('/api', router));
 app.use(nonDeclaredRoutes);
 
-// Static frontend bundle
+// ---------------------------------------------------------------------------
+// Static frontend bundles
+//   /dashboard  -> ../dashboard/dist   (always, if built)
+//   /           -> ../client/dist      (client app)
+// Works on the same port, whatever appType is.
+// ---------------------------------------------------------------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const distDir = path.join(
-  __dirname,
-  env.appType === 'dashboard' ? '../dashboard/dist' : '../client/dist'
-);
 
-app.use(express.static(distDir));
+const isDashboard = env.appType === 'dashboard';
+const clientDist = path.join(__dirname, '../client/dist');
+const dashboardDist = path.join(__dirname, '../dashboard/dist');
+const clientIndex = path.join(clientDist, 'index.html');
+const dashboardIndex = path.join(dashboardDist, 'index.html');
+
+const hasClient = fs.existsSync(clientIndex);
+const hasDashboard = fs.existsSync(dashboardIndex);
+
+console.log(`[STATIC] appType=${env.appType}`);
+console.log(`[STATIC] client    : ${hasClient ? 'OK' : 'NOT BUILT'} (${clientDist})`);
+console.log(`[STATIC] dashboard : ${hasDashboard ? 'OK' : 'NOT BUILT'} (${dashboardDist})`);
+
+const notBuilt = (res, name, folder) =>
+  res
+    .status(404)
+    .send(`${name} build not found. Run "npm run build" inside the "${folder}" folder.`);
+
+// Dashboard: /dashboard and /dashboard/*
+app.use('/dashboard', express.static(dashboardDist));
+app.get('/dashboard/*', (req, res) => {
+  if (!hasDashboard) return notBuilt(res, 'Dashboard', 'dashboard');
+  res.sendFile(dashboardIndex);
+});
+
+// Root (client app, or dashboard if this process is the dashboard process)
+app.use(express.static(isDashboard ? dashboardDist : clientDist));
+
 app.get('*', (req, res) => {
-  res.sendFile(path.join(distDir, 'index.html'));
+  // Unknown API routes should return JSON, not index.html
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ message: 'API route not found' });
+  }
+
+  if (isDashboard) {
+    if (!hasDashboard) return notBuilt(res, 'Dashboard', 'dashboard');
+    return res.sendFile(dashboardIndex);
+  }
+
+  if (!hasClient) return notBuilt(res, 'Client', 'client');
+  return res.sendFile(clientIndex);
 });
 
 // Start server
@@ -106,7 +146,7 @@ const startServer = async () => {
 
     setupWebSocket(server);
 
-    if (env.appType !== 'dashboard') {
+    if (!isDashboard) {
       cronJobGame1p();
       startResultPoller();
       startCasinoResultArchiveSync();
